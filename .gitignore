@@ -1,0 +1,16 @@
+# Credentials (IMPORTANT - NEVER COMMIT TO GIT)
+textinputter-4a7bda4ef67a.json
+
+# Build artifacts
+bin/
+obj/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log

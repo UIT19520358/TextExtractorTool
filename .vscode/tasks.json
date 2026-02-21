@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "shell",
+      "args": ["build"],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "run",
+      "command": "dotnet",
+      "type": "shell",
+      "args": ["run"],
+      "dependsOn": "build",
+      "group": {
+        "kind": "test"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "build-and-run",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["run"],
+      "group": {
+        "kind": "build"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>TextInputter</RootNamespace>
+    <AssemblyName>TextInputter</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);DESIGNTIME</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="textinputter-4a7bda4ef67a.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Vision.V1" Version="3.8.0" />
+  </ItemGroup>
+
+</Project>
