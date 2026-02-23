@@ -8,6 +8,7 @@
     <RootNamespace>TextInputter</RootNamespace>
     <AssemblyName>TextInputter</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>resources\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
@@ -15,7 +16,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="_tmp_reader\**" />
+    <EmbeddedResource Remove="_tmp_reader\**" />
+    <None Remove="_tmp_reader\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="textinputter-4a7bda4ef67a.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="resources\app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -25,6 +35,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Cloud.Vision.V1" Version="3.8.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.3" />
   </ItemGroup>
 
 </Project>
