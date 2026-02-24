@@ -4,209 +4,151 @@ using System.Text.RegularExpressions;
 namespace TextInputter.Services
 {
     /// <summary>
-    /// Service for parsing OCR text and extracting invoice information
+    /// Service phân tích OCR text và extract các fields cần thiết.
+    ///
+    /// ⚠️ HARDCODED (cần discuss để cải thiện sau):
+    ///   - Tất cả regex pattern đang viết cứng để khớp với hóa đơn của khách hiện tại.
+    ///   - Các keyword: "HĐ", "Số HĐ", "shop", "cửa hàng", "mã", "địa chỉ", "tiền thu",
+    ///     "tiền ship", "giảm", "chiết khấu" — phụ thuộc format hóa đơn.
+    ///   - ExtractAllFields yêu cầu đúng 12 fields; nếu đổi template hóa đơn → cần update.
     /// </summary>
     public class OCRTextParsingService
     {
         /// <summary>
-        /// Extract invoice number from OCR text
-        /// </summary>
-        public string ExtractInvoiceNumber(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return string.Empty;
-
-            // TODO: Implement invoice number extraction
-            // Common patterns: "HĐ: XXXXX", "Số HĐ: XXXXX", "Invoice: XXXXX"
-            var match = Regex.Match(text, @"(?:HĐ|Số HĐ|Invoice|So HD)\s*[:=]?\s*(\d+)", RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value : string.Empty;
-        }
-
-        /// <summary>
-        /// Extract address from OCR text
-        /// </summary>
-        public string ExtractAddress(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return string.Empty;
-
-            // TODO: Implement address extraction
-            // Look for lines containing address indicators
-            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            foreach (var line in lines)
-            {
-                var trimmed = line.Trim();
-                if (trimmed.Contains("địa chỉ", StringComparison.OrdinalIgnoreCase) ||
-                    trimmed.Contains("address", StringComparison.OrdinalIgnoreCase))
-                {
-                    return trimmed;
-                }
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Extract total amount from OCR text
-        /// </summary>
-        public decimal ExtractTotalAmount(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return 0m;
-
-            // TODO: Improve currency amount extraction
-            // Pattern for Vietnamese currency: 1.234.567 or 1,234,567
-            var matches = Regex.Matches(text, @"(\d+[.,]\d+[.,]?\d*|\d+)");
-            
-            foreach (Match match in matches)
-            {
-                var value = match.Value.Replace(".", "").Replace(",", ".");
-                if (decimal.TryParse(value, out decimal amount) && amount > 0)
-                {
-                    return amount;
-                }
-            }
-
-            return 0m;
-        }
-
-        /// <summary>
-        /// Extract discount amount from OCR text
-        /// </summary>
-        public decimal ExtractDiscount(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return 0m;
-
-            // TODO: Implement discount extraction
-            // Look for discount indicators: "giảm", "chiết khấu", "discount", "CK"
-            var match = Regex.Match(text, @"(?:giảm|chiết khấu|discount|CK)\s*[:=]?\s*(\d+[.,]\d+|\d+)", RegexOptions.IgnoreCase);
-            
-            if (match.Success && decimal.TryParse(match.Groups[1].Value.Replace(".", "").Replace(",", "."), out decimal discount))
-            {
-                return discount;
-            }
-
-            return 0m;
-        }
-
-        /// <summary>
-        /// Extract person name (Người Đi/Người Lấy) from OCR text
-        /// </summary>
-        public string ExtractPersonName(string text, string personType)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return string.Empty;
-
-            // TODO: Implement person name extraction
-            // Pattern: "Người Đi: Tên" or "Người Lấy: Tên"
-            var pattern = personType switch
-            {
-                "người_đi" => @"(?:người\s*đi|sender)\s*[:=]?\s*([^\n\r]+)",
-                "người_lấy" => @"(?:người\s*lấy|receiver)\s*[:=]?\s*([^\n\r]+)",
-                _ => null
-            };
-
-            if (pattern == null)
-                return string.Empty;
-
-            var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
-        }
-
-        /// <summary>
-        /// Extract date from OCR text (DD-MM-YYYY or DD/MM/YYYY)
-        /// </summary>
-        public string ExtractDate(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return string.Empty;
-
-            var match = Regex.Match(text, @"(\d{1,2})[-/](\d{1,2})[-/](\d{4})");
-            return match.Success ? $"{match.Groups[1].Value}-{match.Groups[2].Value}-{match.Groups[3].Value}" : string.Empty;
-        }
-
-        /// <summary>
-        /// Extract all 12 required fields for OCR Batch Processing
-        /// Required: SHOP, TÊN KH, MÃ, SỐ NHÀ, TÊN ĐƯỜNG, QUẬN, TIỀN THU, TIỀN SHIP, TIỀN HÀNG, NGÀY LẤY
-        /// Optional: NGƯỜI ĐI, NGƯỜI LẤY (will be input manually in OCR tab)
+        /// Extract tất cả 12 fields bắt buộc từ OCR text.
+        /// Trả về danh sách các field bị thiếu (empty list = đủ hết).
         /// </summary>
         public List<string> ExtractAllFields(string text, out Dictionary<string, string> fields)
         {
             fields = new Dictionary<string, string>();
             var missingFields = new List<string>();
 
-            // 1. SHOP (extracted from address or invoice header)
-            var shop = Regex.Match(text, @"(?:shop|cửa hàng|store)\s*[:=]?\s*([^\n\r,]+)", RegexOptions.IgnoreCase);
-            fields["SHOP"] = shop.Success ? shop.Groups[1].Value.Trim() : string.Empty;
+            // 1. SHOP — trên hóa đơn Đoàn Ngân Châu không có label "shop:", lấy tên sau "ĐOÀN NGÂN CHÂU"
+            // ⚠️ HARDCODED: tên shop cố định, hoặc dùng dòng trước "Địa Chi:"
+            var shopLine = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)
+                               .FirstOrDefault(l => l.Trim().StartsWith("ĐOÀN", StringComparison.OrdinalIgnoreCase)
+                                                 || l.Trim().StartsWith("Đoàn", StringComparison.OrdinalIgnoreCase));
+            if (shopLine == null)
+            {
+                var shopM = Regex.Match(text, @"(?:shop|cửa hàng|store)\s*[:=]?\s*([^\n\r,]+)", RegexOptions.IgnoreCase);
+                fields["SHOP"] = shopM.Success ? shopM.Groups[1].Value.Trim() : string.Empty;
+            }
+            else
+            {
+                fields["SHOP"] = shopLine.Trim();
+            }
             if (string.IsNullOrEmpty(fields["SHOP"])) missingFields.Add("SHOP");
 
-            // 2. TÊN KH (Customer name - similar to address)
-            fields["TÊN KH"] = ExtractAddress(text);
+            // 2. TÊN KH — "Khách hàng: ..." trên hóa đơn thật
+            var khMatch = Regex.Match(text, @"Kh[aá]ch\s*h[aà]ng\s*[:=]?\s*([^\n\r]+)", RegexOptions.IgnoreCase);
+            fields["TÊN KH"] = khMatch.Success ? khMatch.Groups[1].Value.Trim() : string.Empty;
             if (string.IsNullOrEmpty(fields["TÊN KH"])) missingFields.Add("TÊN KH");
 
-            // 3. MÃ (Product/Invoice code)
-            var maField = Regex.Match(text, @"(?:mã|code|sku)\s*[:=]?\s*([^\n\r\s,]+)", RegexOptions.IgnoreCase);
+            // 3. MÃ (Số HĐ) — ưu tiên pattern "So HD: HD\d+" thật sự trên hóa đơn
+            // ⚠️ HARDCODED: format "So HD: HD123456" — phụ thuộc template hóa đơn Đoàn Ngân Châu
+            var maField = Regex.Match(text, @"So\s*H[ĐD]\s*[:=]?\s*(HD\d+)", RegexOptions.IgnoreCase);
+            if (!maField.Success)
+                maField = Regex.Match(text, @"(?:Số\s*HĐ|HĐ\s*số|Invoice\s*No)\s*[:=]?\s*([^\n\r\s,]+)", RegexOptions.IgnoreCase);
             fields["MÃ"] = maField.Success ? maField.Groups[1].Value.Trim() : string.Empty;
             if (string.IsNullOrEmpty(fields["MÃ"])) missingFields.Add("MÃ");
 
-            // 4. SỐ NHÀ (House number)
-            var soNha = Regex.Match(text, @"(?:số|no\.?|#)\s*[\d]+[a-z]?(?:\s*[/\\-]\s*[\d]+)?", RegexOptions.IgnoreCase);
-            fields["SỐ NHÀ"] = soNha.Success ? soNha.Value.Trim() : string.Empty;
-            if (string.IsNullOrEmpty(fields["SỐ NHÀ"])) missingFields.Add("SỐ NHÀ");
-
-            // 5. TÊN ĐƯỜNG (Street name)
-            var tenDuong = Regex.Match(text, @"(?:đường|street|st\.)\s*([^\n\r,;]+)", RegexOptions.IgnoreCase);
-            fields["TÊN ĐƯỜNG"] = tenDuong.Success ? tenDuong.Groups[1].Value.Trim() : string.Empty;
+            // 4–7. Address parts — parsed via AddressParser
+            string addressLine = ExtractAddressLine(text);
+            var parsed = AddressParser.Parse(addressLine);
+            fields["SỐ NHÀ"]    = parsed.SoNha;
+            fields["TÊN ĐƯỜNG"] = parsed.TenDuong;
+            fields["QUẬN"]      = parsed.Quan;
+            if (string.IsNullOrEmpty(fields["SỐ NHÀ"]))    missingFields.Add("SỐ NHÀ");
             if (string.IsNullOrEmpty(fields["TÊN ĐƯỜNG"])) missingFields.Add("TÊN ĐƯỜNG");
+            if (string.IsNullOrEmpty(fields["QUẬN"]))       missingFields.Add("QUẬN");
 
-            // 6. QUẬN (District)
-            var quan = Regex.Match(text, @"(?:quận|huyện|q\.)\s*(\d+|[^\n\r,;]+)", RegexOptions.IgnoreCase);
-            fields["QUẬN"] = quan.Success ? quan.Groups[1].Value.Trim() : string.Empty;
-            if (string.IsNullOrEmpty(fields["QUẬN"])) missingFields.Add("QUẬN");
+            // 8. TIỀN THU
+            fields["TIỀN THU"] = ExtractAmountLine(text, "tiền thu|thu tiền|tổng thanh toán");
+            if (string.IsNullOrEmpty(fields["TIỀN THU"])) missingFields.Add("TIỀN THU");
 
-            // 7. TIỀN THU (Amount collected - use ExtractTotalAmount)
-            var tienThu = ExtractTotalAmount(text);
-            fields["TIỀN THU"] = tienThu > 0 ? tienThu.ToString() : string.Empty;
-            if (tienThu <= 0) missingFields.Add("TIỀN THU");
+            // 9. TIỀN SHIP
+            fields["TIỀN SHIP"] = ExtractAmountLine(text, "tiền ship|ship|vận chuyển");
+            if (string.IsNullOrEmpty(fields["TIỀN SHIP"])) fields["TIỀN SHIP"] = "0";
 
-            // 8. TIỀN SHIP (Shipping cost)
-            var tienShip = Regex.Match(text, @"(?:phí\s*ship|ship|shipping)\s*[:=]?\s*([\d,\.]+)", RegexOptions.IgnoreCase);
-            if (tienShip.Success && decimal.TryParse(tienShip.Groups[1].Value.Replace(",", ""), out var shipAmount))
-            {
-                fields["TIỀN SHIP"] = shipAmount > 0 ? shipAmount.ToString() : string.Empty;
-            }
-            else
-            {
-                fields["TIỀN SHIP"] = string.Empty;
-            }
-            if (string.IsNullOrEmpty(fields["TIỀN SHIP"])) missingFields.Add("TIỀN SHIP");
-
-            // 9. TIỀN HÀNG (Product cost)
-            var tienHang = Regex.Match(text, @"(?:tiền\s*hàng|product|cost)\s*[:=]?\s*([\d,\.]+)", RegexOptions.IgnoreCase);
-            if (tienHang.Success && decimal.TryParse(tienHang.Groups[1].Value.Replace(",", ""), out var productAmount))
-            {
-                fields["TIỀN HÀNG"] = productAmount > 0 ? productAmount.ToString() : string.Empty;
-            }
-            else
-            {
-                fields["TIỀN HÀNG"] = string.Empty;
-            }
-            if (string.IsNullOrEmpty(fields["TIỀN HÀNG"])) missingFields.Add("TIỀN HÀNG");
-
-            // 10. NGÀY LẤY (Pickup date)
+            // 10. NGÀY LẤY
             fields["NGÀY LẤY"] = ExtractDate(text);
             if (string.IsNullOrEmpty(fields["NGÀY LẤY"])) missingFields.Add("NGÀY LẤY");
 
-            // 11. NGƯỜI ĐI (Sender) - OPTIONAL - will be input manually in OCR tab
-            fields["NGƯỜI ĐI"] = ExtractPersonName(text, "người_đi");
-            // Not in missing list - will be handled manually
-
-            // 12. NGƯỜI LẤY (Receiver) - OPTIONAL - will be input manually in OCR tab
-            fields["NGƯỜI LẤY"] = ExtractPersonName(text, "người_lấy");
-            // Not in missing list - will be handled manually
+            // NGƯỜI ĐI / NGƯỜI LẤY: được nhập thủ công từ UI, không extract ở đây
+            fields["NGƯỜI ĐI"]  = "";
+            fields["NGƯỜI LẤY"] = "";
 
             return missingFields;
+        }
+
+        // ─── Private helpers ───────────────────────────────────────────────────
+
+        private string ExtractAddressLine(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var line in lines)
+            {
+                if (line.IndexOf("địa chỉ", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    line.IndexOf("address",  StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    int colon = line.IndexOf(':');
+                    return colon >= 0 ? line.Substring(colon + 1).Trim() : line.Trim();
+                }
+            }
+            return "";
+        }
+
+        private string ExtractAmountLine(string text, string keywords)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var keyList = keywords.Split('|');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                foreach (var kw in keyList)
+                {
+                    if (lines[i].IndexOf(kw, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    var m = Regex.Match(lines[i], @"[\d][,\d]*\d");
+                    if (m.Success) return NormalizeToThousands(m.Value);
+                    if (i + 1 < lines.Length)
+                    {
+                        var next = Regex.Match(lines[i + 1].Trim(), @"^[\d][,\d]*\d$");
+                        if (next.Success) return NormalizeToThousands(next.Value);
+                    }
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Chuẩn hóa số tiền sang đơn vị nghìn đồng.
+        /// VD: "1,200,000" hoặc "1200000" → "1200"
+        /// ⚠️ HARDCODED: quy ước 1 đơn vị = 1,000 VND.
+        /// </summary>
+        private string NormalizeToThousands(string raw)
+        {
+            var digits = raw.Replace(",", "");
+            if (long.TryParse(digits, out long val))
+                return val >= 1000 ? (val / 1000).ToString() : val.ToString();
+            return digits;
+        }
+
+        private string ExtractDate(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            var m1 = Regex.Match(text,
+                @"ng[aà]y\s+(\d{1,2})\s+th[aá]ng\s+(\d{1,2})\s+n[aă]m\s+(\d{4})",
+                RegexOptions.IgnoreCase);
+            if (m1.Success)
+                return $"{m1.Groups[1].Value.PadLeft(2, '0')}-{m1.Groups[2].Value.PadLeft(2, '0')}-{m1.Groups[3].Value}";
+
+            var m2 = Regex.Match(text, @"\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b");
+            if (m2.Success)
+                return $"{m2.Groups[1].Value.PadLeft(2, '0')}-{m2.Groups[2].Value.PadLeft(2, '0')}-{m2.Groups[3].Value}";
+
+            return "";
         }
     }
 }

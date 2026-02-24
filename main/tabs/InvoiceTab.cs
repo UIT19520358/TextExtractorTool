@@ -220,7 +220,7 @@ namespace TextInputter
                 if (sourceGridView == null || sourceGridView.Rows.Count == 0) return;
 
                 // Column detection
-                int colShop = -1, colTienThu = -1, colTienShip = -1, colTienHang = -1, colSoDon = -1, colGhiChu = -1;
+                int colShop = -1, colTienThu = -1, colTienShip = -1, colTienHang = -1, colSoDon = -1, colGhiChu = -1, colNgayLay = -1;
                 for (int col = 0; col < sourceGridView.Columns.Count; col++)
                 {
                     string header = sourceGridView.Columns[col].HeaderText.ToLower();
@@ -230,6 +230,7 @@ namespace TextInputter
                     if (header.Contains("tiền hàng"))  colTienHang = col;
                     if (header.Contains("số đơn"))     colSoDon    = col;
                     if (header.Contains("ghi chú"))    colGhiChu   = col;
+                    if (header.Contains("ngày lấy"))   colNgayLay  = col;
                 }
 
                 Debug.WriteLine($"Cols — Shop:{colShop} TienThu:{colTienThu} TienShip:{colTienShip} TienHang:{colTienHang} SoDon:{colSoDon}");
@@ -271,9 +272,9 @@ namespace TextInputter
                     if (colTienThu  >= 0) decimal.TryParse(row.Cells[colTienThu].Value?.ToString(),  out totalTienThu);
                     if (colTienShip >= 0) decimal.TryParse(row.Cells[colTienShip].Value?.ToString(), out totalTienShip);
                     if (colSoDon    >= 0) decimal.TryParse(row.Cells[colSoDon].Value?.ToString(),    out totalSoDon);
-                    // Fallback: cột Column1 (index 17) chứa SỐ ĐƠN khi header không detect được
-                    if (totalSoDon == 0 && row.Cells.Count > 17)
-                        decimal.TryParse(row.Cells[17].Value?.ToString(), out totalSoDon);
+                    // Fallback: cột Column1 chứa SỐ ĐƠN khi header không detect được
+                    if (totalSoDon == 0 && row.Cells.Count > AppConstants.COL_SODON_FALLBACK_IDX)
+                        decimal.TryParse(row.Cells[AppConstants.COL_SODON_FALLBACK_IDX].Value?.ToString(), out totalSoDon);
                     // Log toàn bộ cells của SUM row để debug
                     var sbDebug = new System.Text.StringBuilder();
                     for (int dc = 0; dc < row.Cells.Count; dc++)
@@ -321,7 +322,7 @@ namespace TextInputter
 
                 decimal tongHangDuong = totalTienThu - totalTienShip;        // SUM row TIỀN HÀNG
                 decimal tongKetCuoi   = tongHangDuong + totalNegHang;        // cộng luôn số âm
-                decimal phiShipThucTe = totalSoDon * 5;
+                decimal phiShipThucTe = totalSoDon * AppConstants.PHI_SHIP_MOI_DON;
                 decimal khoanTruShip  = -(totalTienShip - phiShipThucTe);
 
                 Debug.WriteLine($"FINAL: SumRow={foundSumRow}, Thu={totalTienThu}, Ship={totalTienShip}, HangDuong={tongHangDuong}, NegHang={totalNegHang}, KetCuoi={tongKetCuoi}");
@@ -374,16 +375,16 @@ namespace TextInputter
                     int si = dgvInvoice.Rows.Count - 1;
                     for (int ci = 0; ci < dgvInvoice.Columns.Count; ci++)
                     {
-                        dgvInvoice.Rows[si].Cells[ci].Style.BackColor = Color.Yellow;
+                        dgvInvoice.Rows[si].Cells[ci].Style.BackColor = AppConstants.COLOR_ROW_TONG;
                         dgvInvoice.Rows[si].Cells[ci].Style.ForeColor = Color.Black;
                         dgvInvoice.Rows[si].Cells[ci].Style.Font      = new Font(dgvInvoice.Font, FontStyle.Bold);
                     }
-                    dgvInvoice.Rows[si].Height = 24;
+                    dgvInvoice.Rows[si].Height = AppConstants.ROW_HEIGHT_TONG;
                 }
 
                 // 3. Row âm — màu cam italic (giữ nguyên từ Excel)
                 foreach (var nr in negativeRows)
-                    AddRow(nr, Color.FromArgb(255, 200, 124), true);
+                    AddRow(nr, AppConstants.COLOR_ROW_NEGATIVE, true);
 
                 // 4. Dòng KẾT cuối = SUM + số âm — chỉ hiện khi có row âm
                 if (negativeRows.Count > 0)
@@ -393,22 +394,42 @@ namespace TextInputter
                     if (ketRow.Cells.Count > 0) ketRow.Cells[0].Value = "▶ KẾT";
                     if (colTienHang >= 0 && colTienHang < ketRow.Cells.Count) ketRow.Cells[colTienHang].Value = tongKetCuoi.ToString();
                     if (colSoDon >= 0 && colSoDon < ketRow.Cells.Count) ketRow.Cells[colSoDon].Value = totalSoDon.ToString();
-                    // Fallback cột 17 (Column1) nếu không detect colSoDon
-                    if (colSoDon < 0 && ketRow.Cells.Count > 17) ketRow.Cells[17].Value = totalSoDon.ToString();
+                    // Fallback cột fallback index nếu không detect colSoDon
+                    if (colSoDon < 0 && ketRow.Cells.Count > AppConstants.COL_SODON_FALLBACK_IDX)
+                        ketRow.Cells[AppConstants.COL_SODON_FALLBACK_IDX].Value = totalSoDon.ToString();
                     dgvInvoice.Rows.Add(ketRow);
                     int ki = dgvInvoice.Rows.Count - 1;
                     for (int ci = 0; ci < dgvInvoice.Columns.Count; ci++)
                     {
-                        dgvInvoice.Rows[ki].Cells[ci].Style.BackColor = Color.FromArgb(255, 200, 0);
+                        dgvInvoice.Rows[ki].Cells[ci].Style.BackColor = AppConstants.COLOR_ROW_KET;
                         dgvInvoice.Rows[ki].Cells[ci].Style.ForeColor = Color.Black;
                         dgvInvoice.Rows[ki].Cells[ci].Style.Font = new Font(dgvInvoice.Font, FontStyle.Bold);
                     }
-                    dgvInvoice.Rows[ki].Height = 26;
+                    dgvInvoice.Rows[ki].Height = AppConstants.ROW_HEIGHT_KET;
+                }
+
+                // Lấy ngày lấy từ data (dùng làm sheet name khi Save)
+                string reportDate = DateTime.Now.ToString("dd-MM-yyyy"); // fallback
+                if (colNgayLay >= 0)
+                {
+                    foreach (DataGridViewRow dr in sourceGridView.Rows)
+                    {
+                        string ngay = dr.Cells[colNgayLay].Value?.ToString()?.Trim() ?? "";
+                        if (!string.IsNullOrEmpty(ngay))
+                        {
+                            // Normalize: bỏ dấu chấm/gạch chéo, đổi sang dd-MM-yyyy
+                            if (DateTime.TryParse(ngay, out DateTime dt))
+                                reportDate = dt.ToString("dd-MM-yyyy");
+                            else
+                                reportDate = ngay.Replace("/", "-").Replace(".", "-");
+                            break;
+                        }
+                    }
                 }
 
                 currentDailyReport = new DailyReportData
                 {
-                    Date         = DateTime.Now.ToString("dd.MM.yyyy"),
+                    Date         = reportDate,
                     TongTienThu  = totalTienThu,
                     TongTienShip = totalTienShip,
                     KhoanTruShip = khoanTruShip,
@@ -515,7 +536,7 @@ namespace TextInputter
                     Dock        = DockStyle.Bottom,
                     BackColor   = Color.White,
                     BorderStyle = BorderStyle.FixedSingle,
-                    Height      = 220
+                    Height      = AppConstants.DAILY_REPORT_PANEL_HEIGHT
                 };
                 tabInvoice.Controls.Add(pnlBottom);
             }
@@ -577,9 +598,9 @@ namespace TextInputter
             dgvReport.Rows.Add("", "", "");
 
             ri = dgvReport.Rows.Add("", ketStr, soDonStr);
-            dgvReport.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(255, 165, 0);
+            dgvReport.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
             dgvReport.Rows[ri].DefaultCellStyle.Font      = new Font("Arial", 11, FontStyle.Bold);
-            dgvReport.Rows[ri].Height = 28;
+            dgvReport.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
 
             pnlBottom.Controls.Add(dgvReport);
         }
@@ -636,8 +657,11 @@ namespace TextInputter
             {
                 if (dgvInvoice.Rows.Count == 0) { MessageBox.Show("Không có dữ liệu để lưu!"); return; }
 
-                string excelPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DailyTotalReport.xlsx");
-                string sheetName = DateTime.Now.ToString("dd-MM-yyyy");
+                string excelPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.DAILY_REPORT_FILENAME);
+                // Sheet name = ngày lấy từ data; fallback = hôm nay
+                string sheetName = (currentDailyReport?.Date is string d && !string.IsNullOrEmpty(d))
+                    ? d
+                    : DateTime.Now.ToString(AppConstants.DATE_FORMAT_SHEET);
 
                 XLWorkbook workbook;
                 if (System.IO.File.Exists(excelPath))
@@ -756,157 +780,13 @@ namespace TextInputter
             }
         }
 
-        // ─── Import/Export helpers (legacy dgvInvoice) ─────────────────────────
+        // ─── Legacy handlers (buttons hidden in Designer, kept to avoid Designer wire errors) ──
 
-        private void BtnSaveInvoice_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (dgvInvoice.Rows.Count == 0) { MessageBox.Show("Chưa có dữ liệu để lưu!"); return; }
-                SaveFileDialog dialog = new SaveFileDialog
-                {
-                    Filter   = "Excel Files (*.xlsx)|*.xlsx",
-                    FileName = $"Invoice_{DateTime.Now:dd-MM-yyyy}.xlsx"
-                };
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    ExportInvoiceToExcel(dgvInvoice, dialog.FileName);
-                    MessageBox.Show($"✅ Lưu thành công!\n{dialog.FileName}", "Thành công");
-                }
-            }
-            catch (Exception ex) { MessageBox.Show($"❌ Lỗi: {ex.Message}", "Lỗi"); }
-        }
+        // NOTE: btnSaveInvoice, btnImportFromExcel, btnCalculateInvoice đều Visible=false trong Designer.
+        // Flow chính dùng BtnCalculateExcelData_Click + SaveDailyReportToExcel thay thế.
 
-        private void ExportInvoiceToExcel(DataGridView dgv, string filePath)
-        {
-            using (var workbook = new XLWorkbook())
-            {
-                var worksheet = workbook.Worksheets.Add("Hóa đơn");
-                for (int col = 0; col < dgv.Columns.Count; col++)
-                    worksheet.Cell(1, col + 1).Value = dgv.Columns[col].HeaderText;
-                for (int row = 0; row < dgv.Rows.Count; row++)
-                    for (int col = 0; col < dgv.Columns.Count; col++)
-                        worksheet.Cell(row + 2, col + 1).Value = dgv.Rows[row].Cells[col].Value?.ToString() ?? "";
+        private void BtnSaveInvoice_Click(object sender, EventArgs e) { /* hidden – dùng 💾 Lưu trong button panel */ }
 
-                int lastRow = dgv.Rows.Count + 2;
-                worksheet.Cell(lastRow, 1).Value           = "TỔNG CỘNG";
-                worksheet.Cell(lastRow, 1).Style.Font.Bold = true;
-                workbook.SaveAs(filePath);
-            }
-        }
-
-        private void BtnImportFromExcel_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                OpenFileDialog dialog = new OpenFileDialog { Filter = "Excel Files (*.xlsx)|*.xlsx" };
-                if (dialog.ShowDialog() != DialogResult.OK) return;
-
-                using (var workbook = new XLWorkbook(dialog.FileName))
-                {
-                    var sheetNames = workbook.Worksheets.Select(ws => ws.Name).ToList();
-                    if (sheetNames.Count == 0) { MessageBox.Show("File Excel không có sheet nào"); return; }
-
-                    string selectedSheet = sheetNames[0];
-                    if (sheetNames.Count > 1)
-                    {
-                        using (Form selectForm = new Form { Text = "Chọn Sheet", Width = 300, Height = 150, StartPosition = FormStartPosition.CenterParent })
-                        {
-                            ComboBox cbSheets = new ComboBox { DataSource = sheetNames, Location = new Point(10, 20), Width = 260 };
-                            Button   btnOk    = new Button   { Text = "OK", Location = new Point(100, 70) };
-                            btnOk.Click += (s, evt) => selectForm.DialogResult = DialogResult.OK;
-                            selectForm.Controls.AddRange(new Control[] { cbSheets, btnOk });
-                            if (selectForm.ShowDialog() == DialogResult.OK)
-                                selectedSheet = cbSheets.SelectedItem.ToString();
-                        }
-                    }
-
-                    ImportInvoiceData(workbook, selectedSheet);
-                    MessageBox.Show($"✅ Nhập dữ liệu từ sheet '{selectedSheet}' thành công!\n\nBây giờ bấm 🧮 Tính Tiền để tính tổng", "Thành công");
-                }
-            }
-            catch (Exception ex) { MessageBox.Show($"❌ Lỗi: {ex.Message}", "Lỗi"); }
-        }
-
-        private void ImportInvoiceData(XLWorkbook workbook, string sheetName)
-        {
-            var worksheet = workbook.Worksheet(sheetName);
-            var usedRange = worksheet.RangeUsed();
-            if (usedRange == null) return;
-
-            if (dgvInvoice.Columns.Count == 0)
-            {
-                dgvInvoice.Columns.Add("Mặt hàng",  "Mặt hàng");
-                dgvInvoice.Columns.Add("Số lượng",  "Số lượng");
-                dgvInvoice.Columns.Add("Đơn giá",   "Đơn giá");
-                dgvInvoice.Columns.Add("Thành tiền","Thành tiền");
-            }
-            dgvInvoice.Rows.Clear();
-
-            int rowCount = usedRange.RowCount();
-            for (int row = 1; row <= rowCount; row++)
-            {
-                string mh      = worksheet.Cell(row, 2).GetString()?.Trim() ?? "";
-                string tenduong = worksheet.Cell(row, 6).GetString()?.Trim() ?? "";
-                string quan    = worksheet.Cell(row, 7).GetString()?.Trim() ?? "";
-                string tienhan = worksheet.Cell(row, 8).GetString()?.Trim() ?? "";
-
-                if (!string.IsNullOrEmpty(mh) && !mh.Contains("SHOP") && !mh.Contains("Tính"))
-                {
-                    string displayName = $"{mh} - {tenduong}".Trim();
-                    if (!string.IsNullOrEmpty(tienhan) && decimal.TryParse(tienhan, out decimal price))
-                    {
-                        if (!string.IsNullOrEmpty(quan) && decimal.TryParse(quan, out decimal qty))
-                            dgvInvoice.Rows.Add(displayName, qty, price, price * qty);
-                    }
-                }
-            }
-            CalculateInvoiceTotals();
-        }
-
-        private void CalculateInvoiceTotals()
-        {
-            for (int i = 0; i < dgvInvoice.Rows.Count; i++)
-            {
-                if (decimal.TryParse(dgvInvoice.Rows[i].Cells[1].Value?.ToString() ?? "0", out decimal qty) &&
-                    decimal.TryParse(dgvInvoice.Rows[i].Cells[2].Value?.ToString() ?? "0", out decimal price))
-                    dgvInvoice.Rows[i].Cells[3].Value = qty * price;
-            }
-        }
-
-        private void SaveInvoiceToExcelSheet(decimal totalAmount)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(currentExcelFilePath)) { MessageBox.Show("Vui lòng mở file Excel trước!"); return; }
-
-                string sheetName = DateTime.Now.ToString("dd-MM");
-                using (var workbook = new XLWorkbook(currentExcelFilePath))
-                {
-                    if (workbook.TryGetWorksheet(sheetName, out _))
-                        workbook.Worksheets.Delete(sheetName);
-
-                    var worksheet = workbook.Worksheets.Add(sheetName);
-                    for (int col = 0; col < dgvInvoice.Columns.Count; col++)
-                        worksheet.Cell(1, col + 1).Value = dgvInvoice.Columns[col].HeaderText;
-                    for (int row = 0; row < dgvInvoice.Rows.Count; row++)
-                        for (int col = 0; col < dgvInvoice.Columns.Count; col++)
-                            worksheet.Cell(row + 2, col + 1).Value = dgvInvoice.Rows[row].Cells[col].Value?.ToString() ?? "";
-
-                    int lastRow = dgvInvoice.Rows.Count + 2;
-                    worksheet.Cell(lastRow, 1).Value           = "TỔNG CỘNG";
-                    worksheet.Cell(lastRow, 1).Style.Font.Bold = true;
-                    worksheet.Cell(lastRow, 9).Value           = totalAmount;
-                    worksheet.Cell(lastRow, 9).Style.Font.Bold = true;
-                    workbook.SaveAs(currentExcelFilePath);
-                }
-                MessageBox.Show($"✅ Lưu vào sheet '{sheetName}' thành công!", "Thành công");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"❌ Lỗi: {ex.Message}", "Lỗi");
-                Debug.WriteLine($"Save error: {ex.Message}");
-            }
-        }
+        private void BtnImportFromExcel_Click(object sender, EventArgs e) { /* hidden – dùng BtnOpenExcel_Click + BtnCalculateExcelData_Click */ }
     }
 }

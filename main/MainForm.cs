@@ -22,13 +22,12 @@ namespace TextInputter
     public partial class MainForm : Form
     {
         // ─── Shared fields ─────────────────────────────────────────────────────
-        private string              folderPath       = "";
-        private List<string>        imageFiles       = new List<string>();
-        private bool                isProcessing     = false;
+        private string folderPath = "";
+        private List<string> imageFiles = new List<string>();
+        private bool isProcessing = false;
         private ImageAnnotatorClient visionClient;
-        private Stack<Dictionary<string, List<string[]>>> undoStack;
-        private ExcelInvoiceService     _excelInvoiceService;
-        private OCRTextParsingService   _ocrParsingService;
+        private ExcelInvoiceService _excelInvoiceService;
+        private OCRTextParsingService _ocrParsingService;
         private List<Dictionary<string, string>> mappedDataList = new List<Dictionary<string, string>>();
 
         // ─── Constructor ───────────────────────────────────────────────────────
@@ -36,7 +35,6 @@ namespace TextInputter
         {
             InitializeComponent();
 
-            undoStack      = new Stack<Dictionary<string, List<string[]>>>();
             mappedDataList = new List<Dictionary<string, string>>();
 
             InitializeServices();
@@ -52,7 +50,7 @@ namespace TextInputter
         {
             try
             {
-                string credPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "textinputter-4a7bda4ef67a.json");
+                string credPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.GOOGLE_CREDENTIAL_FILE);
                 if (File.Exists(credPath))
                 {
                     var credential = Google.Apis.Auth.OAuth2.GoogleCredential
@@ -266,10 +264,5 @@ namespace TextInputter
             return (double)alphaNum / line.Length < 0.3;
         }
 
-        private System.Drawing.Bitmap PreprocessImage(string imagePath)
-        {
-            var bmp = new System.Drawing.Bitmap(imagePath);
-            return bmp;
-        }
     }
 }

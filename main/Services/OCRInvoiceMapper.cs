@@ -8,6 +8,8 @@ namespace TextInputter.Services
     /// </summary>
     public class OCRInvoiceData
     {
+        public string Shop { get; set; } = "";
+        public string TenKhachHang { get; set; } = "";
         public string SoHoaDon { get; set; } = "";
         public string DiaChi { get; set; } = "";
         public string SoNha { get; set; } = "";

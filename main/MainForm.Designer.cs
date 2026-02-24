@@ -471,17 +471,6 @@ namespace TextInputter
             Controls.Add(panelBottom);
             Name = "MainForm";
             Text = "Text Extraction Tool";
-            
-            // Load application icon
-            try
-            {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "app.ico");
-                if (File.Exists(iconPath))
-                {
-                    Icon = new Icon(iconPath);
-                }
-            }
-            catch { /* Icon loading failed, use default */ }
 
             panelTop.ResumeLayout(false);
             panelTop.PerformLayout();

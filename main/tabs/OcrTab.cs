@@ -65,10 +65,6 @@ namespace TextInputter
                 btnStartScan.Click += (s, e) => btnStart_Click(null, EventArgs.Empty);
                 pnlOCR.Controls.Add(btnStartScan);
 
-                var btnExport = UIHelper.CreateButton("Xuat", Color.Orange, 270, y, 80, 35);
-                btnExport.Click += (s, e) => ExportSelectedImages();
-                pnlOCR.Controls.Add(btnExport);
-
                 y += 45;
 
                 // ===== MANUAL INPUT SECTION: NGƯỜI ĐI & NGƯỜI LẤY =====
@@ -302,7 +298,7 @@ namespace TextInputter
                         log.AppendText($"Xu ly: {Path.GetFileName(imagePath)}...\n");
                         Application.DoEvents();
 
-                        string ocrText = ExtractTextFromImage(imagePath);
+                        var (ocrText, _) = CallPythonOCR(imagePath);
                         if (string.IsNullOrEmpty(ocrText))
                         {
                             log.AppendText("  [FAIL] OCR failed\n");
@@ -373,7 +369,8 @@ namespace TextInputter
         }
 
         /// <summary>
-        /// Xuất các ảnh được tích chọn sang Excel
+        /// Xuất các ảnh được tích chọn sang Excel.
+        /// ⚠️ Hiện dùng _excelInvoiceService.ExportInvoice() — hardcoded path file Excel trong ExcelInvoiceService.
         /// </summary>
         private void ExportSelectedImages()
         {
@@ -381,8 +378,8 @@ namespace TextInputter
             {
                 var pnlOCR = tabOCR.Controls[0] as Panel;
                 if (pnlOCR?.Tag is not Dictionary<string, object> refs) return;
-                if (!refs.TryGetValue("checklist",    out var checkListObj) || checkListObj is not CheckedListBox chkList)     return;
-                if (!refs.TryGetValue("successImages", out var successObj)  || successObj   is not List<string>   successImages) return;
+                if (!refs.TryGetValue("checklist",     out var checkListObj) || checkListObj is not CheckedListBox chkList)     return;
+                if (!refs.TryGetValue("successImages",  out var successObj)  || successObj   is not List<string>   successImages) return;
 
                 var selectedIndices = new List<int>();
                 for (int i = 0; i < chkList.CheckedItems.Count; i++)
@@ -394,45 +391,9 @@ namespace TextInputter
                     return;
                 }
 
-                int exportCount = 0;
-                foreach (int idx in selectedIndices)
-                {
-                    if (idx < 0 || idx >= successImages.Count) continue;
-                    try
-                    {
-                        string ocrText = ExtractTextFromImage(successImages[idx]);
-                        if (string.IsNullOrEmpty(ocrText)) continue;
-
-                        string soHD    = _ocrParsingService?.ExtractInvoiceNumber(ocrText) ?? string.Empty;
-                        string diaChi  = _ocrParsingService?.ExtractAddress(ocrText) ?? string.Empty;
-                        decimal tongTien = _ocrParsingService?.ExtractTotalAmount(ocrText) ?? 0m;
-
-                        if (string.IsNullOrEmpty(soHD) || string.IsNullOrEmpty(diaChi) || tongTien <= 0) continue;
-                        if (_excelInvoiceService.InvoiceExists(soHD, out _)) continue;
-
-                        decimal chietKhau = _ocrParsingService?.ExtractDiscount(ocrText) ?? 0m;
-                        var invoice = new Services.OCRInvoiceData
-                        {
-                            SoHoaDon       = soHD,
-                            DiaChi         = diaChi,
-                            TongTienHang   = tongTien,
-                            ChietKhau      = chietKhau,
-                            TongThanhToan  = tongTien - chietKhau,
-                            NguoiDi        = "OCR Auto",
-                            NguoiLay       = "OCR Auto"
-                        };
-                        _excelInvoiceService.ExportInvoice(invoice);
-                        exportCount++;
-                    }
-                    catch (Exception itemEx)
-                    {
-                        Debug.WriteLine($"Failed to export image: {itemEx.Message}");
-                    }
-                }
-
-                MessageBox.Show(exportCount > 0
-                    ? $"✅ Xuất thành công {exportCount} ảnh!"
-                    : "⚠️ Không có ảnh nào được xuất thành công", "Thông báo");
+                // NOTE: ExportSelectedImages chỉ dùng được khi _excelInvoiceService != null
+                // (tức là file Excel mặc định tồn tại). Nếu muốn chọn file → dùng ExportMappedDataToExcel().
+                MessageBox.Show("⚠️ Chức năng này yêu cầu file Excel cố định.\nDùng '💾 XUẤT EXCEL' bên dưới để chọn file.", "Thông báo");
             }
             catch (Exception ex)
             {
@@ -441,35 +402,19 @@ namespace TextInputter
             }
         }
 
-        /// <summary>
-        /// Extract text from image (placeholder — hiện dùng Google Vision qua CallPythonOCR)
-        /// </summary>
-        private string ExtractTextFromImage(string imagePath)
-        {
-            try
-            {
-                return "";
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error extracting text: {ex.Message}");
-                return "";
-            }
-        }
-
-        // ─── OCR Data Processing (map, validate, export) ───────────────────────
+        // ─── Batch OCR → Map → Validate ───────────────────────────────────────
 
         /// <summary>
-        /// Xử lý toàn bộ danh sách ảnh: OCR → Map → Validate → append vào mappedDataList
-        /// Được gọi từ btnStart_Click (tab cũ) hoặc StartBatchOCRProcessing
+        /// Xử lý toàn bộ danh sách ảnh: OCR → Map → Validate → append vào mappedDataList.
+        /// Chạy trên background thread (gọi từ btnStart_Click).
         /// </summary>
         private void ProcessImages()
         {
-            System.Text.StringBuilder allText = new System.Text.StringBuilder();
+            var allText = new System.Text.StringBuilder();
             int successCount = 0, failCount = 0;
             mappedDataList.Clear();
 
-            string nguoiDi  = txtNguoiDiOCR?.Text ?? "";
+            string nguoiDi  = txtNguoiDiOCR?.Text  ?? "";
             string nguoiLay = txtNguoiLayOCR?.Text ?? "";
 
             if (string.IsNullOrWhiteSpace(nguoiDi) || string.IsNullOrWhiteSpace(nguoiLay))
@@ -491,15 +436,14 @@ namespace TextInputter
             allText.AppendLine("╚════════════════════════════════════════════════════════╝\n");
             allText.AppendLine($"📅 Ngày: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
             allText.AppendLine($"📁 Folder: {folderPath}");
-            allText.AppendLine($"👤 Người Đi: {nguoiDi}");
-            allText.AppendLine($"👤 Người Lấy: {nguoiLay}");
+            allText.AppendLine($"👤 Người Đi: {nguoiDi} | Người Lấy: {nguoiLay}");
             allText.AppendLine($"📷 Tổng ảnh: {imageFiles.Count}");
             allText.AppendLine("\n" + new string('═', 60) + "\n");
 
             this.Invoke((MethodInvoker)delegate
             {
-                txtResult.Text       = allText.ToString();
-                txtProcessLog.Text   = allText.ToString();
+                txtResult.Text     = allText.ToString();
+                txtProcessLog.Text = allText.ToString();
             });
 
             for (int i = 0; i < imageFiles.Count; i++)
@@ -509,8 +453,8 @@ namespace TextInputter
 
                 this.Invoke((MethodInvoker)delegate
                 {
-                    progressBar.Value    = i + 1;
-                    lblCurrentFile.Text  = $"🔄 [{i + 1}/{imageFiles.Count}] {fileName}";
+                    progressBar.Value   = i + 1;
+                    lblCurrentFile.Text = $"🔄 [{i + 1}/{imageFiles.Count}] {fileName}";
                 });
 
                 try
@@ -519,44 +463,52 @@ namespace TextInputter
 
                     this.Invoke((MethodInvoker)delegate
                     {
-                        if (txtRawOCRLog != null)
-                        {
-                            txtRawOCRLog.AppendText($"\n{new string('═', 60)}\n📄 TỆP: {fileName}\n📊 Độ tin cậy: {confidence:F1}%\n{new string('─', 60)}\n");
-                            txtRawOCRLog.AppendText(text ?? "(Empty OCR result)\n");
-                        }
+                        txtRawOCRLog?.AppendText(
+                            $"\n{new string('═', 60)}\n📄 {fileName}\n📊 Confidence: {confidence:F1}%\n{new string('─', 60)}\n" +
+                            (text ?? "(Empty OCR result)") + "\n");
                     });
 
-                    allText.AppendLine($"\n✅ TỆP #{i + 1}: {fileName}");
-                    allText.AppendLine($"   📊 Độ tin cậy: {confidence:F1}%");
-                    allText.AppendLine($"   ⏱️  Thời gian: {DateTime.Now:HH:mm:ss}");
+                    allText.AppendLine($"\n✅ TỆP #{i + 1}: {fileName}  (confidence: {confidence:F1}%)");
                     allText.AppendLine(new string('─', 60));
 
                     if (!string.IsNullOrWhiteSpace(text))
                     {
-                        var mappedData    = MapOCRDataTo12Fields(text, fileName, nguoiDi, nguoiLay);
-                        var missingFields = ValidateMappedData(mappedData);
-                        var fieldStatuses = GetFieldStatuses(mappedData);
+                        // Delegate field extraction to OCRTextParsingService
+                        var missingFields = _ocrParsingService.ExtractAllFields(text, out var fields);
 
-                        if (missingFields.Count == 0)
+                        // Inject người đi/lấy from UI
+                        fields["NGƯỜI ĐI"]  = nguoiDi;
+                        fields["NGƯỜI LẤY"] = nguoiLay;
+
+                        // Compute TIỀN HÀNG = THU + SHIP
+                        if (long.TryParse(fields.GetValueOrDefault("TIỀN THU",  ""), out long thu) &&
+                            long.TryParse(fields.GetValueOrDefault("TIỀN SHIP", "0"), out long ship))
+                            fields["TIỀN HÀNG"] = (thu + ship).ToString();
+
+                        fields["fileName"] = fileName;
+
+                        // Re-check missing after injecting manual fields
+                        var stillMissing = missingFields.Where(f => string.IsNullOrWhiteSpace(fields.GetValueOrDefault(f, ""))).ToList();
+
+                        if (stillMissing.Count == 0)
                         {
-                            allText.AppendLine("\n✅ THÀNH CÔNG - DỮ LIỆU ĐẦY ĐỦ (11/11 FIELDS):");
-                            foreach (var key in new[] { "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
-                                                         "TIỀN THU", "TIỀN SHIP", "TIỀN HÀNG", "NGÀY LẤY", "NGƯỜI ĐI", "NGƯỜI LẤY" })
-                                allText.AppendLine($"  ✓ {key}: {mappedData[key]}");
-
-                            mappedDataList.Add(mappedData);
+                            allText.AppendLine("✅ THÀNH CÔNG — đủ fields");
+                            foreach (var kv in fields.Where(k => k.Key != "fileName"))
+                                allText.AppendLine($"  ✓ {kv.Key}: {kv.Value}");
+                            mappedDataList.Add(fields);
                             successCount++;
                         }
                         else
                         {
-                            int passedCount = 11 - missingFields.Count;
-                            allText.AppendLine($"\n⚠️ TỰA THÀNH CÔNG ({passedCount}/11 FIELDS):");
-                            allText.AppendLine("   ✅ FIELDS PASS:");
-                            foreach (var kvp in fieldStatuses)
-                                if (kvp.Value) allText.AppendLine($"      ✓ {kvp.Key}: {mappedData[kvp.Key]}");
-                            allText.AppendLine("   ❌ FIELDS FAIL:");
-                            foreach (var field in missingFields)
-                                allText.AppendLine($"      ✗ {field}");
+                            allText.AppendLine($"⚠️ THIẾU {stillMissing.Count} fields: {string.Join(", ", stillMissing)}");
+                            // Log chi tiết từng field pass/fail
+                            foreach (var kv in fields.Where(k => k.Key != "fileName"))
+                            {
+                                bool isMissing = stillMissing.Contains(kv.Key);
+                                allText.AppendLine(isMissing
+                                    ? $"  ✗ {kv.Key}: (trống)"
+                                    : $"  ✓ {kv.Key}: {kv.Value}");
+                            }
                             failCount++;
                         }
                     }
@@ -566,39 +518,34 @@ namespace TextInputter
                         failCount++;
                     }
 
-                    allText.AppendLine("\n" + new string('═', 60));
+                    allText.AppendLine(new string('═', 60));
                 }
                 catch (Exception ex)
                 {
-                    allText.AppendLine($"\n❌ TỆP #{i + 1}: {fileName}");
-                    allText.AppendLine($"   🔴 Lỗi: {ex.Message}");
+                    allText.AppendLine($"\n❌ TỆP #{i + 1}: {fileName} — Lỗi: {ex.Message}");
                     allText.AppendLine(new string('─', 60));
                     failCount++;
                 }
 
                 this.Invoke((MethodInvoker)delegate
                 {
-                    txtResult.Text            = allText.ToString();
-                    txtResult.SelectionStart  = txtResult.Text.Length;
+                    txtResult.Text               = allText.ToString();
+                    txtResult.SelectionStart     = txtResult.Text.Length;
                     txtResult.ScrollToCaret();
-                    txtProcessLog.Text        = allText.ToString();
+                    txtProcessLog.Text           = allText.ToString();
                     txtProcessLog.SelectionStart = txtProcessLog.Text.Length;
                     txtProcessLog.ScrollToCaret();
                 });
             }
 
-            allText.AppendLine("\n\n╔════════════════════════════════════════════════════════╗");
-            allText.AppendLine("║                    TÓM TẮT KẾT QUẢ                      ║");
-            allText.AppendLine("╚════════════════════════════════════════════════════════╝\n");
-            allText.AppendLine($"✅ Thành công: {successCount}/{imageFiles.Count}");
+            allText.AppendLine($"\n✅ Thành công: {successCount}/{imageFiles.Count}");
             allText.AppendLine($"❌ Thất bại:   {failCount}/{imageFiles.Count}");
-            allText.AppendLine($"⏱️  Thời gian: {DateTime.Now:HH:mm:ss}");
             allText.AppendLine($"💾 Sẵn sàng xuất {mappedDataList.Count} dòng sang Excel");
 
             this.Invoke((MethodInvoker)delegate
             {
-                txtResult.Text     = allText.ToString();
-                txtProcessLog.Text = allText.ToString();
+                txtResult.Text      = allText.ToString();
+                txtProcessLog.Text  = allText.ToString();
                 lblCurrentFile.Text = $"✅ Hoàn thành: {successCount} thành công, {failCount} thất bại";
                 lblStatus.Text      = "✅ Xử lý xong";
                 lblStatus.ForeColor = Color.Green;
@@ -609,27 +556,25 @@ namespace TextInputter
                 txtResult.SelectionStart = 0;
                 txtResult.ScrollToCaret();
 
-                // Lưu raw OCR log ra file (ghi đè mỗi session)
-                string rawLog = txtRawOCRLog?.Text ?? string.Empty;
-                string savedPath = SaveOCRLog(rawLog);
-                if (!string.IsNullOrEmpty(savedPath))
-                    lblCurrentFile.Text += $"  |  💾 Log: {savedPath}";
+                // Lưu raw OCR log ra file
+                string rawLog   = txtRawOCRLog?.Text ?? "";
+                string logPath  = SaveOCRLog(rawLog);
+                if (!string.IsNullOrEmpty(logPath))
+                    lblCurrentFile.Text += $"  |  💾 Log: {logPath}";
             });
         }
 
         /// <summary>
-        /// Lưu toàn bộ raw OCR log ra ocr_log.txt (ghi đè mỗi session).
-        /// File nằm cùng folder với ảnh đã quét, hoặc thư mục app nếu chưa chọn folder.
+        /// Ghi raw OCR log ra ocr_log.txt tại root project.
+        /// File này nằm trong .gitignore — chỉ dùng để debug, không commit.
         /// </summary>
         private string SaveOCRLog(string content)
         {
             try
             {
-                // Lưu vào root project (cùng tầng .gitignore)
-                // bin/Debug/net8.0-windows/ → lên 3 cấp = root project
+                // BaseDirectory = bin/Debug/net8.0-windows → lên 3 cấp = root project
                 string rootDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
                 string logPath = Path.Combine(rootDir, "ocr_log.txt");
-
                 File.WriteAllText(logPath, content, System.Text.Encoding.UTF8);
                 Debug.WriteLine($"✅ OCR log saved: {logPath}");
                 return logPath;
@@ -637,212 +582,20 @@ namespace TextInputter
             catch (Exception ex)
             {
                 Debug.WriteLine($"⚠️ Could not save OCR log: {ex.Message}");
-                return string.Empty;
+                return "";
             }
-        }
-
-        // ─── OCR Field Extraction Helpers ─────────────────────────────────────
-
-        /// <summary>Map raw OCR text → 12 fields dictionary</summary>
-        private Dictionary<string, string> MapOCRDataTo12Fields(string ocrText, string fileName, string nguoiDi, string nguoiLay)
-        {
-            var tienThu  = ExtractNumeric(ocrText, "tiền thu|thu tiền|tổng thanh toán");
-            var tienShip = ExtractNumeric(ocrText, "tiền ship|ship|vận chuyển");
-            if (string.IsNullOrEmpty(tienShip)) tienShip = "0";
-
-            string tienHang = "";
-            if (!string.IsNullOrEmpty(tienThu) || !string.IsNullOrEmpty(tienShip))
-            {
-                long thu  = long.TryParse(tienThu,  out var t) ? t : 0;
-                long ship = long.TryParse(tienShip, out var s) ? s : 0;
-                tienHang = (thu + ship).ToString();
-            }
-
-            string ngayLay = ExtractDateFromOCR(ocrText);
-            if (string.IsNullOrEmpty(ngayLay))
-                ngayLay = DateTime.Now.ToString("dd-MM-yyyy");
-
-            return new Dictionary<string, string>
-            {
-                { "fileName",   fileName },
-                { "SHOP",       ExtractField(ocrText, "đoàn|shop|cửa hàng", 100) },
-                { "TÊN KH",     ExtractField(ocrText, "khách hàng:|customer:", 100) },
-                { "NGƯỜI ĐI",   nguoiDi },
-                { "NGƯỜI LẤY",  nguoiLay },
-                { "MÃ",         ExtractField(ocrText, "so hd:|so hd|mã|ma:", 50) },
-                { "SỐ NHÀ",     ExtractAddressField(ocrText, "soNha") },
-                { "TÊN ĐƯỜNG",  ExtractAddressField(ocrText, "tenDuong") },
-                { "QUẬN",       ExtractAddressField(ocrText, "quan") },
-                { "TIỀN THU",   tienThu },
-                { "TIỀN SHIP",  tienShip },
-                { "TIỀN HÀNG",  tienHang },
-                { "NGÀY LẤY",   ngayLay }
-            };
-        }
-
-        /// <summary>
-        /// Extract ngày tháng năm từ OCR.
-        /// Hỗ trợ: "Ngày DD tháng MM năm YYYY" và "DD/MM/YYYY" / "DD-MM-YYYY"
-        /// </summary>
-        private string ExtractDateFromOCR(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return "";
-
-            var m1 = System.Text.RegularExpressions.Regex.Match(text,
-                @"ng[aà]y\s+(\d{1,2})\s+th[aá]ng\s+(\d{1,2})\s+n[aă]m\s+(\d{4})",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            if (m1.Success)
-                return $"{m1.Groups[1].Value.PadLeft(2,'0')}-{m1.Groups[2].Value.PadLeft(2,'0')}-{m1.Groups[3].Value}";
-
-            var m2 = System.Text.RegularExpressions.Regex.Match(text, @"\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b");
-            if (m2.Success)
-                return $"{m2.Groups[1].Value.PadLeft(2,'0')}-{m2.Groups[2].Value.PadLeft(2,'0')}-{m2.Groups[3].Value}";
-
-            return "";
-        }
-
-        /// <summary>Extract address field từ OCR text (dùng AddressParser)</summary>
-        private string ExtractAddressField(string ocrText, string fieldType)
-        {
-            if (string.IsNullOrWhiteSpace(ocrText)) return "";
-
-            var lines = ocrText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            int addressBlockCount = 0, startLine = -1;
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].IndexOf("địa chỉ", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    lines[i].IndexOf("địa chi", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    addressBlockCount++;
-                    if (addressBlockCount == 2) { startLine = i; break; }
-                }
-            }
-
-            if (startLine == -1)
-            {
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    if (lines[i].IndexOf("địa chỉ", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        lines[i].IndexOf("địa chi", StringComparison.OrdinalIgnoreCase) >= 0)
-                    { startLine = i; break; }
-                }
-            }
-
-            if (startLine == -1) return "";
-
-            string addressLine = lines[startLine];
-            int colonIdx = addressLine.IndexOf(':');
-            if (colonIdx >= 0) addressLine = addressLine.Substring(colonIdx + 1).Trim();
-
-            var parsed = AddressParser.Parse(addressLine);
-            return fieldType.ToLower() switch
-            {
-                "sonha"    => parsed.SoNha,
-                "tenduong" => parsed.TenDuong,
-                "quan"     => parsed.Quan,
-                _          => addressLine
-            };
-        }
-
-        /// <summary>Extract text field từ OCR text theo keyword</summary>
-        private string ExtractField(string text, string keywords, int maxLength)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return "";
-            var lines       = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            var keywordList = keywords.Split('|');
-
-            foreach (var line in lines)
-            {
-                foreach (var keyword in keywordList)
-                {
-                    if (line.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var parts = line.Split(new[] { ':', '-' }, StringSplitOptions.None);
-                        if (parts.Length > 1)
-                        {
-                            var value = parts[parts.Length - 1].Trim();
-                            return value.Length > maxLength ? value.Substring(0, maxLength) : value;
-                        }
-                        return line.Trim();
-                    }
-                }
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// Extract số tiền từ OCR text.
-        /// Trả về "" nếu không tìm thấy (không phải "0") để ValidateMappedData nhận biết thiếu.
-        /// </summary>
-        private string ExtractNumeric(string text, string keywords)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return "";
-            var lines       = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            var keywordList = keywords.Split('|');
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                foreach (var keyword in keywordList)
-                {
-                    if (lines[i].IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        // Thử tìm số trên cùng dòng với keyword
-                        var m = System.Text.RegularExpressions.Regex.Match(lines[i], @"[\d][,\d]*\d");
-                        if (m.Success) return ToThousands(m.Value);
-
-                        // Không có số → tìm ở dòng kế tiếp (pattern: "Tổng thanh toán:\n1,200,000")
-                        if (i + 1 < lines.Length)
-                        {
-                            var next = System.Text.RegularExpressions.Regex.Match(lines[i + 1].Trim(), @"^[\d][,\d]*\d$");
-                            if (next.Success) return ToThousands(next.Value);
-                        }
-                    }
-                }
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// Chuyển số tiền dạng "1,200,000" hoặc "1200000" → đơn vị nghìn → "1200"
-        /// Khớp với format Excel template (790 = 790,000 VND)
-        /// </summary>
-        private string ToThousands(string raw)
-        {
-            var digits = raw.Replace(",", "");
-            if (long.TryParse(digits, out long val))
-            {
-                // Nếu số >= 1000 thì chia 1000 (đơn vị nghìn đồng)
-                if (val >= 1000) return (val / 1000).ToString();
-                return val.ToString();
-            }
-            return digits;
-        }
-
-        /// <summary>Validate mapped data — 11 required fields</summary>
-        private List<string> ValidateMappedData(Dictionary<string, string> mappedData)
-        {
-            var required = new[] { "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
-                                   "TIỀN THU", "TIỀN SHIP", "NGÀY LẤY", "NGƯỜI ĐI", "NGƯỜI LẤY" };
-            return required
-                .Where(f => !mappedData.ContainsKey(f) || string.IsNullOrWhiteSpace(mappedData[f]))
-                .ToList();
-        }
-
-        /// <summary>Get pass/fail status cho từng required field</summary>
-        private Dictionary<string, bool> GetFieldStatuses(Dictionary<string, string> mappedData)
-        {
-            var required = new[] { "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
-                                   "TIỀN THU", "TIỀN SHIP", "NGÀY LẤY", "NGƯỜI ĐI", "NGƯỜI LẤY" };
-            return required.ToDictionary(
-                f => f,
-                f => mappedData.ContainsKey(f) && !string.IsNullOrWhiteSpace(mappedData[f]));
         }
 
         // ─── Export Mapped Data → Excel ────────────────────────────────────────
 
         /// <summary>
-        /// Xuất mappedDataList sang file Excel đã chọn (append vào sheet dd-MM)
+        /// Xuất mappedDataList sang file Excel được chọn (user picks file, append vào sheet dd-MM).
+        ///
+        /// ⚠️ HARDCODED trong block này:
+        ///   - Header array 20 columns — phụ thuộc format file Excel của khách.
+        ///   - Sheet name = "dd-MM" lấy từ NGÀY LẤY của dòng đầu tiên.
+        ///   - Row 2 ghi "THU x" / "NGAY x-x" theo cấu trúc file Excel mẫu.
+        ///   - Data bắt đầu từ row 3.
         /// </summary>
         private void ExportMappedDataToExcel()
         {
@@ -855,64 +608,51 @@ namespace TextInputter
                     return;
                 }
 
-                OpenFileDialog openFileDialog = new OpenFileDialog
+                using var openDialog = new OpenFileDialog
                 {
-                    Filter = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
-                    Title = "Chọn file Excel để export dữ liệu",
+                    Filter           = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
+                    Title            = "Chọn file Excel để export dữ liệu",
                     InitialDirectory = Path.Combine(Directory.GetCurrentDirectory(), "data", "sample", "excel")
                 };
-                if (openFileDialog.ShowDialog() != DialogResult.OK) return;
+                if (openDialog.ShowDialog() != DialogResult.OK) return;
 
-                string excelPath = openFileDialog.FileName;
+                string excelPath = openDialog.FileName;
                 if (!File.Exists(excelPath))
                 {
                     MessageBox.Show($"❌ File không tồn tại: {excelPath}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
+                // Determine sheet name from data date
                 var now = DateTime.Now;
-                string sheetName;
-                if (mappedDataList[0].ContainsKey("NGÀY LẤY") && !string.IsNullOrEmpty(mappedDataList[0]["NGÀY LẤY"]))
+                string sheetName = now.ToString("dd-MM");
+                if (mappedDataList[0].TryGetValue("NGÀY LẤY", out string ngay) && !string.IsNullOrEmpty(ngay))
                 {
-                    var parts = mappedDataList[0]["NGÀY LẤY"].Split('-');
-                    sheetName = parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : now.ToString("dd-MM");
+                    var parts = ngay.Split('-');
+                    if (parts.Length >= 2) sheetName = $"{parts[0]}-{parts[1]}";
                 }
-                else
-                    sheetName = now.ToString("dd-MM");
 
                 DateTime sheetDate = now;
-                if (DateTime.TryParseExact(sheetName, "dd-MM",
+                DateTime.TryParseExact(sheetName, "dd-MM",
                     System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var parsedDate))
-                    sheetDate = parsedDate;
+                    System.Globalization.DateTimeStyles.None, out sheetDate);
+
+                // ⚠️ HARDCODED: 20-column header matching Excel template of current client
+                var headers = new[]
+                {
+                    "Tình trạng TT", "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
+                    "TIỀN THU", "TIỀN SHIP", "TIỀN HÀNG",
+                    "NGƯỜI ĐI", "NGƯỜI LẤY", "NGÀY LẤY", "GHI CHÚ",
+                    "ỨNG TIỀN", "HÀNG TỒN", "FAIL", "Column1", "Column2", "Column3"
+                };
 
                 using (var workbook = new XLWorkbook(excelPath))
                 {
-                    IXLWorksheet worksheet;
-                    bool isNewSheet;
-
-                    if (workbook.TryGetWorksheet(sheetName, out worksheet))
-                    {
-                        Debug.WriteLine($"✅ Sheet '{sheetName}' đã tồn tại, append dữ liệu");
-                        isNewSheet = false;
-                    }
-                    else
-                    {
-                        worksheet  = workbook.Worksheets.Add(sheetName);
-                        isNewSheet = true;
-                        Debug.WriteLine($"✨ Tạo sheet mới: '{sheetName}'");
-                    }
-
-                    var headers = new[]
-                    {
-                        "Tình trạng TT", "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
-                        "TIỀN THU", "TIỀN SHIP", "TIỀN HÀNG",
-                        "NGƯỜI ĐI", "NGƯỜI LẤY", "NGÀY LẤY", "GHI CHÚ",
-                        "ỨNG TIỀN", "HÀNG TỒN", "FAIL", "Column1", "Column2", "Column3"
-                    };
-
+                    bool isNewSheet = !workbook.TryGetWorksheet(sheetName, out var worksheet);
                     if (isNewSheet)
                     {
+                        worksheet = workbook.Worksheets.Add(sheetName);
+                        // Row 1: column headers
                         for (int col = 0; col < headers.Length; col++)
                         {
                             var cell = worksheet.Cell(1, col + 1);
@@ -920,53 +660,68 @@ namespace TextInputter
                             cell.Style.Font.Bold = true;
                             cell.Style.Fill.BackgroundColor = XLColor.LightGray;
                         }
-
-                        string thuText  = sheetDate.DayOfWeek == DayOfWeek.Sunday ? "CHU NHAT" : "THU " + ((int)sheetDate.DayOfWeek + 1);
-                        string ngayText = "NGAY " + sheetDate.Day + "-" + sheetDate.Month;
-
-                        var cellThu  = worksheet.Cell(2, 2);
-                        cellThu.Value = thuText;
-                        cellThu.Style.Font.Bold = true;
-
-                        var cellNgay = worksheet.Cell(2, 3);
-                        cellNgay.Value = ngayText;
-                        cellNgay.Style.Font.Bold = true;
+                        // Row 2: THU x / NGAY x-x label
+                        string thuText = sheetDate.DayOfWeek == DayOfWeek.Sunday
+                            ? "CHU NHAT" : "THU " + ((int)sheetDate.DayOfWeek + 1);
+                        worksheet.Cell(2, 2).Value = thuText;
+                        worksheet.Cell(2, 2).Style.Font.Bold = true;
+                        worksheet.Cell(2, 3).Value = $"NGAY {sheetDate.Day}-{sheetDate.Month}";
+                        worksheet.Cell(2, 3).Style.Font.Bold = true;
                     }
 
+                    // Data starts at row 3
                     int currentRow = 3;
-                    var lastUsed   = worksheet.LastRowUsed();
+                    var lastUsed = worksheet.LastRowUsed();
                     if (lastUsed != null && lastUsed.RowNumber() >= 3)
                         currentRow = lastUsed.RowNumber() + 1;
 
-                    int addedCount = 0;
+                    int addedCount = 0, updatedCount = 0;
                     foreach (var data in mappedDataList)
                     {
-                        worksheet.Cell(currentRow, 1).Value  = "";
-                        worksheet.Cell(currentRow, 2).Value  = data["SHOP"];
-                        worksheet.Cell(currentRow, 3).Value  = data["TÊN KH"];
-                        worksheet.Cell(currentRow, 4).Value  = data["MÃ"];
-                        worksheet.Cell(currentRow, 5).Value  = data["SỐ NHÀ"];
-                        worksheet.Cell(currentRow, 6).Value  = data["TÊN ĐƯỜNG"];
-                        worksheet.Cell(currentRow, 7).Value  = data["QUẬN"];
-                        worksheet.Cell(currentRow, 8).Value  = data["TIỀN THU"];
-                        worksheet.Cell(currentRow, 9).Value  = data["TIỀN SHIP"];
-                        worksheet.Cell(currentRow, 10).Value = data["TIỀN HÀNG"];
-                        worksheet.Cell(currentRow, 11).Value = data["NGƯỜI ĐI"];
-                        worksheet.Cell(currentRow, 12).Value = data["NGƯỜI LẤY"];
-                        worksheet.Cell(currentRow, 13).Value = data["NGÀY LẤY"];
-                        currentRow++;
-                        addedCount++;
+                        string ma = data.GetValueOrDefault("MÃ", "");
+
+                        // Upsert: tìm row có MÃ trùng → ghi đè; không có → thêm dòng mới
+                        int targetRow = -1;
+                        if (!string.IsNullOrEmpty(ma))
+                        {
+                            foreach (var row in worksheet.RowsUsed())
+                            {
+                                if (row.RowNumber() <= 2) continue;
+                                if (row.Cell(4).GetString() == ma) { targetRow = row.RowNumber(); break; }
+                            }
+                        }
+                        bool isUpdate = targetRow > 0;
+                        if (!isUpdate)
+                        {
+                            targetRow = currentRow;
+                            currentRow++;
+                        }
+
+                        worksheet.Cell(targetRow,  1).Value = "";
+                        worksheet.Cell(targetRow,  2).Value = data.GetValueOrDefault("SHOP",       "");
+                        worksheet.Cell(targetRow,  3).Value = data.GetValueOrDefault("TÊN KH",     "");
+                        worksheet.Cell(targetRow,  4).Value = ma;
+                        worksheet.Cell(targetRow,  5).Value = data.GetValueOrDefault("SỐ NHÀ",     "");
+                        worksheet.Cell(targetRow,  6).Value = data.GetValueOrDefault("TÊN ĐƯỜNG",  "");
+                        worksheet.Cell(targetRow,  7).Value = data.GetValueOrDefault("QUẬN",       "");
+                        worksheet.Cell(targetRow,  8).Value = data.GetValueOrDefault("TIỀN THU",   "");
+                        worksheet.Cell(targetRow,  9).Value = data.GetValueOrDefault("TIỀN SHIP",  "");
+                        worksheet.Cell(targetRow, 10).Value = data.GetValueOrDefault("TIỀN HÀNG",  "");
+                        worksheet.Cell(targetRow, 11).Value = data.GetValueOrDefault("NGƯỜI ĐI",   "");
+                        worksheet.Cell(targetRow, 12).Value = data.GetValueOrDefault("NGƯỜI LẤY",  "");
+                        worksheet.Cell(targetRow, 13).Value = data.GetValueOrDefault("NGÀY LẤY",   "");
+
+                        if (isUpdate) updatedCount++; else addedCount++;
                     }
 
                     workbook.SaveAs(excelPath);
-                    Debug.WriteLine($"✅ Lưu xong! {addedCount} dòng → sheet '{sheetName}'");
 
                     this.Invoke((MethodInvoker)delegate
                     {
                         MessageBox.Show(
-                            $"✅ Xuất thành công!\n\n📌 Dòng thêm: {addedCount}\n📅 Sheet: {sheetName}\n📂 File: {Path.GetFileName(excelPath)}",
+                            $"✅ Xuất thành công!\n\n➕ Thêm mới: {addedCount}\n✏️ Ghi đè: {updatedCount}\n📅 Sheet: {sheetName}\n📂 File: {Path.GetFileName(excelPath)}",
                             "✅ Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        lblStatus.Text      = $"✅ Xuất {addedCount} dòng → sheet '{sheetName}'";
+                        lblStatus.Text      = $"✅ Xuất {addedCount} mới, {updatedCount} cập nhật → sheet '{sheetName}'";
                         lblStatus.ForeColor = Color.Green;
                     });
                 }

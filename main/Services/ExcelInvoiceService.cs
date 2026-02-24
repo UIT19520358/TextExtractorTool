@@ -132,21 +132,22 @@ namespace TextInputter.Services
         private const int COL_COL3       = 20;
 
         /// <summary>
-        /// Export invoice data to Excel
+        /// Upsert invoice: nếu MÃ đã tồn tại trong sheet → ghi đè dòng đó.
+        /// Nếu chưa có → thêm dòng mới cuối sheet.
+        /// Sheet được chọn theo sheetName (mặc định ngày hôm nay "dd-MM").
         /// </summary>
-        public void ExportInvoice(OCRInvoiceData invoice)
+        public void ExportInvoice(OCRInvoiceData invoice, string sheetName = null)
         {
             if (invoice == null)
                 throw new ArgumentNullException(nameof(invoice));
+
+            sheetName ??= DateTime.Now.ToString("dd-MM");
 
             try
             {
                 using (var workbook = new XLWorkbook(_excelFilePath))
                 {
-                    string sheetName = DateTime.Now.ToString("dd-MM");
-                    IXLWorksheet worksheet = null;
-
-                    // Get or create sheet for today
+                    IXLWorksheet worksheet;
                     if (workbook.TryGetWorksheet(sheetName, out var existingSheet))
                     {
                         worksheet = existingSheet;
@@ -157,25 +158,41 @@ namespace TextInputter.Services
                         AddHeaderRow(worksheet, DateTime.Now);
                     }
 
-                    // Find next empty row (data starts at row 3, row 1=headers, row 2=THU x)
-                    var lastRow = worksheet.LastRowUsed();
-                    int nextRow = 3;
-                    if (lastRow != null && lastRow.RowNumber() >= 3)
-                        nextRow = lastRow.RowNumber() + 1;
+                    // Tìm row có MÃ trùng để ghi đè (upsert)
+                    int targetRow = -1;
+                    var usedRows = worksheet.RowsUsed();
+                    foreach (var row in usedRows)
+                    {
+                        if (row.RowNumber() <= 2) continue; // bỏ header rows
+                        if (row.Cell(COL_MA).GetString() == invoice.SoHoaDon)
+                        {
+                            targetRow = row.RowNumber();
+                            break;
+                        }
+                    }
 
-                    // Add invoice data mapping to correct columns
-                    worksheet.Cell(nextRow, COL_SHOP).Value      = "";                                      // SHOP - filled by user
-                    worksheet.Cell(nextRow, COL_TENKH).Value     = "";                                      // TÊN KH - filled by user
-                    worksheet.Cell(nextRow, COL_MA).Value        = invoice.SoHoaDon;                        // MÃ (invoice number)
-                    worksheet.Cell(nextRow, COL_SONHA).Value     = invoice.SoNha;                           // SỐ NHÀ
-                    worksheet.Cell(nextRow, COL_TENDUONG).Value  = invoice.TenDuong;                        // TÊN ĐƯỜNG
-                    worksheet.Cell(nextRow, COL_QUAN).Value      = invoice.Quan;                            // QUẬN
-                    worksheet.Cell(nextRow, COL_TIENTHU).Value   = invoice.TongThanhToan;                   // TIỀN THU
-                    worksheet.Cell(nextRow, COL_TIENSHIP).Value  = 0;                                       // TIỀN SHIP
-                    worksheet.Cell(nextRow, COL_TIENHANG).Value  = invoice.TongTienHang;                    // TIỀN HÀNG
-                    worksheet.Cell(nextRow, COL_NGUOIDI).Value   = invoice.NguoiDi;                         // NGƯỜI ĐI
-                    worksheet.Cell(nextRow, COL_NGUOILAY).Value  = invoice.NguoiLay;                        // NGƯỜI LẤY
-                    worksheet.Cell(nextRow, COL_NGAYLAY).Value   = DateTime.Now.ToString("dd-MM-yyyy.");    // NGÀY LẤY
+                    // Nếu không tìm thấy → append dòng mới
+                    if (targetRow < 0)
+                    {
+                        var lastRow = worksheet.LastRowUsed();
+                        targetRow = (lastRow != null && lastRow.RowNumber() >= 3)
+                            ? lastRow.RowNumber() + 1
+                            : 3;
+                    }
+
+                    // Ghi dữ liệu vào targetRow
+                    worksheet.Cell(targetRow, COL_SHOP).Value      = invoice.Shop ?? "";
+                    worksheet.Cell(targetRow, COL_TENKH).Value     = invoice.TenKhachHang ?? "";
+                    worksheet.Cell(targetRow, COL_MA).Value        = invoice.SoHoaDon;
+                    worksheet.Cell(targetRow, COL_SONHA).Value     = invoice.SoNha;
+                    worksheet.Cell(targetRow, COL_TENDUONG).Value  = invoice.TenDuong;
+                    worksheet.Cell(targetRow, COL_QUAN).Value      = invoice.Quan;
+                    worksheet.Cell(targetRow, COL_TIENTHU).Value   = invoice.TongThanhToan;
+                    worksheet.Cell(targetRow, COL_TIENSHIP).Value  = 0;
+                    worksheet.Cell(targetRow, COL_TIENHANG).Value  = invoice.TongTienHang;
+                    worksheet.Cell(targetRow, COL_NGUOIDI).Value   = invoice.NguoiDi;
+                    worksheet.Cell(targetRow, COL_NGUOILAY).Value  = invoice.NguoiLay;
+                    worksheet.Cell(targetRow, COL_NGAYLAY).Value   = DateTime.Now.ToString("dd-MM-yyyy.");
 
                     workbook.SaveAs(_excelFilePath);
                 }
