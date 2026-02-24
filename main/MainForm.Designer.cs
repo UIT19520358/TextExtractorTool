@@ -126,6 +126,7 @@ namespace TextInputter
             btnSelectFolder.Size = new Size(220, 35);
             btnSelectFolder.TabIndex = 0;
             btnSelectFolder.Text = "📂 CHỌN THƯ MỤC";
+            btnSelectFolder.Visible = false;
             btnSelectFolder.Click += BtnSelectFolder_Click;
 
             // btnStart
@@ -141,6 +142,7 @@ namespace TextInputter
             btnStart.Size = new Size(220, 35);
             btnStart.TabIndex = 1;
             btnStart.Text = "▶ BẮT ĐẦU";
+            btnStart.Visible = false;
             btnStart.Click += BtnStart_Click;
 
             // btnOpenExcel
@@ -150,7 +152,7 @@ namespace TextInputter
             btnOpenExcel.FlatAppearance.BorderSize = 0;
             btnOpenExcel.ForeColor = Color.White;
             btnOpenExcel.Font = new Font("Arial", 10F, FontStyle.Bold);
-            btnOpenExcel.Location = new Point(15, 110);
+            btnOpenExcel.Location = new Point(15, 20);
             btnOpenExcel.Name = "btnOpenExcel";
             btnOpenExcel.Size = new Size(220, 35);
             btnOpenExcel.TabIndex = 2;
@@ -164,7 +166,7 @@ namespace TextInputter
             btnClear.FlatAppearance.BorderSize = 0;
             btnClear.ForeColor = Color.White;
             btnClear.Font = new Font("Arial", 10F, FontStyle.Bold);
-            btnClear.Location = new Point(15, 155);
+            btnClear.Location = new Point(15, 65);
             btnClear.Name = "btnClear";
             btnClear.Size = new Size(220, 35);
             btnClear.TabIndex = 3;
@@ -178,7 +180,7 @@ namespace TextInputter
             btnExit.FlatAppearance.BorderSize = 0;
             btnExit.ForeColor = Color.White;
             btnExit.Font = new Font("Arial", 10F, FontStyle.Bold);
-            btnExit.Location = new Point(15, 200);
+            btnExit.Location = new Point(15, 110);
             btnExit.Name = "btnExit";
             btnExit.Size = new Size(220, 35);
             btnExit.TabIndex = 4;
@@ -189,7 +191,7 @@ namespace TextInputter
             lblFolderPath.AutoSize = true;
             lblFolderPath.Font = new Font("Arial", 8F);
             lblFolderPath.ForeColor = Color.FromArgb(100, 100, 100);
-            lblFolderPath.Location = new Point(15, 240);
+            lblFolderPath.Location = new Point(15, 155);
             lblFolderPath.Name = "lblFolderPath";
             lblFolderPath.Size = new Size(100, 13);
             lblFolderPath.TabIndex = 5;
@@ -201,7 +203,7 @@ namespace TextInputter
             lblImageCount.AutoSize = true;
             lblImageCount.Font = new Font("Arial", 8F);
             lblImageCount.ForeColor = Color.FromArgb(100, 100, 100);
-            lblImageCount.Location = new Point(15, 280);
+            lblImageCount.Location = new Point(15, 195);
             lblImageCount.Name = "lblImageCount";
             lblImageCount.Size = new Size(100, 13);
             lblImageCount.TabIndex = 6;
