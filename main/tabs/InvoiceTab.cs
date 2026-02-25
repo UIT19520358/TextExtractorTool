@@ -300,18 +300,29 @@ namespace TextInputter
                 }
 
                 // Thu thập các row âm (đơn trả, đơn cũ ck):
-                // CHỈ tìm khi có SUM row — row âm nằm riêng biệt SAU SUM row trong Excel
-                // Nếu không có SUM row thì không có row âm tách biệt (sheet 24-02)
+                // Điều kiện nhận dạng "row âm khoản trừ" (phân biệt với đơn có MÃ mà TIỀN HÀNG âm):
+                //   • TIỀN HÀNG < 0  (bắt buộc)
+                //   • KHÔNG có MÃ HĐ (colMa rỗng/null)  ← đơn thật sẽ luôn có mã
+                //   • KHÔNG có SHOP  (colShop rỗng/null) ← đơn thật sẽ luôn có shop
+                // Nếu có SUM row → chỉ tìm SAU SUM row.
+                // Nếu không có SUM row → quét toàn bộ nhưng vẫn giữ điều kiện lọc trên.
                 var negativeRows = new List<DataGridViewRow>();
-                if (foundSumRow)
+                if (colTienHangCheck >= 0)
                 {
-                    for (int i = sumRowIndex + 1; i < sourceGridView.Rows.Count; i++)
+                    int startIdx = foundSumRow ? sumRowIndex + 1 : 0;
+                    for (int i = startIdx; i < sourceGridView.Rows.Count; i++)
                     {
                         var row = sourceGridView.Rows[i];
                         if (row.IsNewRow) continue;
-                        if (colTienHangCheck >= 0 && colTienHangCheck < row.Cells.Count)
-                            if (decimal.TryParse(row.Cells[colTienHangCheck].Value?.ToString() ?? "", out decimal jVal) && jVal < 0)
-                                negativeRows.Add(row);
+                        if (colTienHangCheck >= row.Cells.Count) continue;
+                        if (!decimal.TryParse(row.Cells[colTienHangCheck].Value?.ToString() ?? "", out decimal jVal) || jVal >= 0) continue;
+
+                        // Loại bỏ nếu có MÃ HĐ (đơn thật bị âm, không phải khoản trừ)
+                        if (colMa >= 0 && colMa < row.Cells.Count && !string.IsNullOrWhiteSpace(row.Cells[colMa].Value?.ToString())) continue;
+                        // Loại bỏ nếu có SHOP (đơn thật bị âm, không phải khoản trừ)
+                        if (colShop >= 0 && colShop < row.Cells.Count && !string.IsNullOrWhiteSpace(row.Cells[colShop].Value?.ToString())) continue;
+
+                        negativeRows.Add(row);
                     }
                 }
 
@@ -657,7 +668,25 @@ namespace TextInputter
             {
                 if (dgvInvoice.Rows.Count == 0) { MessageBox.Show("Không có dữ liệu để lưu!"); return; }
 
-                string excelPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.DAILY_REPORT_FILENAME);
+                // Chọn file lưu qua dialog (không hardcode)
+                string defaultName = (currentDailyReport?.Date is string d2 && !string.IsNullOrEmpty(d2))
+                    ? $"DailyReport_{d2.Replace("/", "-").Replace(".", "-")}.xlsx"
+                    : AppConstants.DAILY_REPORT_FILENAME;
+                string excelPath;
+                using (var sfd = new SaveFileDialog
+                {
+                    Title            = "Lưu báo cáo hàng ngày",
+                    Filter           = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
+                    DefaultExt       = "xlsx",
+                    FileName         = defaultName,
+                    InitialDirectory = System.IO.Directory.Exists(System.IO.Path.GetDirectoryName(currentExcelFilePath ?? ""))
+                                       ? System.IO.Path.GetDirectoryName(currentExcelFilePath)
+                                       : AppDomain.CurrentDomain.BaseDirectory
+                })
+                {
+                    if (sfd.ShowDialog() != DialogResult.OK) return;
+                    excelPath = sfd.FileName;
+                }
                 // Sheet name = ngày lấy từ data; fallback = hôm nay
                 string sheetName = (currentDailyReport?.Date is string d && !string.IsNullOrEmpty(d))
                     ? d
