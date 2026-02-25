@@ -84,5 +84,22 @@ namespace TextInputter.Services
 
             return ("", "", "", "", false);
         }
+
+        /// <summary>
+        /// Tra cứu phí ship theo tên quận (output từ AddressParser).
+        /// AddressParser đã chuẩn hóa output về không dấu ("Binh Thanh", "Phu Nhuan"...)
+        /// nên chỉ cần exact match (case-insensitive) với bảng SHIPPING_FEES_BY_QUAN.
+        /// Trả về null nếu không tìm được → TIỀN SHIP để trống, user tự điền.
+        /// </summary>
+        public static decimal? GetShipFeeByQuan(string quan)
+        {
+            if (string.IsNullOrWhiteSpace(quan)) return null;
+
+            // Exact match — Dictionary dùng OrdinalIgnoreCase nên "binh thanh" = "Binh Thanh"
+            if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(quan.Trim(), out decimal fee))
+                return fee;
+
+            return null;
+        }
     }
 }

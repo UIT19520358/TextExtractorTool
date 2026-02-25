@@ -124,8 +124,10 @@ User click ▶ Bắt Đầu
          └─ ProcessImages() [async]     ← vòng lặp qua ảnh đã chọn
               ├─ CallPythonOCR()        ← gửi ảnh lên Google Vision (MainForm.cs)
               ├─ CleanOCRText()         ← lọc garbage lines (MainForm.cs)
-              ├─ _ocrParsingService.ExtractAllFields()   ← parse 12 fields
-              └─ inject NGƯỜI ĐI / NGƯỜI LẤY từ UI → mappedDataList
+              ├─ _ocrParsingService.ExtractAllFields()   ← parse 10 fields
+              ├─ inject NGƯỜI ĐI / NGƯỜI LẤY từ UI
+              ├─ OCRInvoiceMapper.GetShipFeeByQuan()     ← auto-fill TIỀN SHIP theo quận
+              └─ → mappedDataList
 
 User click 📤 Export Excel
     └─ ExportMappedDataToExcel()        ← ghi vào file Excel của khách
@@ -150,11 +152,23 @@ User điền 17 fields vào form
 
 | Method | Mô tả |
 |---|---|
-| `ExtractAllFields(text, out fields)` | Public entry point — extract 10 fields (NGƯỜI ĐI/LẤY do UI cung cấp) |
-| `ExtractAddressLine(text)` | Private — tìm dòng "địa chỉ:" |
-| `ExtractAmountLine(text, keywords)` | Private — tìm số tiền theo từ khoá |
-| `NormalizeToThousands(raw)` | Private — chuẩn hóa về nghìn đồng |
+| `ExtractAllFields(text, out fields)` | Public entry point — extract 10 fields (NGƯỜI ĐI/LẤY do UI cung cấp, TIỀN SHIP không còn required) |
+| `ExtractAddressLine(text)` | Private — lấy dòng "địa chỉ:" **cuối cùng** hợp lệ (bỏ qua địa chỉ shop CN1/CN2). Match: `"địa chỉ"`, `"địa chi"` (OCR drop dấu), `"dia chi"`, `"address"` |
+| `ExtractAmountLine(text, keywords)` | Private — tìm số tiền theo từ khoá; xử lý cả số cùng dòng lẫn số ở dòng tiếp theo |
+| `NormalizeToThousands(raw)` | Private — chuẩn hóa về nghìn đồng (1,500,000 → 1500) |
 | `ExtractDate(text)` | Private — parse ngày từ text |
+
+**Edge cases đã xử lý (từ data thật):**
+
+| Input thực tế | Vấn đề | Cách xử lý |
+|---|---|---|
+| `Địa Chi: 132 bên Vân đồn,p6,q4 - -` | OCR drop dấu `ỉ` → `"chi"` thay vì `"chỉ"` | Match thêm `"địa chi"` (có dấu `ị`) + `"dia chi"` (không dấu) |
+| Hóa đơn có 2 dòng `Địa Chi/Chỉ:` (shop CN1 + khách hàng) | Parse nhầm địa chỉ shop | Lấy dòng **cuối cùng** hợp lệ; bỏ qua nếu chứa `CN\d / HOTLINE / SĐT` |
+| `132 bên Vân đồn,p6,q4 - -` | Trailing garbage `- -` | Strip `[\s\-]+$` sau khi extract |
+| `A25 hotel ( phòng 706) 184 nguyễn trãi, phường phạm ngũ lão, q1` | Số nhà phức tạp (tên khách sạn + số phòng + số nhà) | `ExtractHouseAndStreet` dùng greedy regex lấy đến số cuối cùng |
+| `So HD: HD130781` (không dấu) | OCR drop dấu `ố` → `"So"` | Regex `So\s*H[ĐD]` đã cover |
+| Số tiền trên dòng riêng (`Tổng tiền hàng:\n1,500,000`) | Số không cùng dòng keyword | `ExtractAmountLine` check thêm `lines[i+1]` |
+| `TIỀN SHIP` không có trên hóa đơn | Field trống → lỗi validation | Không còn required — auto-fill từ bảng phí theo quận |
 
 ### `ExcelInvoiceService`
 **Mục đích:** Ghi dữ liệu OCR vào file Excel của khách (20 cột cố định)  
@@ -169,10 +183,20 @@ User điền 17 fields vào form
 ### `AddressParser`
 **Input:** string địa chỉ thô  
 **Output:** `ParsedAddress { SoNha, TenDuong, Phuong, Quan, Confidence }`  
-Có dictionary nội bộ cho quận/huyện TP.HCM.
+Có dictionary nội bộ cho quận/huyện TP.HCM. **Phường không ảnh hưởng đến tính toán tiền ship.**
 
 ### `OCRInvoiceData` (model trong `OCRInvoiceMapper.cs`)
 Model class chứa tất cả fields của 1 invoice. Dùng bởi `ExcelInvoiceService`.
+
+### `OCRInvoiceMapper`
+**Mục đích:** Mapping + các helper dùng chung cho OCR pipeline.
+
+| Method | Mô tả |
+|---|---|
+| `MapToExcelColumns(invoice)` | Map `OCRInvoiceData` → `Dictionary<string, string>` theo header Excel |
+| `ParseAndVerifyAddress(address)` | Parse địa chỉ + hiện dialog xác nhận nếu confidence thấp |
+| `GetShipFeeByQuan(quan)` | Tra bảng `AppConstants.SHIPPING_FEES_BY_QUAN` theo quận, tự normalize không dấu. Trả `null` nếu không tìm thấy |
+| `RemoveDiacritics(text)` | Bỏ dấu tiếng Việt — dùng nội bộ cho lookup, public để reuse |
 
 ### `UIHelper`
 Factory methods tạo controls đồng bộ style:
@@ -190,7 +214,9 @@ Factory methods tạo controls đồng bộ style:
 | Thêm tab mới | Tạo `tabs/NewTab.cs` với `partial class MainForm` |
 | Thêm field mới vào OCR output | `OCRTextParsingService.ExtractAllFields()` |
 | Thêm cột mới vào Excel export | `ExcelInvoiceService` + `OCRInvoiceData` |
-| Thêm config/constant | `AppConstants.cs` |
+| Thêm config/constant (data thuần) | `AppConstants.cs` |
+| Thêm logic map/lookup OCR | `Services/OCRInvoiceMapper.cs` |
+| Cập nhật bảng phí ship theo quận | `AppConstants.SHIPPING_FEES_BY_QUAN` |
 | Thêm shared UI control style | `utils/UIHelper.cs` |
 | Thêm shared helper (dùng nhiều tab) | `MainForm.cs` |
 | Thay đổi logic tính toán Excel Viewer | `InvoiceTab.cs` — `CalculateAllRows()` |
@@ -215,6 +241,7 @@ Factory methods tạo controls đồng bộ style:
 | 7 | `OCRTextParsingService` | Tất cả regex keyword | Phụ thuộc format hóa đơn hiện tại |
 | 8 | `AddressParser` | `DistrictDict`, `WardDict` | Chỉ cover TP.HCM |
 | 9 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | `"textinputter-4a7bda4ef67a.json"` | Credential file cứng cạnh .exe |
+| 10 | `AppConstants.SHIPPING_FEES_BY_QUAN` | Bảng phí ship theo quận | Phụ thuộc hợp đồng vận chuyển hiện tại, chỉ cover TP.HCM |
 
 **Hướng cải thiện đề xuất (discuss sau):**
 - Item 1: Dùng `OpenFileDialog` để user chọn file Excel đích khi start, hoặc đọc từ `appsettings.json`

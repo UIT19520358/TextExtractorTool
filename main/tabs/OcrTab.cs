@@ -461,15 +461,17 @@ namespace TextInputter
                 {
                     var (text, confidence) = CallPythonOCR(imagePath);
 
+                    // Header mỗi file — hiển thị ở CẢ HAI text area (có số thứ tự)
+                    string fileHeader = $"\n{new string('═', 60)}\n📄 [{i + 1}/{imageFiles.Count}] {fileName}  (confidence: {confidence:F1}%)\n{new string('─', 60)}\n";
+
+                    // Raw OCR log: chỉ raw text
                     this.Invoke((MethodInvoker)delegate
                     {
-                        txtRawOCRLog?.AppendText(
-                            $"\n{new string('═', 60)}\n📄 {fileName}\n📊 Confidence: {confidence:F1}%\n{new string('─', 60)}\n" +
-                            (text ?? "(Empty OCR result)") + "\n");
+                        txtRawOCRLog?.AppendText(fileHeader + (text ?? "(Empty OCR result)") + "\n");
                     });
 
-                    allText.AppendLine($"\n✅ TỆP #{i + 1}: {fileName}  (confidence: {confidence:F1}%)");
-                    allText.AppendLine(new string('─', 60));
+                    // Mapping log: chỉ hiển thị kết quả mapping (không lặp raw OCR)
+                    allText.AppendLine(fileHeader);
 
                     if (!string.IsNullOrWhiteSpace(text))
                     {
@@ -479,6 +481,22 @@ namespace TextInputter
                         // Inject người đi/lấy from UI
                         fields["NGƯỜI ĐI"]  = nguoiDi;
                         fields["NGƯỜI LẤY"] = nguoiLay;
+
+                        // Auto-fill TIỀN SHIP từ bảng phí ship theo quận (nếu chưa extract được)
+                        if (string.IsNullOrWhiteSpace(fields.GetValueOrDefault("TIỀN SHIP", "")))
+                        {
+                            string quan = fields.GetValueOrDefault("QUẬN", "");
+                            decimal? feeFromTable = OCRInvoiceMapper.GetShipFeeByQuan(quan);
+                            if (feeFromTable.HasValue)
+                            {
+                                fields["TIỀN SHIP"] = feeFromTable.Value.ToString("F0");
+                                allText.AppendLine($"  🗺️ Ship tự điền từ bảng: Q.{quan} → {feeFromTable.Value}k");
+                            }
+                            else
+                            {
+                                fields["TIỀN SHIP"] = "0";
+                            }
+                        }
 
                         // Compute TIỀN HÀNG = THU + SHIP
                         if (long.TryParse(fields.GetValueOrDefault("TIỀN THU",  ""), out long thu) &&
@@ -492,7 +510,7 @@ namespace TextInputter
 
                         if (stillMissing.Count == 0)
                         {
-                            allText.AppendLine("✅ THÀNH CÔNG — đủ fields");
+                            allText.AppendLine("📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields");
                             foreach (var kv in fields.Where(k => k.Key != "fileName"))
                                 allText.AppendLine($"  ✓ {kv.Key}: {kv.Value}");
                             mappedDataList.Add(fields);
@@ -500,7 +518,7 @@ namespace TextInputter
                         }
                         else
                         {
-                            allText.AppendLine($"⚠️ THIẾU {stillMissing.Count} fields: {string.Join(", ", stillMissing)}");
+                            allText.AppendLine($"📊 KẾT QUẢ MAP: ⚠️ THIẾU {stillMissing.Count} fields: {string.Join(", ", stillMissing)}");
                             // Log chi tiết từng field pass/fail
                             foreach (var kv in fields.Where(k => k.Key != "fileName"))
                             {
@@ -514,11 +532,10 @@ namespace TextInputter
                     }
                     else
                     {
-                        allText.AppendLine("   ⚠️  Không nhận diện được text từ ảnh này");
+                        allText.AppendLine("📊 KẾT QUẢ MAP: ⚠️ Không nhận diện được text từ ảnh này");
                         failCount++;
                     }
-
-                    allText.AppendLine(new string('═', 60));
+                    // Không cần dòng kẻ cuối — header của file tiếp theo đã có kẻ ═══
                 }
                 catch (Exception ex)
                 {

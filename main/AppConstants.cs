@@ -56,25 +56,75 @@ namespace TextInputter
         /// </summary>
         public const decimal PHI_SHIP_MOI_DON = 5m;
 
+        /// <summary>
+        /// Bảng phí ship theo quận/huyện (đơn vị: nghìn đồng, cùng đơn vị với TIỀN SHIP trong Excel).
+        ///
+        /// Key: đúng theo giá trị mà AddressParser trả về trong field QUẬN —
+        ///   - Quận số → chỉ ghi số: "1", "2", ..., "12"
+        ///   - Quận tên → dạng không dấu: "Binh Thanh", "Phu Nhuan", ...
+        ///   GetShipFeeByQuan() sẽ tự normalize không dấu khi tra cứu,
+        ///   nên key có dấu hay không dấu đều match được.
+        ///
+        /// Value: phí ship tính bằng nghìn đồng (k).
+        ///   VD: 20m = 20 (nghìn đồng) = 20k, điền vào Excel cột TIỀN SHIP sẽ ra "20".
+        ///   "m" là cú pháp C# cho kiểu decimal, không phải đơn vị khác.
+        ///
+        /// ⚠️ HARDCODED: phụ thuộc hợp đồng vận chuyển hiện tại.
+        /// Khi đổi đơn vị vận chuyển / bảng giá → chỉ cần cập nhật đây.
+        /// Nếu quận không có trong bảng → TIỀN SHIP để trống, user tự điền.
+        /// </summary>
+        public static readonly Dictionary<string, decimal> SHIPPING_FEES_BY_QUAN = new Dictionary<
+            string,
+            decimal
+        >(System.StringComparer.OrdinalIgnoreCase)
+        {
+            // TP. HCM — quận số (key = số, khớp output AddressParser)
+            { "1", 20m },
+            { "2", 22m },
+            { "3", 20m },
+            { "4", 25m },
+            { "5", 22m },
+            { "6", 25m },
+            { "7", 28m },
+            { "8", 25m },
+            { "9", 30m },
+            { "10", 22m },
+            { "11", 22m },
+            { "12", 28m },
+            // TP. HCM — quận/huyện tên (key lowercase không dấu, khớp output của AddressParser)
+            { "binh thanh", 22m },
+            { "phu nhuan", 20m },
+            { "go vap", 25m },
+            { "tan binh", 22m },
+            { "tan phu", 25m },
+            { "binh tan", 28m },
+            { "thu duc", 30m },
+            { "binh chanh", 35m },
+            { "hoc mon", 35m },
+            { "cu chi", 40m },
+            { "nha be", 35m },
+            { "Can Gio", 50m },
+        };
+
         // ── UI colors ──────────────────────────────────────────────────────────
 
         /// <summary>Màu nền row TỔNG (vàng)</summary>
-        public static readonly Color COLOR_ROW_TONG    = Color.Yellow;
+        public static readonly Color COLOR_ROW_TONG = Color.Yellow;
 
         /// <summary>Màu nền row KẾT (vàng đậm)</summary>
-        public static readonly Color COLOR_ROW_KET     = Color.FromArgb(255, 200, 0);
+        public static readonly Color COLOR_ROW_KET = Color.FromArgb(255, 200, 0);
 
         /// <summary>Màu nền row âm / đơn trả (cam nhạt)</summary>
         public static readonly Color COLOR_ROW_NEGATIVE = Color.FromArgb(255, 200, 124);
 
         /// <summary>Màu nền dòng KẾT trong Daily Report panel (cam)</summary>
-        public static readonly Color COLOR_REPORT_KET  = Color.FromArgb(255, 165, 0);
+        public static readonly Color COLOR_REPORT_KET = Color.FromArgb(255, 165, 0);
 
         /// <summary>Màu chữ đỏ cho số âm</summary>
         public static readonly Color COLOR_NEGATIVE_TEXT = Color.Red;
 
         /// <summary>Màu nền thanh button panel (dark)</summary>
-        public static readonly Color COLOR_PANEL_DARK  = Color.FromArgb(40, 40, 40);
+        public static readonly Color COLOR_PANEL_DARK = Color.FromArgb(40, 40, 40);
 
         // ── UI dimensions ──────────────────────────────────────────────────────
 
@@ -85,7 +135,7 @@ namespace TextInputter
         public const int ROW_HEIGHT_TONG = 24;
 
         /// <summary>Chiều cao row KẾT trong dgvInvoice</summary>
-        public const int ROW_HEIGHT_KET  = 26;
+        public const int ROW_HEIGHT_KET = 26;
 
         /// <summary>Chiều cao dòng KẾT trong Daily Report panel</summary>
         public const int ROW_HEIGHT_REPORT_KET = 28;
