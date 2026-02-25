@@ -6,19 +6,24 @@ using ClosedXML.Excel;
 namespace TextInputter.Services
 {
     /// <summary>
-    /// Service for handling Excel invoice operations
+    /// Service ghi dữ liệu invoice vào file Excel của khách.
+    /// ⚠️ TODO: chưa được gọi từ UI — cần wire vào ExportMappedDataToExcel() trong OcrTab.cs.
+    /// ⚠️ HARDCODED: tên file Excel mặc định phụ thuộc tháng — cần cập nhật mỗi tháng.
     /// </summary>
     public class ExcelInvoiceService
     {
         private readonly string _excelFilePath;
 
+        /// <param name="excelFileName">
+        /// ⚠️ HARDCODED tên file theo tháng — nhớ đổi khi sang tháng mới.
+        /// </param>
         public ExcelInvoiceService(string excelFileName = "CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx")
         {
             _excelFilePath = FindExcelFile(excelFileName);
         }
 
         /// <summary>
-        /// Find Excel file in common locations
+        /// Tìm file Excel theo tên trong các thư mục thông dụng.
         /// </summary>
         private string FindExcelFile(string fileName)
         {
@@ -39,7 +44,7 @@ namespace TextInputter.Services
         }
 
         /// <summary>
-        /// Check if invoice with same number already exists
+        /// Kiểm tra hóa đơn với cùng số có tồn tại chưa.
         /// </summary>
         public bool InvoiceExists(string soHoaDon, out string existingSheet)
         {
@@ -76,7 +81,7 @@ namespace TextInputter.Services
         }
 
         /// <summary>
-        /// Get all existing invoice numbers in Excel
+        /// Lấy tất cả số hóa đơn đã có trong Excel.
         /// </summary>
         public List<string> GetAllInvoiceNumbers()
         {

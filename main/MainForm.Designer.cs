@@ -1,17 +1,28 @@
+#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace TextInputter
 {
+    /// <summary>
+    /// MainForm.Designer.cs — chỉ chứa form-level skeleton:
+    ///   panelTop, panelLeft, panelBottom, txtResult, tabMainControl + 4 TabPages.
+    ///
+    /// Tab-specific controls khai báo trong các file riêng:
+    ///   tabs/OcrTab.cs          — txtRawOCRLog, txtProcessLog, txtNguoiDiOCR, txtNguoiLayOCR
+    ///   tabs/InvoiceTab.UI.cs   — tabExcelSheets, panelExcelButtons, dgvInvoice, lblInvoiceTotal, ...
+    ///   tabs/ManualInputTab.cs  — tạo inline, không cần field-level
+    /// </summary>
     partial class MainForm
     {
-    private Panel panelTop;
-    private Panel panelLeft;
+        // ─── Form-level controls ───────────────────────────────────────────────
+        private Panel panelTop;
+        private Panel panelLeft;
         private Panel panelBottom;
         private Label lblTitle;
         private Button btnSelectFolder;
         private Button btnStart;
-    private Button btnOpenExcel;
+        private Button btnOpenExcel;
         private Button btnClear;
         private Button btnExit;
         private Label lblFolderPath;
@@ -25,56 +36,29 @@ namespace TextInputter
         private TabPage tabExcelViewer;
         private TabPage tabInvoice;
         private TabPage tabManualInput;
-        private TabControl tabExcelSheets;
-        private DataGridView dgvInvoice;
-        private Label lblInvoiceDate;
-        private Button btnAddInvoiceRow;
-        private Button btnSaveInvoice;
-        private Button btnImportFromExcel;
-        private Button btnCalculateInvoice;
-        private Label lblInvoiceTotal;
-        private string currentExcelFilePath;
-        private Button btnSaveExcelEditor;
-        private Button btnUndoExcelEditor;
-        private Button btnCancelExcelEditor;
-        private Panel panelExcelButtons;
-        private Button btnCalculateExcelData;
 
         private void InitializeComponent()
         {
-            panelTop = new Panel();
-            panelLeft = new Panel();
-            panelBottom = new Panel();
-            lblTitle = new Label();
+            panelTop        = new Panel();
+            panelLeft       = new Panel();
+            panelBottom     = new Panel();
+            lblTitle        = new Label();
             btnSelectFolder = new Button();
-            btnStart = new Button();
-            btnOpenExcel = new Button();
-            btnClear = new Button();
-            btnExit = new Button();
-            lblFolderPath = new Label();
-            lblImageCount = new Label();
-            lblStatus = new Label();
-            lblCurrentFile = new Label();
-            txtResult = new RichTextBox();
-            progressBar = new ProgressBar();
-            tabMainControl = new TabControl();
-            tabOCR = new TabPage();
-            tabExcelViewer = new TabPage();
-            tabInvoice = new TabPage();
-            tabManualInput = new TabPage();
-            tabExcelSheets = new TabControl();
-            dgvInvoice = new DataGridView();
-            lblInvoiceDate = new Label();
-            btnAddInvoiceRow = new Button();
-            btnSaveInvoice = new Button();
-            btnImportFromExcel = new Button();
-            btnCalculateInvoice = new Button();
-            lblInvoiceTotal = new Label();
-            btnSaveExcelEditor = new Button();
-            btnUndoExcelEditor = new Button();
-            btnCancelExcelEditor = new Button();
-            panelExcelButtons = new Panel();
-            btnCalculateExcelData = new Button();
+            btnStart        = new Button();
+            btnOpenExcel    = new Button();
+            btnClear        = new Button();
+            btnExit         = new Button();
+            lblFolderPath   = new Label();
+            lblImageCount   = new Label();
+            lblStatus       = new Label();
+            lblCurrentFile  = new Label();
+            txtResult       = new RichTextBox();
+            progressBar     = new ProgressBar();
+            tabMainControl  = new TabControl();
+            tabOCR          = new TabPage();
+            tabExcelViewer  = new TabPage();
+            tabInvoice      = new TabPage();
+            tabManualInput  = new TabPage();
 
             panelTop.SuspendLayout();
             panelLeft.SuspendLayout();
@@ -262,209 +246,58 @@ namespace TextInputter
             txtResult.DragEnter += TxtResult_DragEnter;
             txtResult.DragDrop += TxtResult_DragDrop;
 
-            // tabMainControl
-            tabMainControl.Dock = DockStyle.Fill;
-            tabMainControl.Name = "tabMainControl";
+            // tabMainControl + TabPages
+            tabMainControl.Dock          = DockStyle.Fill;
+            tabMainControl.Name          = "tabMainControl";
             tabMainControl.SelectedIndex = 0;
-            tabMainControl.TabIndex = 4;
+            tabMainControl.TabIndex      = 4;
             tabMainControl.Controls.Add(tabOCR);
             tabMainControl.Controls.Add(tabExcelViewer);
             tabMainControl.Controls.Add(tabInvoice);
             tabMainControl.Controls.Add(tabManualInput);
 
-            // tabOCR
+            // tabOCR — content thêm bởi InitializeOCRTab() trong OcrTab.cs
             tabOCR.Controls.Add(txtResult);
-            tabOCR.Location = new Point(4, 24);
-            tabOCR.Name = "tabOCR";
-            tabOCR.Padding = new Padding(3);
-            tabOCR.Size = new Size(942, 572);
-            tabOCR.TabIndex = 0;
-            tabOCR.Text = "📝 OCR Text";
+            tabOCR.Location              = new Point(4, 24);
+            tabOCR.Name                  = "tabOCR";
+            tabOCR.Padding               = new Padding(3);
+            tabOCR.Size                  = new Size(942, 572);
+            tabOCR.TabIndex              = 0;
+            tabOCR.Text                  = "📝 OCR Text";
             tabOCR.UseVisualStyleBackColor = true;
 
-            // tabExcelViewer
-            tabExcelViewer.Controls.Add(tabExcelSheets);
-            tabExcelViewer.Controls.Add(panelExcelButtons);
-            tabExcelViewer.Location = new Point(4, 24);
-            tabExcelViewer.Name = "tabExcelViewer";
-            tabExcelViewer.Padding = new Padding(3);
-            tabExcelViewer.Size = new Size(942, 572);
-            tabExcelViewer.TabIndex = 1;
-            tabExcelViewer.Text = "📊 Excel Viewer";
+            // tabExcelViewer — content thêm bởi InitializeInvoiceTabUI() trong InvoiceTab.UI.cs
+            tabExcelViewer.Location      = new Point(4, 24);
+            tabExcelViewer.Name          = "tabExcelViewer";
+            tabExcelViewer.Padding       = new Padding(3);
+            tabExcelViewer.Size          = new Size(942, 572);
+            tabExcelViewer.TabIndex      = 1;
+            tabExcelViewer.Text          = "📊 Excel Viewer";
             tabExcelViewer.UseVisualStyleBackColor = true;
 
-            // panelExcelButtons
-            panelExcelButtons.BackColor = Color.White;
-            panelExcelButtons.Controls.Add(btnSaveExcelEditor);
-            panelExcelButtons.Controls.Add(btnUndoExcelEditor);
-            panelExcelButtons.Controls.Add(btnCancelExcelEditor);
-            panelExcelButtons.Controls.Add(btnCalculateExcelData);
-            panelExcelButtons.Dock = DockStyle.Top;
-            panelExcelButtons.Height = 35;
-            panelExcelButtons.Name = "panelExcelButtons";
-            panelExcelButtons.Padding = new Padding(5);
-            panelExcelButtons.TabIndex = 0;
-
-            // tabExcelSheets
-            tabExcelSheets.Dock = DockStyle.Fill;
-            tabExcelSheets.Name = "tabExcelSheets";
-            tabExcelSheets.SelectedIndex = 0;
-            tabExcelSheets.TabIndex = 0;
-
-            // tabInvoice
-            tabInvoice.Location = new Point(4, 24);
-            tabInvoice.Name = "tabInvoice";
-            tabInvoice.Padding = new Padding(3);
-            tabInvoice.Size = new Size(942, 572);
-            tabInvoice.TabIndex = 2;
-            tabInvoice.Text = "💰 Tính Tiền";
+            // tabInvoice — content thêm bởi InitializeInvoiceTabUI() trong InvoiceTab.UI.cs
+            tabInvoice.Location          = new Point(4, 24);
+            tabInvoice.Name              = "tabInvoice";
+            tabInvoice.Padding           = new Padding(3);
+            tabInvoice.Size              = new Size(942, 572);
+            tabInvoice.TabIndex          = 2;
+            tabInvoice.Text              = "💰 Tính Tiền";
             tabInvoice.UseVisualStyleBackColor = true;
-            tabInvoice.Controls.Add(dgvInvoice);
-            tabInvoice.Controls.Add(lblInvoiceTotal);
 
-            // tabManualInput
-            tabManualInput.Location = new Point(4, 24);
-            tabManualInput.Name = "tabManualInput";
-            tabManualInput.Padding = new Padding(3);
-            tabManualInput.Size = new Size(942, 572);
-            tabManualInput.TabIndex = 3;
-            tabManualInput.Text = "Manual Input";
+            // tabManualInput — content thêm bởi InitializeManualInputTab() trong ManualInputTab.cs
+            tabManualInput.Location      = new Point(4, 24);
+            tabManualInput.Name          = "tabManualInput";
+            tabManualInput.Padding       = new Padding(3);
+            tabManualInput.Size          = new Size(942, 572);
+            tabManualInput.TabIndex      = 3;
+            tabManualInput.Text          = "Manual Input";
             tabManualInput.UseVisualStyleBackColor = true;
-
-            // dgvInvoice
-            dgvInvoice.BackgroundColor = Color.White;
-            dgvInvoice.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvInvoice.Dock = DockStyle.Fill;
-            dgvInvoice.Location = new Point(3, 3);
-            dgvInvoice.Name = "dgvInvoice";
-            dgvInvoice.Size = new Size(936, 500);
-            dgvInvoice.TabIndex = 0;
-            dgvInvoice.ScrollBars = ScrollBars.Both;
-            dgvInvoice.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-
-            // lblInvoiceDate
-            lblInvoiceDate.AutoSize = true;
-            lblInvoiceDate.Font = new Font("Arial", 9F, FontStyle.Bold);
-            lblInvoiceDate.Location = new Point(10, 10);
-            lblInvoiceDate.Name = "lblInvoiceDate";
-            lblInvoiceDate.Text = "Ngày: " + DateTime.Now.ToString("dd/MM/yyyy");
-
-            // btnAddInvoiceRow - HIDDEN (sẽ tạo trong Panel nếu cần)
-            btnAddInvoiceRow.BackColor = Color.FromArgb(40, 40, 40);
-            btnAddInvoiceRow.FlatStyle = FlatStyle.Flat;
-            btnAddInvoiceRow.FlatAppearance.BorderSize = 0;
-            btnAddInvoiceRow.ForeColor = Color.White;
-            btnAddInvoiceRow.Location = new Point(800, 10);
-            btnAddInvoiceRow.Name = "btnAddInvoiceRow";
-            btnAddInvoiceRow.Size = new Size(60, 25);
-            btnAddInvoiceRow.Text = "➕ Thêm";
-            btnAddInvoiceRow.Visible = false;
-            btnAddInvoiceRow.Click += BtnAddInvoiceRow_Click;
-
-            // btnSaveInvoice - HIDDEN
-            btnSaveInvoice.BackColor = Color.FromArgb(40, 40, 40);
-            btnSaveInvoice.FlatStyle = FlatStyle.Flat;
-            btnSaveInvoice.FlatAppearance.BorderSize = 0;
-            btnSaveInvoice.ForeColor = Color.White;
-            btnSaveInvoice.Location = new Point(870, 10);
-            btnSaveInvoice.Name = "btnSaveInvoice";
-            btnSaveInvoice.Size = new Size(60, 25);
-            btnSaveInvoice.Text = "💾 Lưu";
-            btnSaveInvoice.Visible = false;
-            btnSaveInvoice.Click += BtnSaveInvoice_Click;
-
-            // btnImportFromExcel - HIDDEN
-            btnImportFromExcel.BackColor = Color.FromArgb(40, 40, 40);
-            btnImportFromExcel.FlatStyle = FlatStyle.Flat;
-            btnImportFromExcel.FlatAppearance.BorderSize = 0;
-            btnImportFromExcel.ForeColor = Color.White;
-            btnImportFromExcel.Location = new Point(700, 10);
-            btnImportFromExcel.Name = "btnImportFromExcel";
-            btnImportFromExcel.Size = new Size(95, 25);
-            btnImportFromExcel.Text = "📥 Import";
-            btnImportFromExcel.Visible = false;
-            btnImportFromExcel.Click += BtnImportFromExcel_Click;
-
-            // btnCalculateInvoice - HIDDEN
-            btnCalculateInvoice.BackColor = Color.FromArgb(40, 40, 40);
-            btnCalculateInvoice.FlatStyle = FlatStyle.Flat;
-            btnCalculateInvoice.FlatAppearance.BorderSize = 0;
-            btnCalculateInvoice.ForeColor = Color.White;
-            btnCalculateInvoice.Location = new Point(600, 10);
-            btnCalculateInvoice.Name = "btnCalculateInvoice";
-            btnCalculateInvoice.Size = new Size(95, 25);
-            btnCalculateInvoice.Text = "🧮 Tính Tiền";
-            btnCalculateInvoice.Visible = false;
-            btnCalculateInvoice.Click += BtnCalculateInvoice_Click;
-
-            // lblInvoiceTotal
-            lblInvoiceTotal.AutoSize = true;
-            lblInvoiceTotal.Font = new Font("Arial", 11F, FontStyle.Bold);
-            lblInvoiceTotal.ForeColor = Color.FromArgb(40, 40, 40);
-            lblInvoiceTotal.Location = new Point(10, 545);
-            lblInvoiceTotal.Name = "lblInvoiceTotal";
-            lblInvoiceTotal.Text = "TỔNG CỘNG: 0 đ";
-            lblInvoiceTotal.Dock = DockStyle.Bottom;
-
-            // btnSaveExcelEditor
-            btnSaveExcelEditor.BackColor = Color.FromArgb(40, 40, 40);
-            btnSaveExcelEditor.FlatStyle = FlatStyle.Flat;
-            btnSaveExcelEditor.FlatAppearance.BorderSize = 0;
-            btnSaveExcelEditor.ForeColor = Color.White;
-            btnSaveExcelEditor.Location = new Point(5, 5);
-            btnSaveExcelEditor.Name = "btnSaveExcelEditor";
-            btnSaveExcelEditor.Size = new Size(70, 25);
-            btnSaveExcelEditor.Text = "💾 Lưu";
-            btnSaveExcelEditor.Font = new Font("Arial", 9F);
-            btnSaveExcelEditor.Click += BtnSaveExcelEditor_Click;
-
-            // btnUndoExcelEditor
-            btnUndoExcelEditor.BackColor = Color.FromArgb(40, 40, 40);
-            btnUndoExcelEditor.FlatStyle = FlatStyle.Flat;
-            btnUndoExcelEditor.FlatAppearance.BorderSize = 0;
-            btnUndoExcelEditor.ForeColor = Color.White;
-            btnUndoExcelEditor.Location = new Point(80, 5);
-            btnUndoExcelEditor.Name = "btnUndoExcelEditor";
-            btnUndoExcelEditor.Size = new Size(70, 25);
-            btnUndoExcelEditor.Text = "↶ Undo";
-            btnUndoExcelEditor.Font = new Font("Arial", 9F);
-            btnUndoExcelEditor.Click += BtnUndoExcelEditor_Click;
-
-            // btnCancelExcelEditor
-            btnCancelExcelEditor.BackColor = Color.FromArgb(40, 40, 40);
-            btnCancelExcelEditor.FlatStyle = FlatStyle.Flat;
-            btnCancelExcelEditor.FlatAppearance.BorderSize = 0;
-            btnCancelExcelEditor.ForeColor = Color.White;
-            btnCancelExcelEditor.Location = new Point(155, 5);
-            btnCancelExcelEditor.Name = "btnCancelExcelEditor";
-            btnCancelExcelEditor.Size = new Size(70, 25);
-            btnCancelExcelEditor.Text = "✕ Đóng";
-            btnCancelExcelEditor.Font = new Font("Arial", 9F);
-            btnCancelExcelEditor.Click += BtnCancelExcelEditor_Click;
-
-            // btnCalculateExcelData
-            btnCalculateExcelData.BackColor = Color.FromArgb(40, 40, 40);
-            btnCalculateExcelData.FlatStyle = FlatStyle.Flat;
-            btnCalculateExcelData.FlatAppearance.BorderSize = 0;
-            btnCalculateExcelData.ForeColor = Color.White;
-            btnCalculateExcelData.Location = new Point(230, 5);
-            btnCalculateExcelData.Name = "btnCalculateExcelData";
-            btnCalculateExcelData.Size = new Size(90, 25);
-            btnCalculateExcelData.Text = "🧮 Tính Tiền";
-            btnCalculateExcelData.Font = new Font("Arial", 9F);
-            btnCalculateExcelData.Click += BtnCalculateExcelData_Click;
-
-            // tabExcelSheets
-            tabExcelSheets.Dock = DockStyle.Fill;
-            tabExcelSheets.Name = "tabExcelSheets";
-            tabExcelSheets.SelectedIndex = 0;
-            tabExcelSheets.TabIndex = 0;
 
             // MainForm
             AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1200, 700);
-            WindowState = FormWindowState.Maximized;
+            AutoScaleMode       = AutoScaleMode.Font;
+            ClientSize          = new Size(1200, 700);
+            WindowState         = FormWindowState.Maximized;
             Controls.Add(tabMainControl);
             Controls.Add(panelLeft);
             Controls.Add(panelTop);
@@ -481,12 +314,12 @@ namespace TextInputter
             ResumeLayout(false);
         }
 
-        // Event handler declarations
+        // ─── Event handler stubs ───────────────────────────────────────────────
         private void BtnSelectFolder_Click(object? sender, System.EventArgs e) => btnSelectFolder_Click(sender, e);
-        private void BtnStart_Click(object? sender, System.EventArgs e) => btnStart_Click(sender, e);
-        private void BtnClear_Click(object? sender, System.EventArgs e) => btnClear_Click(sender, e);
-        private void BtnExit_Click(object? sender, System.EventArgs e) => btnExit_Click(sender, e);
+        private void BtnStart_Click(object? sender, System.EventArgs e)        => btnStart_Click(sender, e);
+        private void BtnClear_Click(object? sender, System.EventArgs e)        => btnClear_Click(sender, e);
+        private void BtnExit_Click(object? sender, System.EventArgs e)         => btnExit_Click(sender, e);
         private void TxtResult_DragEnter(object? sender, System.Windows.Forms.DragEventArgs e) => txtResult_DragEnter(sender, e);
-        private void TxtResult_DragDrop(object? sender, System.Windows.Forms.DragEventArgs e) => txtResult_DragDrop(sender, e);
+        private void TxtResult_DragDrop(object? sender, System.Windows.Forms.DragEventArgs e)  => txtResult_DragDrop(sender, e);
     }
 }

@@ -224,15 +224,6 @@ namespace TextInputter.Services
             return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
         }
 
-        /// <summary>
-        /// Tìm quận/huyện trong text
-        /// Trả về (Tên quận, Text gốc tìm được)
-        /// </summary>
-        private static (string, string) FindDistrict(string text)
-        {
-            return FindDistrictInSegment(text);
-        }
-
         // Lazy-initialized: map key không dấu → giá trị, dùng cho fuzzy lookup OCR sai dấu
         private static Dictionary<string, string> _districtNoDiacDict;
         private static Dictionary<string, string> DistrictNoDiacDict
@@ -271,9 +262,16 @@ namespace TextInputter.Services
                 return (d1, seg);
 
             // Lookup từng word + cặp 2 từ (có dấu)
+            // ⚠️ Bỏ qua word thuần số (VD: "11", "5") — nếu segment không phải chỉ là số thuần
+            // thì số đó là số nhà, không phải quận (VD: "11 In Dung Vương" → "11" = số nhà, KHÔNG phải Q.11)
+            bool segIsJustNumber = Regex.IsMatch(seg, @"^\d{1,2}$");
             var words = seg.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = words.Length - 1; i >= 0; i--)
             {
+                // Bỏ qua word thuần số khi segment có nhiều từ (tránh số nhà bị nhận nhầm là quận)
+                bool wordIsBarNumber = Regex.IsMatch(words[i], @"^\d{1,2}$");
+                if (wordIsBarNumber && !segIsJustNumber) continue;
+
                 if (DistrictDict.TryGetValue(words[i], out var d2))
                     return (d2, words[i]);
                 if (i > 0)
@@ -299,6 +297,10 @@ namespace TextInputter.Services
             var wordsNoDiac = segNoDiac.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = wordsNoDiac.Length - 1; i >= 0; i--)
             {
+                // Bỏ qua word thuần số trong fuzzy lookup cũng vậy
+                bool wordIsBarNumberFuzzy = Regex.IsMatch(wordsNoDiac[i], @"^\d{1,2}$");
+                if (wordIsBarNumberFuzzy && !segIsJustNumber) continue;
+
                 if (DistrictNoDiacDict.TryGetValue(wordsNoDiac[i], out var df2))
                     return (df2, wordsNoDiac[i]);
                 if (i > 0)
@@ -331,14 +333,6 @@ namespace TextInputter.Services
                     != System.Globalization.UnicodeCategory.NonSpacingMark)
                     sb.Append(c);
             return sb.ToString().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
-        }
-
-        /// <summary>
-        /// Tìm phường/tổ trong text
-        /// </summary>
-        private static (string, string) FindWard(string text)
-        {
-            return FindWardInSegment(text);
         }
 
         /// <summary>
@@ -379,12 +373,27 @@ namespace TextInputter.Services
         /// Logic: Split theo dấu phẩy → segment đầu tiên chứa số = Số nhà + tên đường trong cùng segment đó
         /// VD: "A25 hotel ( phòng 706) 184 nguyễn trãi" → SoNha="A25 hotel ( phòng 706) 184", TenDuong="nguyễn trãi"
         /// VD: "132 bên Vân đồn" → SoNha="132", TenDuong="bên Vân đồn"
+        /// VD: "363-365-367, 363 Đ. Hùng Vương" → SoNha="363-365-367", TenDuong="Hùng Vương"
         /// </summary>
         private static (string soNha, string tenDuong) ExtractHouseAndStreet(string address)
         {
             // address ở đây đã bỏ phường, quận
-            // Lấy segment đầu (trước dấu phẩy đầu tiên nếu có)
-            var firstSeg = address.Split(',')[0].Trim();
+            var allSegs = address.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+            var firstSeg = allSegs.Count > 0 ? allSegs[0] : address.Trim();
+
+            // Trường hợp đặc biệt: firstSeg chỉ toàn số và dấu "-" (VD: "363-365-367")
+            // = dãy số nhà, tên đường nằm ở segment kế tiếp
+            if (allSegs.Count >= 2 && Regex.IsMatch(firstSeg, @"^\d[\d\-/]*\d$"))
+            {
+                var nextSeg = allSegs[1]; // VD: "363 Đ. Hùng Vương"
+                // Strip "Đ." / "đ." prefix (viết tắt Đường) để lấy tên đường sạch
+                var streetName = Regex.Replace(nextSeg, @"^\d+\s*[ĐĐ]\.\s*", "", RegexOptions.IgnoreCase).Trim();
+                // Nếu nextSeg bắt đầu bằng số → số nhà, còn lại = tên đường
+                var streetMatch = Regex.Match(nextSeg, @"^(\d+(?:/\d+)?[A-Z]?)\s+(?:[ĐĐ]\.\s*)?(.+)$", RegexOptions.IgnoreCase);
+                if (streetMatch.Success)
+                    return (firstSeg, streetMatch.Groups[2].Value.Trim());
+                return (firstSeg, streetName.Length > 0 ? streetName : nextSeg);
+            }
 
             // Ưu tiên: nhận dạng "số <N> đường <tên>" hoặc "<N> đường <tên>"
             // VD: "số 28 đường số 4 khu 2756"  → SoNha="28", TenDuong="đường số 4"
@@ -395,6 +404,16 @@ namespace TextInputter.Services
             if (duongMatch.Success)
             {
                 return (duongMatch.Groups[1].Value.Trim(), duongMatch.Groups[2].Value.Trim());
+            }
+
+            // Xử lý "Đ. <tên đường>" — viết tắt Đường với dấu chấm
+            // VD: "363 Đ. Hùng Vương" → SoNha="363", TenDuong="Hùng Vương"
+            var dotStreetMatch = Regex.Match(firstSeg,
+                @"^(?:số\s*)?(\d+(?:/\d+)?[A-Z]*)\s+[ĐĐ]\.\s*(.+)$",
+                RegexOptions.IgnoreCase);
+            if (dotStreetMatch.Success)
+            {
+                return (dotStreetMatch.Groups[1].Value.Trim(), dotStreetMatch.Groups[2].Value.Trim());
             }
 
             // Tìm số (dãy số cuối cùng trong segment đầu) — đây là số nhà "thực"

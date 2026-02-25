@@ -1,10 +1,9 @@
-using System;
 using System.Collections.Generic;
 
 namespace TextInputter.Services
 {
     /// <summary>
-    /// Lớp để lưu dữ liệu hóa đơn từ OCR
+    /// Model: tất cả fields của 1 invoice (dùng bởi ExcelInvoiceService).
     /// </summary>
     public class OCRInvoiceData
     {
@@ -24,78 +23,18 @@ namespace TextInputter.Services
     }
 
     /// <summary>
-    /// Lớp để map dữ liệu OCR sang Excel
+    /// Helper tra cứu phí ship theo quận.
     /// </summary>
     public class OCRInvoiceMapper
     {
         /// <summary>
-        /// Map OCR invoice data sang Excel columns
-        /// Trả về dictionary: Column Header -> Value
-        /// </summary>
-        public static Dictionary<string, string> MapToExcelColumns(OCRInvoiceData invoice)
-        {
-            var mapping = new Dictionary<string, string>
-            {
-                // Map giữa OCR fields và Excel column names
-                // Điều chỉnh theo cấu trúc Excel thực tế của bạn
-                { "MÃ", invoice.SoHoaDon },
-                { "TÊN ĐƯ", invoice.TenDuong },
-                { "SỐ NHÀ", invoice.SoNha },
-                { "QUẬN", invoice.Quan },
-                { "PHƯỜNG", invoice.Phuong },
-                { "TIỀN HÀNG", invoice.TongTienHang.ToString("F0") },
-                { "CHIẾT KHẤU", invoice.ChietKhau.ToString("F0") },
-                { "THANH TOÁN", invoice.TongThanhToan.ToString("F0") },
-                { "NGƯỜI ĐI", invoice.NguoiDi },
-                { "NGƯỜI LẤY", invoice.NguoiLay },
-            };
-
-            return mapping;
-        }
-
-        /// <summary>
-        /// Parse địa chỉ từ OCR, hiển thị dialog để user verify/edit
-        /// </summary>
-        public static (string soNha, string tenDuong, string phuong, string quan, bool success) 
-            ParseAndVerifyAddress(string originalAddress)
-        {
-            // Parse tự động
-            var parsed = AddressParser.Parse(originalAddress);
-
-            // Nếu confidence cao (>= 0.7), tự động chấp nhận
-            if (parsed.Confidence >= 0.7f)
-            {
-                return (parsed.SoNha, parsed.TenDuong, parsed.Phuong, parsed.Quan, true);
-            }
-
-            // Nếu confidence thấp, hiển thị dialog để user sửa
-            var dialog = new AddressParsingDialog(
-                originalAddress,
-                parsed.SoNha,
-                parsed.TenDuong,
-                parsed.Phuong,
-                parsed.Quan
-            );
-
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                return (dialog.SoNha, dialog.TenDuong, dialog.Phuong, dialog.Quan, true);
-            }
-
-            return ("", "", "", "", false);
-        }
-
-        /// <summary>
-        /// Tra cứu phí ship theo tên quận (output từ AddressParser).
-        /// AddressParser đã chuẩn hóa output về không dấu ("Binh Thanh", "Phu Nhuan"...)
-        /// nên chỉ cần exact match (case-insensitive) với bảng SHIPPING_FEES_BY_QUAN.
+        /// Tra cứu phí ship theo tên quận (output từ AddressParser — không dấu, lowercase).
         /// Trả về null nếu không tìm được → TIỀN SHIP để trống, user tự điền.
         /// </summary>
         public static decimal? GetShipFeeByQuan(string quan)
         {
             if (string.IsNullOrWhiteSpace(quan)) return null;
 
-            // Exact match — Dictionary dùng OrdinalIgnoreCase nên "binh thanh" = "Binh Thanh"
             if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(quan.Trim(), out decimal fee))
                 return fee;
 

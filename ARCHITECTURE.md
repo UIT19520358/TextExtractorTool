@@ -29,12 +29,19 @@ TextInputter/
 │   ├── AppConstants.cs          # TẤT CẢ hardcoded values tập trung tại đây ← đọc khi cần config
 │   │
 │   ├── MainForm.cs              # Shared fields + constructor + shared helpers
-│   ├── MainForm.Designer.cs     # UI layout tự viết tay (không dùng .resx)
+│   ├── MainForm.Designer.cs     # Form-level skeleton: panelTop/Left/Bottom, tabMainControl + 4 TabPages
+│   │                            # (KHÔNG chứa tab-specific controls — đã tách sang InvoiceTab.UI.cs)
 │   │
-│   ├── tabs/                    # Partial classes của MainForm — mỗi tab 1 file
-│   │   ├── OcrTab.cs            # Tab OCR: scan folder ảnh → extract fields → export Excel
-│   │   ├── InvoiceTab.cs        # Tab Excel Viewer + Daily Report
-│   │   └── ManualInputTab.cs    # Tab nhập tay 17 fields
+│   ├── tabs/                    # Partial classes của MainForm — mỗi tab 1–2 file
+│   │   │
+│   │   ├── OcrTab.cs            # OCR tab: InitializeOCRTab() + toàn bộ logic + control fields
+│   │   │                        #   Controls: txtRawOCRLog, txtProcessLog, txtNguoiDiOCR, txtNguoiLayOCR
+│   │   │
+│   │   ├── InvoiceTab.cs        # Invoice logic: BtnOpenExcel, Calculate, DailyReport, Save
+│   │   ├── InvoiceTab.UI.cs     # Invoice UI: InitializeInvoiceTabUI() + control declarations
+│   │   │                        #   Controls: tabExcelSheets, panelExcelButtons, dgvInvoice, lblInvoiceTotal, ...
+│   │   │
+│   │   └── ManualInputTab.cs    # Manual Input: InitializeManualInputTab() + logic (UI inline, không cần file riêng)
 │   │
 │   ├── Services/                # Business logic (không phụ thuộc UI)
 │   │   ├── OCRTextParsingService.cs   # Parse raw OCR text → extract 12 fields
@@ -43,7 +50,7 @@ TextInputter/
 │   │   └── AddressParser.cs           # Parse địa chỉ VN → SoNha, TenDuong, Phuong, Quan
 │   │
 │   └── utils/
-│       ├── UIHelper.cs               # Factory methods tạo WinForms controls
+│       ├── UIHelper.cs               # Factory methods tạo WinForms controls + RichTextBox search
 │       └── AddressParsingDialog.cs   # Dialog xác nhận địa chỉ đã parse
 │
 ├── resources/
@@ -62,16 +69,29 @@ TextInputter/
 `MainForm` được **split thành nhiều file** bằng cơ chế `partial class` của C#:
 
 ```
-MainForm.cs            → fields, constructor, shared helpers
-tabs/OcrTab.cs         → partial class MainForm { ... OcrTab methods ... }
-tabs/InvoiceTab.cs     → partial class MainForm { ... InvoiceTab methods ... }
-tabs/ManualInputTab.cs → partial class MainForm { ... ManualInputTab methods ... }
+MainForm.cs              → shared fields, constructor, shared helpers
+MainForm.Designer.cs     → form-level skeleton (panelTop/Left/Bottom, tabMainControl + TabPages)
+
+tabs/OcrTab.cs           → partial class MainForm { control fields + InitializeOCRTab() + logic }
+tabs/InvoiceTab.UI.cs    → partial class MainForm { control fields + InitializeInvoiceTabUI() }
+tabs/InvoiceTab.cs       → partial class MainForm { logic handlers }
+tabs/ManualInputTab.cs   → partial class MainForm { InitializeManualInputTab() + logic }
 ```
 
+**Quy tắc phân tách UI / Logic:**
+
+| File | Chứa gì |
+|---|---|
+| `MainForm.Designer.cs` | Chỉ form-level: panelTop, panelLeft, panelBottom, tabMainControl, 4 TabPage |
+| `<Tab>.UI.cs` | Control field declarations + `Initialize<Tab>UI()` — chỉ layout, không có event logic |
+| `<Tab>.cs` | Event handlers, business logic, service calls |
+| `MainForm.cs` | Shared fields, constructor (gọi cả `Initialize...UI()` + `Initialize...Tab()`), shared helpers |
+
 **Ý nghĩa thực tế:**
-- Tất cả đều **cùng 1 class** — mọi field/method trong `MainForm.cs` đều dùng được trong các tab file.
-- Khi thêm tab mới → tạo file `tabs/NewTab.cs` với `partial class MainForm { ... }`.
+- Tất cả đều **cùng 1 class** — mọi field/method ở file nào cũng truy cập được từ file khác.
+- Khi thêm tab mới → tạo `tabs/NewTab.UI.cs` (controls) + `tabs/NewTab.cs` (logic), gọi `InitializeNewTabUI()` trong constructor.
 - Khi thêm shared helper → viết vào `MainForm.cs`.
+- **Không được** đặt control declarations hay `InitializeComponent()` calls vào tab logic files.
 
 ---
 
@@ -83,9 +103,10 @@ tabs/ManualInputTab.cs → partial class MainForm { ... ManualInputTab methods .
 | `imageFiles` | `List<string>` | Danh sách file ảnh trong folder |
 | `isProcessing` | `bool` | Flag chống double-click khi đang xử lý |
 | `visionClient` | `ImageAnnotatorClient` | Google Vision client (init trong `InitializeServices`) |
-| `_excelInvoiceService` | `ExcelInvoiceService` | Service ghi vào Excel của khách |
 | `_ocrParsingService` | `OCRTextParsingService` | Service parse OCR text |
 | `mappedDataList` | `List<Dictionary<string,string>>` | Cache kết quả OCR đã map (dùng để export) |
+
+> `_excelInvoiceService` đã bị xóa — `ExcelInvoiceService` được khởi tạo nhưng chưa wire vào UI nên loại bỏ tránh nhầm lẫn.
 
 ---
 
@@ -115,23 +136,21 @@ User click 💾 Lưu
 User click 📁 Chọn Thư Mục
     └─ SelectOCRFolder()
          └─ GetImageFiles()             ← lọc .jpg/.png/.webp (MainForm.cs)
-              └─ chkList.Items.AddRange()
 
 User nhập Người Đi / Người Lấy (TextBox trong UI)
 
 User click ▶ Bắt Đầu
-    └─ StartBatchOCRProcessing()
-         └─ ProcessImages() [async]     ← vòng lặp qua ảnh đã chọn
+    └─ btnStart_Click() → ProcessImages() [async]   ← vòng lặp qua ảnh đã chọn
               ├─ CallPythonOCR()        ← gửi ảnh lên Google Vision (MainForm.cs)
               ├─ CleanOCRText()         ← lọc garbage lines (MainForm.cs)
               ├─ _ocrParsingService.ExtractAllFields()   ← parse 10 fields
               ├─ inject NGƯỜI ĐI / NGƯỜI LẤY từ UI
               ├─ OCRInvoiceMapper.GetShipFeeByQuan()     ← auto-fill TIỀN SHIP theo quận
-              └─ → mappedDataList
+              ├─ → append vào mappedDataList
+              └─ → ghi raw OCR vào txtRawOCRLog, kết quả map vào txtProcessLog
 
-User click 📤 Export Excel
-    └─ ExportMappedDataToExcel()        ← ghi vào file Excel của khách
-         └─ _excelInvoiceService.ExportInvoice()
+User click � Xuất Excel
+    └─ ExportMappedDataToExcel()        ← user chọn file Excel, ghi vào sheet dd-MM
 ```
 
 ### 5C. Manual Input (ManualInputTab.cs)
@@ -169,10 +188,13 @@ User điền 17 fields vào form
 | `So HD: HD130781` (không dấu) | OCR drop dấu `ố` → `"So"` | Regex `So\s*H[ĐD]` đã cover |
 | Số tiền trên dòng riêng (`Tổng tiền hàng:\n1,500,000`) | Số không cùng dòng keyword | `ExtractAmountLine` check thêm `lines[i+1]` |
 | `TIỀN SHIP` không có trên hóa đơn | Field trống → lỗi validation | Không còn required — auto-fill từ bảng phí theo quận |
+| `363-365-367, 363 Đ. Hùng Vương - Khải Nam Transpost – –` | Số nhà là dãy số có `-`, tên business rác sau ` - ` | Strip ` - <tên không phải địa chỉ>` ở cuối; `Đ.` không bị strip vì được loại trừ khỏi regex |
+| `Địa chỉ: 11 In Dung Vương Phường An Đông TP HCM ạ` | `"Phường An Đông"` và `"TP HCM"` cuối địa chỉ | Strip `Phường <tên>` + `TP HCM` ở cuối trước khi pass vào AddressParser |
 
 ### `ExcelInvoiceService`
 **Mục đích:** Ghi dữ liệu OCR vào file Excel của khách (20 cột cố định)  
-**File Excel:** hardcoded `"CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx"` ⚠️
+**File Excel:** hardcoded `"CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx"` ⚠️  
+**Trạng thái:** ⚠️ Chưa được wire vào UI — `ExportMappedDataToExcel()` trong `OcrTab.cs` vẫn dùng ClosedXML trực tiếp.
 
 | Method | Mô tả |
 |---|---|
@@ -183,20 +205,26 @@ User điền 17 fields vào form
 ### `AddressParser`
 **Input:** string địa chỉ thô  
 **Output:** `ParsedAddress { SoNha, TenDuong, Phuong, Quan, Confidence }`  
-Có dictionary nội bộ cho quận/huyện TP.HCM. **Phường không ảnh hưởng đến tính toán tiền ship.**
+Có dictionary nội bộ cho quận/huyện TP.HCM + Hà Nội. **Phường không ảnh hưởng đến tính toán tiền ship.**
 
-### `OCRInvoiceData` (model trong `OCRInvoiceMapper.cs`)
-Model class chứa tất cả fields của 1 invoice. Dùng bởi `ExcelInvoiceService`.
+**Edge cases đã xử lý (từ data thật):**
+
+| Input thực tế | Vấn đề | Cách xử lý |
+|---|---|---|
+| `5/1 phùng văn cung p2 phủ nhuận` | Không có dấu phẩy giữa các thành phần | Tự chèn phẩy trước `p<số>`, `q<số>`, `phường`, `quận` inline |
+| `11 In Dung Vương` | Số nhà `11` bị nhận nhầm là Quận 11 | Bare number (`^\d{1,2}$`) chỉ match quận khi **toàn segment là số đó**; bỏ qua nếu segment có nhiều từ |
+| `363-365-367, 363 Đ. Hùng Vương` | Dãy số nhà nhiều giá trị, tên đường ở segment kế | Khi `firstSeg` chỉ toàn số và `-` → dùng segment kế làm nguồn tên đường |
+| `363 Đ. Hùng Vương` | `Đ.` (viết tắt Đường) trước tên đường | Regex riêng bắt `<số> Đ. <tên>` → SoNha + TenDuong |
+| `phủ nhuận` / `phú nhuật` (OCR sai dấu) | Không khớp exact với `"phú nhuận"` | Fuzzy lookup: xóa dấu → match `"phu nhuan"` trong `DistrictNoDiacDict` |
 
 ### `OCRInvoiceMapper`
-**Mục đích:** Mapping + các helper dùng chung cho OCR pipeline.
+**Mục đích hiện tại:** Chứa model `OCRInvoiceData` và helper tra phí ship.  
+> `MapToExcelColumns` và `ParseAndVerifyAddress` đã bị xóa (không có caller).
 
-| Method | Mô tả |
+| Method / Class | Mô tả |
 |---|---|
-| `MapToExcelColumns(invoice)` | Map `OCRInvoiceData` → `Dictionary<string, string>` theo header Excel |
-| `ParseAndVerifyAddress(address)` | Parse địa chỉ + hiện dialog xác nhận nếu confidence thấp |
+| `OCRInvoiceData` | Model class chứa tất cả fields của 1 invoice. Dùng bởi `ExcelInvoiceService` |
 | `GetShipFeeByQuan(quan)` | Tra bảng `AppConstants.SHIPPING_FEES_BY_QUAN` theo quận, tự normalize không dấu. Trả `null` nếu không tìm thấy |
-| `RemoveDiacritics(text)` | Bỏ dấu tiếng Việt — dùng nội bộ cho lookup, public để reuse |
 
 ### `UIHelper`
 Factory methods tạo controls đồng bộ style:
@@ -204,6 +232,9 @@ Factory methods tạo controls đồng bộ style:
 - `CreateButton(text, color)` — tạo Button với style chuẩn
 - `CreateReadOnlyTextBox()` — TextBox read-only
 - `CreateSectionLabel(text)` — Label tiêu đề section
+- `CreateRichTextBoxSearchBar(parent, y, getTarget)` — tạo search bar (🔍 TextBox + ▼▲✕ + label X/Y) gắn vào một RichTextBox
+- `SearchInRichTextBox(rtb, term, forward, idxHolder, lblResult)` — tìm kiếm, highlight vàng/cam, scroll đến match
+- `ClearRichTextBoxHighlights(rtb)` — xóa toàn bộ highlight trong RichTextBox
 
 ---
 
@@ -218,6 +249,7 @@ Factory methods tạo controls đồng bộ style:
 | Thêm logic map/lookup OCR | `Services/OCRInvoiceMapper.cs` |
 | Cập nhật bảng phí ship theo quận | `AppConstants.SHIPPING_FEES_BY_QUAN` |
 | Thêm shared UI control style | `utils/UIHelper.cs` |
+| Thêm search bar cho RichTextBox | `UIHelper.CreateRichTextBoxSearchBar()` |
 | Thêm shared helper (dùng nhiều tab) | `MainForm.cs` |
 | Thay đổi logic tính toán Excel Viewer | `InvoiceTab.cs` — `CalculateAllRows()` |
 | Thay đổi cách detect header row | `InvoiceTab.cs` — `DetectHeaderRow()` + `AppConstants.HEADER_ROW_KEYWORDS` |
@@ -256,8 +288,9 @@ Factory methods tạo controls đồng bộ style:
 | File | Vị trí | Vấn đề |
 |---|---|---|
 | `ManualInputTab.cs` | `SaveManualEntry()` | Chưa ghi vào Excel — hiện chỉ hiện MessageBox |
-| `OcrTab.cs` | `ExportSelectedImages()` | Chỉ copy ảnh sang folder, chưa có post-processing |
 | `MainForm.cs` | `CallPythonOCR()` | Tên hàm misleading (không call Python) — là Google Vision API |
+| `OcrTab.cs` | `ExportMappedDataToExcel()` | Dùng ClosedXML thẳng với `Dictionary<string,string>` — chưa dùng `ExcelInvoiceService` |
+| `ExcelInvoiceService.cs` | constructor | Tên file Excel hardcoded theo tháng — cần đổi mỗi tháng |
 
 ---
 
@@ -266,4 +299,13 @@ Factory methods tạo controls đồng bộ style:
 | Warning | Nguồn | Giải thích |
 |---|---|---|
 | `CS8669` (×6) | `MainForm.Designer.cs` | Nullable annotation trong auto-generated code — bỏ qua |
-| `CS0618` | `MainForm.cs:56` | `GoogleCredential.FromFile()` deprecated — vẫn hoạt động, fix sau |
+| `CS0618` | `MainForm.cs:57` | `GoogleCredential.FromFile()` deprecated — vẫn hoạt động, fix sau |
+
+---
+
+## 11. Command để build file .exe
+
+``` 
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\ 
+```
+

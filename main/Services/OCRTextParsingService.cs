@@ -79,9 +79,9 @@ namespace TextInputter.Services
             if (string.IsNullOrEmpty(fields["TÊN ĐƯỜNG"])) missingFields.Add("TÊN ĐƯỜNG");
             if (string.IsNullOrEmpty(fields["QUẬN"]))       missingFields.Add("QUẬN");
 
-            // 8. TIỀN THU — thêm các biến thể OCR đọc méo "tổng thanh toán"
+            // 8. TIỀN THU — thêm các biến thể OCR đọc méo "tổng thanh toán" / "T.Tiên" (viết tắt Tổng Tiền)
             fields["TIỀN THU"] = ExtractAmountLine(text,
-                "tiền thu|thu tiền|tổng thanh toán|tong thanh toan|thanh toán|thanh toan|total");
+                @"tiền thu|thu tiền|tổng thanh toán|tong thanh toan|thanh toán|thanh toan|total|tổng tiền|tong tien|t\.ti[eêề]n|T\.Ti[eêề]n");
             if (string.IsNullOrEmpty(fields["TIỀN THU"])) missingFields.Add("TIỀN THU");
 
             // 9. TIỀN SHIP — optional: nếu không có trong ảnh thì để trống,
@@ -124,9 +124,9 @@ namespace TextInputter.Services
                     string candidate = colon >= 0 ? line.Substring(colon + 1).Trim() : line.Trim();
 
                     // Bỏ qua nếu là địa chỉ shop (chứa "CN1", "CN2", "HOTLINE", số điện thoại)
-                    if (System.Text.RegularExpressions.Regex.IsMatch(candidate,
+                    if (Regex.IsMatch(candidate,
                             @"CN\d|HOTLINE|CHUYÊN SỈ|\b09\d{8}\b|\b03\d{8}\b",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                            RegexOptions.IgnoreCase))
                         continue;
 
                     // Bỏ qua nếu candidate quá ngắn hoặc chỉ là "chi" (OCR đọc nhầm label)
@@ -144,51 +144,64 @@ namespace TextInputter.Services
             // → bỏ phần OCR sai đầu dòng tiếp, lấy từ chữ số đầu tiên trở đi
             if (foundLineIdx >= 0 && !string.IsNullOrEmpty(found))
             {
-                bool hasDigit = System.Text.RegularExpressions.Regex.IsMatch(found, @"\d");
-                bool hasVietWord = System.Text.RegularExpressions.Regex.IsMatch(found,
+                bool hasDigit = Regex.IsMatch(found, @"\d");
+                bool hasVietWord = Regex.IsMatch(found,
                     @"\b(đường|phường|quận|hẻm|ngõ|nguyễn|trần|lê|phú|bình|tân|thành|hồ|hưng|minh|cộng|hòa)\b",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    RegexOptions.IgnoreCase);
                 if (!hasDigit && !hasVietWord && foundLineIdx + 1 < lines.Length)
                 {
                     string nextLine = lines[foundLineIdx + 1].Trim();
-                    // Dòng tiếp có thể bắt đầu bằng ký tự OCR sai (VD: "B, 235 nguyễn..."),
-                    // tìm vị trí chữ số đầu tiên để bỏ phần rác trước đó
-                    var digitMatch = System.Text.RegularExpressions.Regex.Match(nextLine, @"\d");
-                    if (digitMatch.Success && nextLine.Length >= 5)
+                    // Lấy cả dòng tiếp nếu có nội dung hợp lệ (có chữ số hoặc từ tiếng Việt)
+                    // VD: "B, 235 nguyễn văn cừ, quận 1" — lấy nguyên, không cắt bỏ "B,"
+                    if (nextLine.Length >= 5 &&
+                        Regex.IsMatch(nextLine, @"\d|nguyễn|trần|lê|phường|quận|đường|hẻm|ngõ",
+                            RegexOptions.IgnoreCase))
                     {
-                        // Lấy từ chữ số đầu tiên (bỏ "B, " hay ký tự OCR sai trước đó)
-                        found = nextLine.Substring(digitMatch.Index).Trim();
-                        // Strip dấu phẩy/khoảng trắng thừa ở đầu
-                        found = found.TrimStart(',', ' ');
+                        found = nextLine;
                     }
                 }
             }
 
             // Strip trailing garbage: dấu "-", "ạ", "…", khoảng trắng thừa
-            found = System.Text.RegularExpressions.Regex.Replace(found, @"[\s\-–—ạ\.…]+$", "").Trim();
+            found = Regex.Replace(found, @"[\s\-–—ạ\.…]+$", "").Trim();
 
             // Strip "TP HCM", "TP. HCM", "Hồ Chí Minh", "Hồ Chí Minh" khỏi cuối địa chỉ
-            found = System.Text.RegularExpressions.Regex.Replace(found,
+            found = Regex.Replace(found,
                 @",?\s*(?:TP\.?\s*H[CG]M|Hồ\s*Chí\s*Minh|HCM|TP\.?\s*HCM)\s*[ạa]?$", "",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                RegexOptions.IgnoreCase).Trim();
+
+            // Strip "Phường <tên>" / "P. <tên>" ở cuối (phường tên — không số, không cần map)
+            // VD: "11 In Dung Vương Phường An Đông" → "11 In Dung Vương"
+            found = Regex.Replace(found,
+                @",?\s*Ph[uướừửữ][oôờ]ng\s+(?:[A-ZĐÀÁẢÃẠĂẮẶẰẲẴÂẤẦẨẪẬ][^\n,]*|An Đông|Tân Sơn Nhì|[^\d,]+)\s*$", "",
+                RegexOptions.IgnoreCase).Trim();
 
             // Strip prefix "Đc:", "Dc:", "DC:" đầu địa chỉ (VD: "Dc: Số 1 Đinh Lễ...")
-            found = System.Text.RegularExpressions.Regex.Replace(found, @"^[Đđ][Cc]\s*:?\s*", "").Trim();
+            found = Regex.Replace(found, @"^[Đđ][Cc]\s*:?\s*", "").Trim();
 
             // Chuẩn hóa "pXqY" / "p.X.qY" thành "pX, qY" để AddressParser split đúng
             // VD: "p10q10" → "p10, q10" | "p7.q5" → "p7, q5"
-            found = System.Text.RegularExpressions.Regex.Replace(
+            found = Regex.Replace(
                 found, @"\b(p\.?\d{1,2})\s*\.?\s*(q\.?\d{1,2})\b", "$1, $2",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                RegexOptions.IgnoreCase);
 
             // Strip dấu ":" sau số nhà (VD: "2181: Ng vẫn cư" → "2181 Ng vẫn cư")
-            found = System.Text.RegularExpressions.Regex.Replace(found, @"^(\d+)\s*:\s*", "$1 ").Trim();
+            found = Regex.Replace(found, @"^(\d+)\s*:\s*", "$1 ").Trim();
 
             // Strip rác sau dấu ". " khi theo sau là chữ hoa (VD: ". Tiệm nail thuỳ thỏ")
-            // Giữ lại dấu chấm nếu nó là phần của địa chỉ (VD: "p7.q5") — chỉ strip khi sau ". " có cụm chữ hoa/tên riêng
-            found = System.Text.RegularExpressions.Regex.Replace(found, @"\s*\.\s+[A-ZĐÀÁẢÃẠĂẮẶẰẲẴÂẤẦẨẪẬ][^\n]*$", "").Trim();
+            // NGOẠI LỆ: "Đ." / "đ." là viết tắt hợp lệ của "Đường" — KHÔNG strip
+            // Chỉ strip khi ký tự trước dấu "." KHÔNG phải là Đ/đ
+            found = Regex.Replace(found, @"(?<![Đđ])\s*\.\s+[A-ZĐÀÁẢÃẠĂẮẶẰẲẴÂẤẦẨẪẬ][^\n]*$", "").Trim();
 
-            // Strip prefix "số" lặp thừa trước địa chỉ (VD: "số 1 Đinh Lễ" — giữ nguyên, không cần)
+            // Strip trailing business name sau " - " hoặc " – " (VD: "363 Đ. Hùng Vương - Khải Nam Transpost")
+            // Chỉ strip nếu phần sau " - " không phải keyword địa chỉ (đường/phường/quận/hẻm)
+            found = Regex.Replace(found,
+                @"\s+[-–—]\s+(?!đường|phường|quận|hẻm|ngõ|p\d|q\d)[^\d,]+$",
+                "", RegexOptions.IgnoreCase).Trim();
+
+            // Strip trailing garbage lần 2: dấu "-", "–", khoảng trắng thừa còn sót
+            found = Regex.Replace(found, @"[\s\-–—]+$", "").Trim();
+
             return found;
         }
 
@@ -196,21 +209,25 @@ namespace TextInputter.Services
         {
             if (string.IsNullOrWhiteSpace(text)) return "";
             var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            var keyList = keywords.Split('|');
 
             for (int i = 0; i < lines.Length; i++)
             {
-                foreach (var kw in keyList)
+                if (!Regex.IsMatch(lines[i], keywords, RegexOptions.IgnoreCase)) continue;
+
+                // Số cùng dòng với keyword
+                var m = Regex.Match(lines[i], @"[\d][,\d]*\d[,.]?");
+                if (m.Success) return NormalizeToThousands(m.Value.TrimEnd('.', ','));
+                // Số ở dòng tiếp theo (VD: "Tổng thanh toán:\n592,000")
+                if (i + 1 < lines.Length)
                 {
-                    if (lines[i].IndexOf(kw, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    // Cho phép dấu chấm/phẩy cuối số (VD: "584,000.")
-                    var m = Regex.Match(lines[i], @"[\d][,\d]*\d[,.]?");
-                    if (m.Success) return NormalizeToThousands(m.Value.TrimEnd('.', ','));
-                    if (i + 1 < lines.Length)
-                    {
-                        var next = Regex.Match(lines[i + 1].Trim(), @"^[\d][,\d]*\d[,.]?$");
-                        if (next.Success) return NormalizeToThousands(next.Value.TrimEnd('.', ','));
-                    }
+                    var next = Regex.Match(lines[i + 1].Trim(), @"^[\d][,\d]*\d[,.]?$");
+                    if (next.Success) return NormalizeToThousands(next.Value.TrimEnd('.', ','));
+                }
+                // Số ở dòng TRƯỚC (VD: "380,000\nT.Tiên" — OCR đảo thứ tự)
+                if (i - 1 >= 0)
+                {
+                    var prev = Regex.Match(lines[i - 1].Trim(), @"^[\d][,\d]*\d[,.]?$");
+                    if (prev.Success) return NormalizeToThousands(prev.Value.TrimEnd('.', ','));
                 }
             }
             return "";

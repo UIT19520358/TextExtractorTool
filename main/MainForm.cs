@@ -26,7 +26,6 @@ namespace TextInputter
         private List<string> imageFiles = new List<string>();
         private bool isProcessing = false;
         private ImageAnnotatorClient visionClient;
-        private ExcelInvoiceService _excelInvoiceService;
         private OCRTextParsingService _ocrParsingService;
         private List<Dictionary<string, string>> mappedDataList = new List<Dictionary<string, string>>();
 
@@ -40,9 +39,10 @@ namespace TextInputter
             InitializeServices();
             LoadApplicationIcon();
 
-            // Init each tab (partial methods in tabs/ files)
-            InitializeOCRTab();
-            InitializeManualInputTab();
+            // Init each tab — UI trước, logic sau
+            InitializeInvoiceTabUI();    // InvoiceTab.UI.cs  — controls + layout
+            InitializeOCRTab();          // OcrTab.cs         — controls + layout + logic
+            InitializeManualInputTab();  // ManualInputTab.cs — controls + layout + logic
         }
 
         // ─── Service initialization ────────────────────────────────────────────
@@ -53,9 +53,11 @@ namespace TextInputter
                 string credPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.GOOGLE_CREDENTIAL_FILE);
                 if (File.Exists(credPath))
                 {
+#pragma warning disable CS0618 // GoogleCredential.FromStream deprecated by Google — no alternative in current SDK version
                     var credential = Google.Apis.Auth.OAuth2.GoogleCredential
-                        .FromFile(credPath)
+                        .FromStream(File.OpenRead(credPath))
                         .CreateScoped(ImageAnnotatorClient.DefaultScopes);
+#pragma warning restore CS0618
                     visionClient = new ImageAnnotatorClientBuilder { Credential = credential }.Build();
                     Debug.WriteLine("✅ Google Vision client initialized");
                 }
@@ -67,16 +69,6 @@ namespace TextInputter
             catch (Exception ex)
             {
                 Debug.WriteLine($"⚠️ Vision client init error: {ex.Message}");
-            }
-
-            try
-            {
-                _excelInvoiceService = new ExcelInvoiceService();
-                Debug.WriteLine("✅ ExcelInvoiceService initialized");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"⚠️ ExcelInvoiceService init error: {ex.Message}");
             }
 
             try

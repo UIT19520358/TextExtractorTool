@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Text;
 using Google.Cloud.Vision.V1;
 
 namespace TextInputter.Services
 {
     /// <summary>
-    /// Xử lý OCR và text cleaning
+    /// Xử lý OCR: gọi Google Vision API, clean text rác.
     /// </summary>
     public class OcrService
     {
@@ -128,42 +126,6 @@ namespace TextInputter.Services
             }
 
             return validCharCount < (totalCharCount * 0.7);
-        }
-
-        /// <summary>
-        /// Xử lý ảnh trước OCR để cải thiện chất lượng
-        /// </summary>
-        public Bitmap PreprocessImage(string imagePath)
-        {
-            try
-            {
-                using (Bitmap original = new Bitmap(imagePath))
-                {
-                    Bitmap processed = new Bitmap(original.Width, original.Height);
-
-                    for (int y = 0; y < original.Height; y++)
-                    {
-                        for (int x = 0; x < original.Width; x++)
-                        {
-                            Color pixel = original.GetPixel(x, y);
-
-                            int gray = (int)(pixel.R * 0.299 + pixel.G * 0.587 + pixel.B * 0.114);
-                            int contrast = (int)((gray - 128) * 1.5 + 128);
-                            contrast = Math.Max(0, Math.Min(255, contrast));
-
-                            int brightness = Math.Min(255, contrast + 20);
-                            Color newColor = Color.FromArgb(brightness, brightness, brightness);
-                            processed.SetPixel(x, y, newColor);
-                        }
-                    }
-
-                    return processed;
-                }
-            }
-            catch
-            {
-                return new Bitmap(imagePath);
-            }
         }
     }
 }
