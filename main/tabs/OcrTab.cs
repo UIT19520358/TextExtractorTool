@@ -5,7 +5,6 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Diagnostics;
-using ClosedXML.Excel;
 using TextInputter.Services;
 
 namespace TextInputter
@@ -110,7 +109,7 @@ namespace TextInputter
 
                 try
                 {
-                    var (text, confidence) = CallPythonOCR(imagePath);
+                    var (text, confidence) = CallGoogleVisionOCR(imagePath);
 
                     // Header mỗi file — hiển thị ở CẢ HAI text area (có số thứ tự)
                     string fileHeader = $"\n{new string('═', 60)}\n📄 [{i + 1}/{imageFiles.Count}] {fileName}  (confidence: {confidence:F1}%)\n{new string('─', 60)}\n";
@@ -258,12 +257,7 @@ namespace TextInputter
 
         /// <summary>
         /// Xuất mappedDataList sang file Excel được chọn (user picks file, append vào sheet dd-MM).
-        ///
-        /// ⚠️ HARDCODED trong block này:
-        ///   - Header array 20 columns — phụ thuộc format file Excel của khách.
-        ///   - Sheet name = "dd-MM" lấy từ NGÀY LẤY của dòng đầu tiên.
-        ///   - Row 2 ghi "THU x" / "NGAY x-x" theo cấu trúc file Excel mẫu.
-        ///   - Data bắt đầu từ row 3.
+        /// Logic ghi Excel được delegate sang <see cref="ExcelInvoiceService.ExportBatch"/>.
         /// </summary>
         private void ExportMappedDataToExcel()
         {
@@ -305,94 +299,17 @@ namespace TextInputter
                     System.Globalization.CultureInfo.InvariantCulture,
                     System.Globalization.DateTimeStyles.None, out sheetDate);
 
-                // ⚠️ HARDCODED: 20-column header matching Excel template of current client
-                var headers = new[]
+                var service = new ExcelInvoiceService(excelPath);
+                var (addedCount, updatedCount) = service.ExportBatch(mappedDataList, sheetName, sheetDate);
+
+                this.Invoke((MethodInvoker)delegate
                 {
-                    "Tình trạng TT", "SHOP", "TÊN KH", "MÃ", "SỐ NHÀ", "TÊN ĐƯỜNG", "QUẬN",
-                    "TIỀN THU", "TIỀN SHIP", "TIỀN HÀNG",
-                    "NGƯỜI ĐI", "NGƯỜI LẤY", "NGÀY LẤY", "GHI CHÚ",
-                    "ỨNG TIỀN", "HÀNG TỒN", "FAIL", "Column1", "Column2", "Column3"
-                };
-
-                using (var workbook = new XLWorkbook(excelPath))
-                {
-                    bool isNewSheet = !workbook.TryGetWorksheet(sheetName, out var worksheet);
-                    if (isNewSheet)
-                    {
-                        worksheet = workbook.Worksheets.Add(sheetName);
-                        // Row 1: column headers
-                        for (int col = 0; col < headers.Length; col++)
-                        {
-                            var cell = worksheet.Cell(1, col + 1);
-                            cell.Value = headers[col];
-                            cell.Style.Font.Bold = true;
-                            cell.Style.Fill.BackgroundColor = XLColor.LightGray;
-                        }
-                        // Row 2: THU x / NGAY x-x label
-                        string thuText = sheetDate.DayOfWeek == DayOfWeek.Sunday
-                            ? "CHU NHAT" : "THU " + ((int)sheetDate.DayOfWeek + 1);
-                        worksheet.Cell(2, 2).Value = thuText;
-                        worksheet.Cell(2, 2).Style.Font.Bold = true;
-                        worksheet.Cell(2, 3).Value = $"NGAY {sheetDate.Day}-{sheetDate.Month}";
-                        worksheet.Cell(2, 3).Style.Font.Bold = true;
-                    }
-
-                    // Data starts at row 3
-                    int currentRow = 3;
-                    var lastUsed = worksheet.LastRowUsed();
-                    if (lastUsed != null && lastUsed.RowNumber() >= 3)
-                        currentRow = lastUsed.RowNumber() + 1;
-
-                    int addedCount = 0, updatedCount = 0;
-                    foreach (var data in mappedDataList)
-                    {
-                        string ma = data.GetValueOrDefault("MÃ", "");
-
-                        // Upsert: tìm row có MÃ trùng → ghi đè; không có → thêm dòng mới
-                        int targetRow = -1;
-                        if (!string.IsNullOrEmpty(ma))
-                        {
-                            foreach (var row in worksheet.RowsUsed())
-                            {
-                                if (row.RowNumber() <= 2) continue;
-                                if (row.Cell(4).GetString() == ma) { targetRow = row.RowNumber(); break; }
-                            }
-                        }
-                        bool isUpdate = targetRow > 0;
-                        if (!isUpdate)
-                        {
-                            targetRow = currentRow;
-                            currentRow++;
-                        }
-
-                        worksheet.Cell(targetRow,  1).Value = "";
-                        worksheet.Cell(targetRow,  2).Value = data.GetValueOrDefault("SHOP",       "");
-                        worksheet.Cell(targetRow,  3).Value = data.GetValueOrDefault("TÊN KH",     "");
-                        worksheet.Cell(targetRow,  4).Value = ma;
-                        worksheet.Cell(targetRow,  5).Value = data.GetValueOrDefault("SỐ NHÀ",     "");
-                        worksheet.Cell(targetRow,  6).Value = data.GetValueOrDefault("TÊN ĐƯỜNG",  "");
-                        worksheet.Cell(targetRow,  7).Value = data.GetValueOrDefault("QUẬN",       "");
-                        worksheet.Cell(targetRow,  8).Value = data.GetValueOrDefault("TIỀN THU",   "");
-                        worksheet.Cell(targetRow,  9).Value = data.GetValueOrDefault("TIỀN SHIP",  "");
-                        worksheet.Cell(targetRow, 10).Value = data.GetValueOrDefault("TIỀN HÀNG",  "");
-                        worksheet.Cell(targetRow, 11).Value = data.GetValueOrDefault("NGƯỜI ĐI",   "");
-                        worksheet.Cell(targetRow, 12).Value = data.GetValueOrDefault("NGƯỜI LẤY",  "");
-                        worksheet.Cell(targetRow, 13).Value = data.GetValueOrDefault("NGÀY LẤY",   "");
-
-                        if (isUpdate) updatedCount++; else addedCount++;
-                    }
-
-                    workbook.SaveAs(excelPath);
-
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        MessageBox.Show(
-                            $"✅ Xuất thành công!\n\n➕ Thêm mới: {addedCount}\n✏️ Ghi đè: {updatedCount}\n📅 Sheet: {sheetName}\n📂 File: {Path.GetFileName(excelPath)}",
-                            "✅ Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        lblStatus.Text      = $"✅ Xuất {addedCount} mới, {updatedCount} cập nhật → sheet '{sheetName}'";
-                        lblStatus.ForeColor = Color.Green;
-                    });
-                }
+                    MessageBox.Show(
+                        $"✅ Xuất thành công!\n\n➕ Thêm mới: {addedCount}\n✏️ Ghi đè: {updatedCount}\n📅 Sheet: {sheetName}\n📂 File: {Path.GetFileName(excelPath)}",
+                        "✅ Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    lblStatus.Text      = $"✅ Xuất {addedCount} mới, {updatedCount} cập nhật → sheet '{sheetName}'";
+                    lblStatus.ForeColor = Color.Green;
+                });
             }
             catch (Exception ex)
             {

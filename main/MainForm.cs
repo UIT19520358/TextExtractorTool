@@ -205,7 +205,7 @@ namespace TextInputter
         /// <summary>
         /// Gọi Google Vision OCR — trả về (text, confidence).
         /// </summary>
-        private (string text, float confidence) CallPythonOCR(string imagePath)
+        private (string text, float confidence) CallGoogleVisionOCR(string imagePath)
         {
             try
             {

@@ -141,7 +141,7 @@ User nhập Người Đi / Người Lấy (TextBox trong UI)
 
 User click ▶ Bắt Đầu
     └─ btnStart_Click() → ProcessImages() [async]   ← vòng lặp qua ảnh đã chọn
-              ├─ CallPythonOCR()        ← gửi ảnh lên Google Vision (MainForm.cs)
+              ├─ CallGoogleVisionOCR()  ← gửi ảnh lên Google Vision (MainForm.cs)
               ├─ CleanOCRText()         ← lọc garbage lines (MainForm.cs)
               ├─ _ocrParsingService.ExtractAllFields()   ← parse 10 fields
               ├─ inject NGƯỜI ĐI / NGƯỜI LẤY từ UI

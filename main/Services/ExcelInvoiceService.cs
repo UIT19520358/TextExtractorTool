@@ -7,40 +7,19 @@ namespace TextInputter.Services
 {
     /// <summary>
     /// Service ghi dữ liệu invoice vào file Excel của khách.
-    /// ⚠️ TODO: chưa được gọi từ UI — cần wire vào ExportMappedDataToExcel() trong OcrTab.cs.
-    /// ⚠️ HARDCODED: tên file Excel mặc định phụ thuộc tháng — cần cập nhật mỗi tháng.
+    /// File path được truyền vào từ caller (qua OpenFileDialog) — không hardcode tên file.
     /// </summary>
     public class ExcelInvoiceService
     {
         private readonly string _excelFilePath;
 
-        /// <param name="excelFileName">
-        /// ⚠️ HARDCODED tên file theo tháng — nhớ đổi khi sang tháng mới.
-        /// </param>
-        public ExcelInvoiceService(string excelFileName = "CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx")
+        /// <param name="excelFilePath">Full path đến file Excel (lấy từ OpenFileDialog ở caller).</param>
+        /// <exception cref="FileNotFoundException">Nếu file không tồn tại.</exception>
+        public ExcelInvoiceService(string excelFilePath)
         {
-            _excelFilePath = FindExcelFile(excelFileName);
-        }
-
-        /// <summary>
-        /// Tìm file Excel theo tên trong các thư mục thông dụng.
-        /// </summary>
-        private string FindExcelFile(string fileName)
-        {
-            var searchPaths = new[]
-            {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", fileName),
-                Path.Combine(Directory.GetCurrentDirectory(), fileName)
-            };
-
-            foreach (var path in searchPaths)
-            {
-                if (File.Exists(path))
-                    return path;
-            }
-
-            throw new FileNotFoundException($"Excel file not found: {fileName}");
+            if (!File.Exists(excelFilePath))
+                throw new FileNotFoundException($"Excel file not found: {excelFilePath}");
+            _excelFilePath = excelFilePath;
         }
 
         /// <summary>
@@ -135,6 +114,88 @@ namespace TextInputter.Services
         private const int COL_COL1       = 18;
         private const int COL_COL2       = 19;
         private const int COL_COL3       = 20;
+
+        /// <summary>
+        /// Xuất nhiều dòng cùng lúc (batch) vào một sheet — mở workbook một lần, ghi đè / thêm
+        /// tất cả dòng, rồi SaveAs một lần duy nhất (hiệu quả hơn gọi ExportInvoice nhiều lần).
+        /// </summary>
+        /// <param name="dataList">Danh sách dict với keys: SHOP, TÊN KH, MÃ, SỐ NHÀ, TÊN ĐƯỜNG, QUẬN,
+        ///     TIỀN THU, TIỀN SHIP, TIỀN HÀNG, NGƯỜI ĐI, NGƯỜI LẤY, NGÀY LẤY.</param>
+        /// <param name="sheetName">Tên sheet (vd: "25-07"). Nếu chưa có → tự tạo với header row.</param>
+        /// <param name="sheetDate">Ngày dùng để tạo header row 2 (THU x / NGAY x-x).</param>
+        /// <returns>(addedCount, updatedCount)</returns>
+        public (int added, int updated) ExportBatch(
+            IEnumerable<Dictionary<string, string>> dataList,
+            string sheetName,
+            DateTime sheetDate)
+        {
+            int addedCount = 0, updatedCount = 0;
+
+            using (var workbook = new XLWorkbook(_excelFilePath))
+            {
+                IXLWorksheet worksheet;
+                if (workbook.TryGetWorksheet(sheetName, out var existingSheet))
+                {
+                    worksheet = existingSheet;
+                }
+                else
+                {
+                    worksheet = workbook.Worksheets.Add(sheetName);
+                    AddHeaderRow(worksheet, sheetDate);
+                }
+
+                // Next empty row after header + existing data
+                int nextRow = 3;
+                var lastUsed = worksheet.LastRowUsed();
+                if (lastUsed != null && lastUsed.RowNumber() >= 3)
+                    nextRow = lastUsed.RowNumber() + 1;
+
+                foreach (var data in dataList)
+                {
+                    string ma = data.GetValueOrDefault("MÃ", "");
+
+                    // Upsert: tìm row có MÃ trùng → ghi đè; không → thêm cuối
+                    int targetRow = -1;
+                    if (!string.IsNullOrEmpty(ma))
+                    {
+                        foreach (var row in worksheet.RowsUsed())
+                        {
+                            if (row.RowNumber() <= 2) continue;
+                            if (row.Cell(COL_MA).GetString() == ma) { targetRow = row.RowNumber(); break; }
+                        }
+                    }
+                    bool isUpdate = targetRow > 0;
+                    if (!isUpdate) { targetRow = nextRow; nextRow++; }
+
+                    worksheet.Cell(targetRow, COL_TINHTRANG).Value = "";
+                    worksheet.Cell(targetRow, COL_SHOP).Value      = data.GetValueOrDefault("SHOP",      "");
+                    worksheet.Cell(targetRow, COL_TENKH).Value     = data.GetValueOrDefault("TÊN KH",    "");
+                    worksheet.Cell(targetRow, COL_MA).Value        = ma;
+                    worksheet.Cell(targetRow, COL_SONHA).Value     = data.GetValueOrDefault("SỐ NHÀ",    "");
+                    worksheet.Cell(targetRow, COL_TENDUONG).Value  = data.GetValueOrDefault("TÊN ĐƯỜNG", "");
+                    worksheet.Cell(targetRow, COL_QUAN).Value      = data.GetValueOrDefault("QUẬN",      "");
+                    worksheet.Cell(targetRow, COL_TIENTHU).Value   = data.GetValueOrDefault("TIỀN THU",  "");
+                    worksheet.Cell(targetRow, COL_TIENSHIP).Value  = data.GetValueOrDefault("TIỀN SHIP", "");
+                    worksheet.Cell(targetRow, COL_TIENHANG).Value  = data.GetValueOrDefault("TIỀN HÀNG", "");
+                    worksheet.Cell(targetRow, COL_NGUOIDI).Value   = data.GetValueOrDefault("NGƯỜI ĐI",  "");
+                    worksheet.Cell(targetRow, COL_NGUOILAY).Value  = data.GetValueOrDefault("NGƯỜI LẤY", "");
+                    worksheet.Cell(targetRow, COL_NGAYLAY).Value   = data.GetValueOrDefault("NGÀY LẤY",  "");
+                    worksheet.Cell(targetRow, COL_GHICHU).Value    = data.GetValueOrDefault("GHI CHÚ",   "");
+                    worksheet.Cell(targetRow, COL_UNGIEN).Value    = data.GetValueOrDefault("ỨNG TIỀN",  "");
+                    worksheet.Cell(targetRow, COL_HANGTON).Value   = data.GetValueOrDefault("HÀNG TỒN",  "");
+                    worksheet.Cell(targetRow, COL_FAIL).Value      = data.GetValueOrDefault("FAIL",      "");
+                    worksheet.Cell(targetRow, COL_COL1).Value      = data.GetValueOrDefault("COL1",      "");
+                    worksheet.Cell(targetRow, COL_COL2).Value      = data.GetValueOrDefault("COL2",      "");
+                    worksheet.Cell(targetRow, COL_COL3).Value      = data.GetValueOrDefault("COL3",      "");
+
+                    if (isUpdate) updatedCount++; else addedCount++;
+                }
+
+                workbook.SaveAs(_excelFilePath);
+            }
+
+            return (addedCount, updatedCount);
+        }
 
         /// <summary>
         /// Upsert invoice: nếu MÃ đã tồn tại trong sheet → ghi đè dòng đó.
