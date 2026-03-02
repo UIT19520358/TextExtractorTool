@@ -1,6 +1,20 @@
 # TextInputter — Architecture Guide
 
-> **Mục đích:** Tài liệu này giúp người mới vào dự án hiểu cấu trúc code, flow hoạt động, và biết phải thêm/sửa code ở đâu khi cần.
+> **Mục đích:** Tài liệu này giúp người mới vào dự án hiểu cấu trúc code, flow hoạt động, và biết phải tUser click ▶ Bắt Đầu
+    └─ btnStart_Click() → ProcessImages() [async]   ← vòng lặp qua ảnh đã chọn, theo thứ tự
+              ├─ CallGoogleVisionOCR()  ← gửi ảnh lên Google Vision (MainForm.cs)
+              ├─ CleanOCRText()         ← lọc garbage lines (MainForm.cs)
+              ├─ _ocrParsingService.ExtractAllFields()   ← parse 10 fields + Gemini fallback
+              ├─ OCRInvoiceMapper.GetShipFee()           ← auto-fill TIỀN SHIP (3-tier lookup)
+              ├─ OCRInvoiceMapper.GetNguoiDi()           ← auto-fill NGƯỜI ĐI (3-tier lookup)
+              ├─ inject NGƯỜI ĐI / NGƯỜI LẤY từ UI (override nếu có)
+              ├─ nếu thiếu field: fields["MISSING_FIELDS"] = "SHOP,MÃ,..." (tô đỏ khi xuất Excel)
+              ├─ → append vào mappedDataList (INLINE — giữ đúng thứ tự quét, không có successList/failList)
+              └─ → ghi raw OCR vào txtRawOCRLog, kết quả map vào txtProcessLog
+
+User click 📊 Xuất Excel
+    └─ ExportMappedDataToExcel()        ← user chọn file Excel, ghi vào sheet dd-MM
+         └─ WriteDataRow()              ← tô đỏ từng cell có field trong MISSING_FIELDS ở đâu khi cần.
 
 ---
 
@@ -12,6 +26,7 @@
 | UI | Windows Forms (WinForms) |
 | Excel I/O | [ClosedXML 0.102.3](https://github.com/ClosedXML/ClosedXML) |
 | OCR | [Google Cloud Vision V1 3.8.0](https://cloud.google.com/vision) |
+| AI Fallback | [Gemini API](https://aistudio.google.com/apikey) (free tier, Vision) — `Mscc.GenerativeAI` |
 | Credentials | `textinputter-4a7bda4ef67a.json` (Google Service Account) |
 
 ---
@@ -44,7 +59,8 @@ TextInputter/
 │   │   └── ManualInputTab.cs    # Manual Input: InitializeManualInputTab() + logic (UI inline, không cần file riêng)
 │   │
 │   ├── Services/                # Business logic (không phụ thuộc UI)
-│   │   ├── OCRTextParsingService.cs   # Parse raw OCR text → extract 12 fields
+│   │   ├── OCRTextParsingService.cs   # Parse raw OCR text → extract 12 fields + Gemini fallback
+│   │   ├── GeminiService.cs           # Gemini Vision fallback — đọc ảnh khi OCR parsing thiếu field
 │   │   ├── ExcelInvoiceService.cs     # Ghi dữ liệu invoice vào file Excel của khách
 │   │   ├── OCRInvoiceMapper.cs        # Model OCRInvoiceData + helper mapping (ít dùng)
 │   │   └── AddressParser.cs           # Parse địa chỉ VN → SoNha, TenDuong, Phuong, Quan
@@ -171,11 +187,23 @@ User điền 17 fields vào form
 
 | Method | Mô tả |
 |---|---|
-| `ExtractAllFields(text, out fields)` | Public entry point — extract 10 fields (NGƯỜI ĐI/LẤY do UI cung cấp, TIỀN SHIP không còn required) |
-| `ExtractAddressLine(text)` | Private — lấy dòng "địa chỉ:" **cuối cùng** hợp lệ (bỏ qua địa chỉ shop CN1/CN2). Match: `"địa chỉ"`, `"địa chi"` (OCR drop dấu), `"dia chi"`, `"address"` |
+| `ExtractAllFields(text, out fields, geminiLog?)` | Public entry point — extract 10 fields, sau đó trigger Gemini fallback nếu còn thiếu field quan trọng |
+| `ExtractAddressLine(text)` | Private — lấy dòng "địa chỉ:" **cuối cùng** hợp lệ (bỏ qua địa chỉ shop CN1/CN2) |
+| `ExtractDistrictFromRawText(text)` | Private — fallback scan toàn bộ raw OCR tìm "Quận X" qua regex đa dòng; xử lý OCR wrap dòng giữa tên quận |
 | `ExtractAmountLine(text, keywords)` | Private — tìm số tiền theo từ khoá; xử lý cả số cùng dòng lẫn số ở dòng tiếp theo |
 | `NormalizeToThousands(raw)` | Private — chuẩn hóa về nghìn đồng (1,500,000 → 1500) |
 | `ExtractDate(text)` | Private — parse ngày từ text |
+| `RemoveDiacritics(s)` | Private static — bỏ dấu tiếng Việt, dùng bởi `ExtractDistrictFromRawText` |
+
+**Gemini Fallback pipeline:**
+```
+OCR text parsing (regex)
+    → nếu thiếu QUẬN: ExtractDistrictFromRawText() [không tốn quota]
+    → nếu vẫn thiếu QUẬN / TÊN KH / MÃ / TIỀN THU / NGÀY LẤY:
+         GeminiService.ParseInvoiceFromImageAsync() [đọc ảnh gốc]
+              → thử tuần tự: flash-lite → 2.0-flash-lite → 2.0-flash → flash → pro
+              → hết quota model nào → tự động sang model tiếp theo
+```
 
 **Edge cases đã xử lý (từ data thật):**
 
@@ -187,20 +215,60 @@ User điền 17 fields vào form
 | `A25 hotel ( phòng 706) 184 nguyễn trãi, phường phạm ngũ lão, q1` | Số nhà phức tạp (tên khách sạn + số phòng + số nhà) | `ExtractHouseAndStreet` dùng greedy regex lấy đến số cuối cùng |
 | `So HD: HD130781` (không dấu) | OCR drop dấu `ố` → `"So"` | Regex `So\s*H[ĐD]` đã cover |
 | Số tiền trên dòng riêng (`Tổng tiền hàng:\n1,500,000`) | Số không cùng dòng keyword | `ExtractAmountLine` check thêm `lines[i+1]` |
-| `TIỀN SHIP` không có trên hóa đơn | Field trống → lỗi validation | Không còn required — auto-fill từ bảng phí theo quận |
+| `TIỀN SHIP` không có trên hóa đơn | Field trống → lỗi validation | Không còn required — auto-fill từ bảng phí theo phường/quận (3-tier) |
 | `363-365-367, 363 Đ. Hùng Vương - Khải Nam Transpost – –` | Số nhà là dãy số có `-`, tên business rác sau ` - ` | Strip ` - <tên không phải địa chỉ>` ở cuối; `Đ.` không bị strip vì được loại trừ khỏi regex |
 | `Địa chỉ: 11 In Dung Vương Phường An Đông TP HCM ạ` | `"Phường An Đông"` và `"TP HCM"` cuối địa chỉ | Strip `Phường <tên>` + `TP HCM` ở cuối trước khi pass vào AddressParser |
+| `Địa chỉ: ..., Phường 22, Quận B\nh Thạnh -` | OCR wrap tên quận qua 2 dòng | `ExtractDistrictFromRawText`: ghép text → regex → `AddressParser.Parse("q. Bình Thạnh")` |
+| `THU 7.280+SHIP` | Bước 0 regex bắt "7.280" → NormalizeToThousands → chia /1000 → 7 (sai) | Bước 0 dùng digit-strip trực tiếp, không gọi NormalizeToThousands; "7.280" → 7280 ✅ |
 
 ### `ExcelInvoiceService`
 **Mục đích:** Ghi dữ liệu OCR vào file Excel của khách (20 cột cố định)  
 **File Excel:** hardcoded `"CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx"` ⚠️  
-**Trạng thái:** ⚠️ Chưa được wire vào UI — `ExportMappedDataToExcel()` trong `OcrTab.cs` vẫn dùng ClosedXML trực tiếp.
 
 | Method | Mô tả |
 |---|---|
+| `WriteInvoiceData(dataList, filePath, sheetName)` | Public entry point — ghi danh sách đơn vào sheet, tạo sheet nếu chưa có |
+| `WriteDataRow(worksheet, row, data, ...)` | Ghi 1 row; tô đỏ nhạt các cell nằm trong `data["MISSING_FIELDS"]`; tô đỏ đậm nếu MÃ rỗng |
 | `InvoiceExists(ma)` | Kiểm tra mã đơn đã tồn tại trong sheet chưa |
-| `ExportInvoice(data, sheetName)` | Ghi 1 row vào sheet (tạo sheet nếu chưa có) |
-| `GetAllInvoiceNumbers()` | Trả về tất cả mã đơn đã ghi |
+
+**Logic highlight thiếu field (WriteDataRow):**
+```csharp
+// data["MISSING_FIELDS"] = "SHOP,MÃ,TIỀN THU" (do OcrTab.cs ghi vào)
+var missingSet = new HashSet<string>(data["MISSING_FIELDS"].Split(','), OrdinalIgnoreCase);
+
+// fieldToCol map: "SHOP"→2, "TÊN KH"→3, "MÃ"→4, "ĐỊA CHỈ"→5, "QUẬN"→6,
+//                 "TIỀN THU"→7, "TIỀN SHIP"→8, "NGÀY LẤY"→12, "GHI CHÚ"→13
+foreach (var fieldName in missingSet)
+    if (fieldToCol.TryGetValue(fieldName, out int col))
+        worksheet.Cell(row, col).Style.Fill.BackgroundColor = XLColor.FromHtml("#FFD0D0"); // đỏ nhạt
+
+// MÃ rỗng → đỏ đậm (riêng biệt, luôn apply)
+if (string.IsNullOrEmpty(ma))
+    worksheet.Cell(row, COL_MA).Style.Fill.BackgroundColor = XLColor.FromHtml("#FF9999");
+```
+
+**Thứ tự xuất Excel:** `mappedDataList` được append inline trong vòng quét ảnh (không có successList/failList split) → thứ tự Excel = thứ tự ảnh quét.
+
+### `GeminiService`
+**Mục đích:** Fallback parser — khi `OCRTextParsingService` vẫn còn field thiếu sau regex, gửi ảnh gốc lên Gemini Vision để extract.  
+**API key:** Lấy miễn phí tại https://aistudio.google.com/apikey — điền vào `AppConstants.GEMINI_API_KEY`.  
+**Model fallback** (tự động thử tuần tự khi quota hết, quota nhiều → ít):
+
+| Thứ tự | Model | Ghi chú |
+|---|---|---|
+| 1 | `gemini-2.5-flash-lite` | Quota nhiều nhất, nhanh nhất |
+| 2 | `gemini-2.0-flash-lite` | Deprecated, còn đến Jun 2026 |
+| 3 | `gemini-2.0-flash` | Deprecated, còn đến Jun 2026 |
+| 4 | `gemini-2.5-flash` | Cân bằng |
+| 5 | `gemini-2.5-pro` | Xịn nhất, quota ít nhất — last resort |
+
+Khi gặp lỗi **429 / TooManyRequests / RESOURCE_EXHAUSTED** → tự động thử model tiếp theo.  
+Lỗi khác (mất mạng, sai key) → báo ngay, không tiếp tục.
+
+| Method | Mô tả |
+|---|---|
+| `ParseInvoiceFromImageAsync(imagePath)` | Gọi Gemini Vision, loop qua MODEL_FALLBACK_LIST, trả `(GeminiInvoiceResult, error)` |
+| `IsConfigured` | `true` khi API key đã điền |
 
 ### `AddressParser`
 **Input:** string địa chỉ thô  
@@ -218,13 +286,36 @@ Có dictionary nội bộ cho quận/huyện TP.HCM + Hà Nội. **Phường kh�
 | `phủ nhuận` / `phú nhuật` (OCR sai dấu) | Không khớp exact với `"phú nhuận"` | Fuzzy lookup: xóa dấu → match `"phu nhuan"` trong `DistrictNoDiacDict` |
 
 ### `OCRInvoiceMapper`
-**Mục đích hiện tại:** Chứa model `OCRInvoiceData` và helper tra phí ship.  
-> `MapToExcelColumns` và `ParseAndVerifyAddress` đã bị xóa (không có caller).
+**Mục đích hiện tại:** Chứa model `OCRInvoiceData` và các helper tra phí ship / người đi.  
 
 | Method / Class | Mô tả |
 |---|---|
-| `OCRInvoiceData` | Model class chứa tất cả fields của 1 invoice. Dùng bởi `ExcelInvoiceService` |
-| `GetShipFeeByQuan(quan)` | Tra bảng `AppConstants.SHIPPING_FEES_BY_QUAN` theo quận, tự normalize không dấu. Trả `null` nếu không tìm thấy |
+| `OCRInvoiceData` | Model class chứa tất cả fields của 1 invoice |
+| `GetShipFee(phuong, quan)` | Tra phí ship — 3-tier: Phường → SHIPPING_FEES_BY_WARD → Phường→Quận via WARD_TO_DISTRICT_MAP → SHIPPING_FEES_BY_QUAN → Quận trực tiếp |
+| `GetNguoiDi(phuong, quan)` | Tra người đi — 3-tier tương tự, dùng AREA_TO_NGUOI_DI |
+| `NormalizeKey(s)` | Strip dấu + lowercase + expand alias viết tắt qua `_abbrevMap` |
+
+**3-tier lookup (GetShipFee / GetNguoiDi):**
+```
+Tier 3 (phường cụ thể):    SHIPPING_FEES_BY_WARD[NormalizeKey(phuong)]
+    ↓ miss
+Tier 2.5 (phường → quận): WARD_TO_DISTRICT_MAP[NormalizeKey(phuong)] → SHIPPING_FEES_BY_QUAN[quan]
+    ↓ miss
+Tier 2 (quận trực tiếp):  SHIPPING_FEES_BY_QUAN[NormalizeKey(quan)]
+```
+
+**Alias expand (_abbrevMap trong NormalizeKey):**
+```
+"bh thanh" / "b thanh" / "bthanh" → "binh thanh"
+"t binh"   → "tan binh"    "t phu"  → "tan phu"
+"g vap"    → "go vap"      "b tan"  → "binh tan"
+"t duc"    → "thu duc"     "p nhuan"→ "phu nhuan"
+...
+```
+
+**Q8 phường-level split (SHIPPING_FEES_BY_WARD):**
+- P.1–4, 8–10 (+ tên mới 2025): 25k
+- P.5–7, 11–16 (+ tên mới 2025): 30k
 
 ### `UIHelper`
 Factory methods tạo controls đồng bộ style:
@@ -248,6 +339,9 @@ Factory methods tạo controls đồng bộ style:
 | Thêm config/constant (data thuần) | `AppConstants.cs` |
 | Thêm logic map/lookup OCR | `Services/OCRInvoiceMapper.cs` |
 | Cập nhật bảng phí ship theo quận | `AppConstants.SHIPPING_FEES_BY_QUAN` |
+| Cập nhật bảng phí ship theo phường (Q8 split...) | `AppConstants.SHIPPING_FEES_BY_WARD` |
+| Thêm phường mới vào map phường→quận | `AppConstants.WARD_TO_DISTRICT_MAP` |
+| Thêm alias viết tắt địa chỉ | `OCRInvoiceMapper._abbrevMap` trong `NormalizeKey()` |
 | Thêm shared UI control style | `utils/UIHelper.cs` |
 | Thêm search bar cho RichTextBox | `UIHelper.CreateRichTextBoxSearchBar()` |
 | Thêm shared helper (dùng nhiều tab) | `MainForm.cs` |
@@ -255,6 +349,8 @@ Factory methods tạo controls đồng bộ style:
 | Thay đổi cách detect header row | `InvoiceTab.cs` — `DetectHeaderRow()` + `AppConstants.HEADER_ROW_KEYWORDS` |
 | Thay đổi cách OCR gọi Google | `MainForm.cs` — `CallPythonOCR()` |
 | Thêm loại ảnh được chấp nhận | `MainForm.cs` — `GetImageFiles()` |
+| Đổi model Gemini / thứ tự fallback | `GeminiService.MODEL_FALLBACK_LIST` |
+| Đổi Gemini API key | `AppConstants.GEMINI_API_KEY` |
 
 ---
 
@@ -274,6 +370,7 @@ Factory methods tạo controls đồng bộ style:
 | 8 | `AddressParser` | `DistrictDict`, `WardDict` | Chỉ cover TP.HCM |
 | 9 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | `"textinputter-4a7bda4ef67a.json"` | Credential file cứng cạnh .exe |
 | 10 | `AppConstants.SHIPPING_FEES_BY_QUAN` | Bảng phí ship theo quận | Phụ thuộc hợp đồng vận chuyển hiện tại, chỉ cover TP.HCM |
+| 11 | `AppConstants.GEMINI_API_KEY` | API key Gemini nhúng thẳng | Không nên commit lên git public |
 
 **Hướng cải thiện đề xuất (discuss sau):**
 - Item 1: Dùng `OpenFileDialog` để user chọn file Excel đích khi start, hoặc đọc từ `appsettings.json`
@@ -289,7 +386,6 @@ Factory methods tạo controls đồng bộ style:
 |---|---|---|
 | `ManualInputTab.cs` | `SaveManualEntry()` | Chưa ghi vào Excel — hiện chỉ hiện MessageBox |
 | `MainForm.cs` | `CallPythonOCR()` | Tên hàm misleading (không call Python) — là Google Vision API |
-| `OcrTab.cs` | `ExportMappedDataToExcel()` | Dùng ClosedXML thẳng với `Dictionary<string,string>` — chưa dùng `ExcelInvoiceService` |
 | `ExcelInvoiceService.cs` | constructor | Tên file Excel hardcoded theo tháng — cần đổi mỗi tháng |
 
 ---
@@ -303,9 +399,19 @@ Factory methods tạo controls đồng bộ style:
 
 ---
 
-## 11. Command để build file .exe
-
+## 11. Commands hữu ích
+### a. Build file .exe
 ``` 
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\ 
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
 ```
 
+### b. Build và run project
+``` 
+dotnet build
+dotnet run
+```
+
+### c. Script rename images để dễ track
+```
+powershell -ExecutionPolicy Bypass -File ".\rename-images.ps1" -FolderPath "data\27-02-2026\images" -AutoConfirm
+```

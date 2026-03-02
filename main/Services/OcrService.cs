@@ -112,14 +112,20 @@ namespace TextInputter.Services
             {
                 totalCharCount++;
 
-                bool isVietnamese = (c >= '\u0100' && c <= '\u01FF') ||
-                                   (c >= '\u1E00' && c <= '\u1EFF');
+                bool isVietnamese =
+                    (c >= '\u0100' && c <= '\u01FF') || (c >= '\u1E00' && c <= '\u1EFF');
 
-                bool isEnglish = char.IsLetterOrDigit(c) ||
-                                char.IsWhiteSpace(c) ||
-                                c == ',' || c == '.' || c == '-' ||
-                                c == '/' || c == ':' || c == ';' ||
-                                c == '(' || c == ')';
+                bool isEnglish =
+                    char.IsLetterOrDigit(c)
+                    || char.IsWhiteSpace(c)
+                    || c == ','
+                    || c == '.'
+                    || c == '-'
+                    || c == '/'
+                    || c == ':'
+                    || c == ';'
+                    || c == '('
+                    || c == ')';
 
                 if (isVietnamese || isEnglish)
                     validCharCount++;

@@ -27,7 +27,8 @@ namespace TextInputter
         private bool isProcessing = false;
         private ImageAnnotatorClient visionClient;
         private OCRTextParsingService _ocrParsingService;
-        private List<Dictionary<string, string>> mappedDataList = new List<Dictionary<string, string>>();
+        private List<Dictionary<string, string>> mappedDataList =
+            new List<Dictionary<string, string>>();
 
         // ─── Constructor ───────────────────────────────────────────────────────
         public MainForm()
@@ -40,9 +41,9 @@ namespace TextInputter
             LoadApplicationIcon();
 
             // Init each tab — UI trước, logic sau
-            InitializeInvoiceTabUI();    // InvoiceTab.UI.cs  — controls + layout
-            InitializeOCRTab();          // OcrTab.cs         — controls + layout + logic
-            InitializeManualInputTab();  // ManualInputTab.cs — controls + layout + logic
+            InitializeInvoiceTabUI(); // InvoiceTab.UI.cs  — controls + layout
+            InitializeOCRTab(); // OcrTab.cs         — controls + layout + logic
+            InitializeManualInputTab(); // ManualInputTab.cs — controls + layout + logic
         }
 
         // ─── Service initialization ────────────────────────────────────────────
@@ -50,15 +51,21 @@ namespace TextInputter
         {
             try
             {
-                string credPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.GOOGLE_CREDENTIAL_FILE);
+                string credPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    AppConstants.GOOGLE_CREDENTIAL_FILE
+                );
                 if (File.Exists(credPath))
                 {
 #pragma warning disable CS0618 // GoogleCredential.FromStream deprecated by Google — no alternative in current SDK version
-                    var credential = Google.Apis.Auth.OAuth2.GoogleCredential
-                        .FromStream(File.OpenRead(credPath))
+                    var credential = Google
+                        .Apis.Auth.OAuth2.GoogleCredential.FromStream(File.OpenRead(credPath))
                         .CreateScoped(ImageAnnotatorClient.DefaultScopes);
 #pragma warning restore CS0618
-                    visionClient = new ImageAnnotatorClientBuilder { Credential = credential }.Build();
+                    visionClient = new ImageAnnotatorClientBuilder
+                    {
+                        Credential = credential,
+                    }.Build();
                     Debug.WriteLine("✅ Google Vision client initialized");
                 }
                 else
@@ -87,11 +94,17 @@ namespace TextInputter
         {
             try
             {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "app.ico");
+                string iconPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "resources",
+                    "app.ico"
+                );
                 if (File.Exists(iconPath))
                     this.Icon = new Icon(iconPath);
             }
-            catch { /* use default */ }
+            catch
+            { /* use default */
+            }
         }
 
         // ─── Top-bar button handlers ───────────────────────────────────────────
@@ -102,22 +115,27 @@ namespace TextInputter
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            if (isProcessing) return;
+            if (isProcessing)
+                return;
             if (imageFiles.Count == 0)
             {
-                MessageBox.Show("⚠️ Vui lòng chọn folder ảnh trước!", "Thông báo",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "⚠️ Vui lòng chọn folder ảnh trước!",
+                    "Thông báo",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
-            isProcessing            = true;
-            btnStart.Enabled        = false;
+            isProcessing = true;
+            btnStart.Enabled = false;
             btnSelectFolder.Enabled = false;
-            btnClear.Enabled        = false;
-            progressBar.Value       = 0;
-            progressBar.Maximum     = imageFiles.Count;
-            lblStatus.Text          = "⏳ Đang xử lý...";
-            lblStatus.ForeColor     = Color.Orange;
+            btnClear.Enabled = false;
+            progressBar.Value = 0;
+            progressBar.Maximum = imageFiles.Count;
+            lblStatus.Text = "⏳ Đang xử lý...";
+            lblStatus.ForeColor = Color.Orange;
 
             Task.Run(() =>
             {
@@ -127,17 +145,24 @@ namespace TextInputter
                 }
                 catch (Exception ex)
                 {
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        MessageBox.Show($"❌ Lỗi xử lý:\n{ex.Message}", "Lỗi",
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        btnStart.Enabled        = true;
-                        btnSelectFolder.Enabled = true;
-                        btnClear.Enabled        = true;
-                        isProcessing            = false;
-                        lblStatus.Text          = "❌ Lỗi";
-                        lblStatus.ForeColor     = Color.Red;
-                    });
+                    this.Invoke(
+                        (MethodInvoker)
+                            delegate
+                            {
+                                MessageBox.Show(
+                                    $"❌ Lỗi xử lý:\n{ex.Message}",
+                                    "Lỗi",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error
+                                );
+                                btnStart.Enabled = true;
+                                btnSelectFolder.Enabled = true;
+                                btnClear.Enabled = true;
+                                isProcessing = false;
+                                lblStatus.Text = "❌ Lỗi";
+                                lblStatus.ForeColor = Color.Red;
+                            }
+                    );
                 }
             });
         }
@@ -145,19 +170,27 @@ namespace TextInputter
         private void btnClear_Click(object sender, EventArgs e)
         {
             txtResult.Clear();
-            if (txtRawOCRLog  != null) txtRawOCRLog.Clear();
-            if (txtProcessLog != null) txtProcessLog.Clear();
+            if (txtRawOCRLog != null)
+                txtRawOCRLog.Clear();
+            if (txtProcessLog != null)
+                txtProcessLog.Clear();
             mappedDataList.Clear();
             lblCurrentFile.Text = "";
-            lblStatus.Text      = "Ready";
+            lblStatus.Text = "Ready";
             lblStatus.ForeColor = SystemColors.ControlText;
-            progressBar.Value   = 0;
+            progressBar.Value = 0;
         }
 
         private void btnExit_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("Bạn có chắc muốn thoát?", "Thoát",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (
+                MessageBox.Show(
+                    "Bạn có chắc muốn thoát?",
+                    "Thoát",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                ) == DialogResult.Yes
+            )
                 Application.Exit();
         }
 
@@ -167,8 +200,12 @@ namespace TextInputter
             if (isProcessing)
             {
                 e.Cancel = true;
-                MessageBox.Show("⚠️ Đang xử lý, vui lòng đợi!", "Thông báo",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "⚠️ Đang xử lý, vui lòng đợi!",
+                    "Thông báo",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
             }
         }
 
@@ -184,10 +221,10 @@ namespace TextInputter
             var files = (string[])e.Data.GetData(DataFormats.FileDrop);
             if (files != null && files.Length > 0)
             {
-                folderPath  = Path.GetDirectoryName(files[0]) ?? "";
-                imageFiles  = GetImageFiles(folderPath);
-                lblFolderPath.Text  = folderPath;
-                lblImageCount.Text  = $"{imageFiles.Count} ảnh";
+                folderPath = Path.GetDirectoryName(files[0]) ?? "";
+                imageFiles = GetImageFiles(folderPath);
+                lblFolderPath.Text = folderPath;
+                lblImageCount.Text = $"{imageFiles.Count} ảnh";
             }
         }
 
@@ -196,9 +233,13 @@ namespace TextInputter
         {
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
                 return new List<string>();
-            return Directory.GetFiles(folder, "*.*")
-                .Where(f => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" }
-                    .Contains(Path.GetExtension(f).ToLower()))
+            return Directory
+                .GetFiles(folder, "*.*")
+                .Where(f =>
+                    new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" }.Contains(
+                        Path.GetExtension(f).ToLower()
+                    )
+                )
                 .ToList();
         }
 
@@ -209,16 +250,23 @@ namespace TextInputter
         {
             try
             {
-                if (visionClient == null) return ("", 0f);
+                if (visionClient == null)
+                    return ("", 0f);
 
-                var image    = Google.Cloud.Vision.V1.Image.FromFile(imagePath);
-                var response = visionClient.Annotate(new AnnotateImageRequest
-                {
-                    Image    = image,
-                    Features = { new Feature { Type = Feature.Types.Type.DocumentTextDetection } }
-                });
+                var image = Google.Cloud.Vision.V1.Image.FromFile(imagePath);
+                var response = visionClient.Annotate(
+                    new AnnotateImageRequest
+                    {
+                        Image = image,
+                        Features =
+                        {
+                            new Feature { Type = Feature.Types.Type.DocumentTextDetection },
+                        },
+                    }
+                );
 
-                if (response?.FullTextAnnotation == null) return ("", 0f);
+                if (response?.FullTextAnnotation == null)
+                    return ("", 0f);
 
                 float confidence = 0f;
                 if (response.FullTextAnnotation.Pages?.Count > 0)
@@ -237,9 +285,10 @@ namespace TextInputter
 
         private string CleanOCRText(string raw)
         {
-            if (string.IsNullOrWhiteSpace(raw)) return "";
+            if (string.IsNullOrWhiteSpace(raw))
+                return "";
             var lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            var sb    = new StringBuilder();
+            var sb = new StringBuilder();
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
@@ -251,10 +300,10 @@ namespace TextInputter
 
         private bool IsGarbageLine(string line)
         {
-            if (line.Length < 2) return true;
+            if (line.Length < 2)
+                return true;
             int alphaNum = line.Count(c => char.IsLetterOrDigit(c));
             return (double)alphaNum / line.Length < 0.3;
         }
-
     }
 }
