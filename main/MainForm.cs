@@ -44,6 +44,7 @@ namespace TextInputter
             InitializeInvoiceTabUI(); // InvoiceTab.UI.cs  — controls + layout
             InitializeOCRTab(); // OcrTab.cs         — controls + layout + logic
             InitializeManualInputTab(); // ManualInputTab.cs — controls + layout + logic
+            InitializeUpdateTab(); // UpdateTab.UI.cs   — controls + layout + logic
         }
 
         // ─── Service initialization ────────────────────────────────────────────

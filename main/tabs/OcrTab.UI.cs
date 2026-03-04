@@ -99,6 +99,21 @@ namespace TextInputter
                 );
                 btnStartScan.Click += (s, e) => btnStart_Click(null, EventArgs.Empty);
                 pnlOCR.Controls.Add(btnStartScan);
+
+                var btnLoadFromLog = UIHelper.CreateButton(
+                    "📋 Tải từ Log",
+                    Color.LightYellow,
+                    290,
+                    y,
+                    130,
+                    35
+                );
+                btnLoadFromLog.Click += (s, e) => LoadFromLog();
+                new ToolTip().SetToolTip(
+                    btnLoadFromLog,
+                    "Đọc ocr_log.txt từ lần quét trước → khôi phục dữ liệu, không tốn quota API"
+                );
+                pnlOCR.Controls.Add(btnLoadFromLog);
                 y += 45;
 
                 // ── Người Đi ──────────────────────────────────────────────────
@@ -236,12 +251,13 @@ namespace TextInputter
                 txtRawOCRLog = new RichTextBox
                 {
                     Location = new Point(10, y),
-                    Width = pnlOCR.ClientSize.Width - 30,
+                    Width = this.ClientSize.Width - 50,
                     Height = 200,
                     ReadOnly = true,
                     BackColor = Color.White,
                     Font = new Font("Courier New", 8),
                     BorderStyle = BorderStyle.FixedSingle,
+                    Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
                 };
                 pnlOCR.Controls.Add(txtRawOCRLog);
                 y += 210;
@@ -260,12 +276,13 @@ namespace TextInputter
                 txtProcessLog = new RichTextBox
                 {
                     Location = new Point(10, y),
-                    Width = pnlOCR.ClientSize.Width - 30,
+                    Width = this.ClientSize.Width - 50,
                     Height = 400,
                     ReadOnly = true,
                     BackColor = Color.White,
                     Font = new Font("Courier New", 8),
                     BorderStyle = BorderStyle.FixedSingle,
+                    Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
                 };
                 pnlOCR.Controls.Add(txtProcessLog);
                 y += 410;
@@ -281,16 +298,17 @@ namespace TextInputter
                 var grpExportMode = new Panel
                 {
                     Location = new Point(10, y),
-                    Width = pnlOCR.ClientSize.Width - 20,
-                    Height = 82,
+                    Width = this.ClientSize.Width > 50 ? this.ClientSize.Width - 50 : 500,
+                    Height = 100,
                     BackColor = SystemColors.Control,
+                    Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
                 };
                 pnlOCR.Controls.Add(grpExportMode);
 
                 var rdoByInvoiceDate = new RadioButton
                 {
                     Text = "Theo ngày hóa đơn  (VD: 26 → sheet 26-02, 27 → sheet 27-02 ...)",
-                    Location = new Point(0, 2),
+                    Location = new Point(0, 4),
                     Height = 22,
                     Font = new Font("Arial", 9),
                     Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
@@ -300,7 +318,7 @@ namespace TextInputter
                 {
                     Text =
                         "Ngày hôm nay  (tất cả vào sheet " + DateTime.Now.ToString("dd-MM") + ")",
-                    Location = new Point(0, 28),
+                    Location = new Point(0, 32),
                     Height = 22,
                     Font = new Font("Arial", 9),
                     Checked = true,
@@ -310,7 +328,7 @@ namespace TextInputter
                 var rdoCustomDate = new RadioButton
                 {
                     Text = "Ngày khác (VD: 25-02):",
-                    Location = new Point(0, 54),
+                    Location = new Point(0, 60),
                     Height = 22,
                     Width = 170,
                     Font = new Font("Arial", 9),
@@ -320,14 +338,14 @@ namespace TextInputter
                 {
                     Text = "",
                     PlaceholderText = "dd-MM",
-                    Location = new Point(174, 53),
+                    Location = new Point(174, 59),
                     Width = 120,
                     Height = 22,
                     Font = new Font("Arial", 9),
                     Enabled = false,
                 };
 
-                _exportUseToday = true; // sync với Checked = true ở trên
+                _exportUseToday = true; // sync với rdoToday.Checked = true ở trên
 
                 rdoByInvoiceDate.CheckedChanged += (s, e) =>
                 {
@@ -363,7 +381,7 @@ namespace TextInputter
                 grpExportMode.Controls.Add(rdoToday);
                 grpExportMode.Controls.Add(rdoCustomDate);
                 grpExportMode.Controls.Add(txtCustomDate);
-                y += 92;
+                y += 102;
 
                 // ── Export button ─────────────────────────────────────────────
                 var btnExportOCR = UIHelper.CreateButton(
@@ -387,10 +405,6 @@ namespace TextInputter
                 // ── Responsive resize ─────────────────────────────────────────
                 pnlOCR.Resize += (s, e) =>
                 {
-                    if (txtNguoiDiOCR != null)
-                        txtNguoiDiOCR.Width = pnlOCR.ClientSize.Width - 20;
-                    if (txtNguoiLayOCR != null)
-                        txtNguoiLayOCR.Width = pnlOCR.ClientSize.Width - 20;
                     if (txtRawOCRLog != null)
                         txtRawOCRLog.Width = pnlOCR.ClientSize.Width - 30;
                     if (txtProcessLog != null)

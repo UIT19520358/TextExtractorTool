@@ -153,12 +153,14 @@ namespace TextInputter.Services
             // Lý do: hóa đơn có chiết khấu → "Tổng tiền hàng" ≠ "Tổng thanh toán",
             //        số cuối cùng in trên hóa đơn là số khách thực trả.
             // Fallback theo thứ tự:
-            //   0. Loại D — nhãn "THU X,XXX + SHIP": chỉ lấy số trước "+SHIP"
+            //   0a. Nhãn viết tay "THU X + SHIP": lấy số trước "+SHIP" (COD, có thu ship)
+            //   0b. Nhãn viết tay "THU X" (không "+SHIP"): ưu tiên cao — ghi đè số cuối text
+            //       vì nhãn tay chính xác hơn số in trên hóa đơn (đã tính chiết khấu thực tế)
             //   1. Số tiền cuối cùng trong raw text (>= 1k, định dạng X,XXX hoặc XXX,XXX,XXX)
             //   2. Keyword "tổng thanh toán" / "tiền thu" / "total" (nếu không tìm được số cuối)
             //   3. Keyword "t.tiên" / "T.Tiền"
             {
-                // Bước 0: Loại D — "THU 7,280 + SHIP" / "THU 7280+SHIP" / "THU: 7,280 +SHIP"
+                // Bước 0a: Loại D — "THU 7,280 + SHIP" / "THU 7280+SHIP" / "THU: 7,280 +SHIP"
                 // Chỉ lấy số trước "+SHIP"; phần "+SHIP" nghĩa là có thu ship → giữ COD logic
                 // ⚠️ Nhãn viết tay luôn ghi số ở đơn vị NGHÌN ĐỒNG (VD: "7.280" = 7280k)
                 //    → CHỈ strip dấu ngăn cách, KHÔNG chia 1000 như NormalizeToThousands
@@ -175,7 +177,32 @@ namespace TextInputter.Services
                     fields["TIỀN THU"] = long.TryParse(digits0, out long v0)
                         ? v0.ToString()
                         : digits0;
-                    // "THU X + SHIP" = COD (thu tiền hàng VÀ thu ship) → giữ COD, không đổi type
+                    // "THU X + SHIP" → TIỀN THU là tiền hàng, cộng thêm ship khi ghi Excel
+                    fields["INVOICE_TYPE"] = "COD_PLUS_SHIP";
+                    fields["_THU_FROM_LABEL"] = "1";
+                }
+
+                // Bước 0b: Nhãn viết tay "THU X" (không có "+SHIP") — ưu tiên cao nhất
+                // VD: "THU 7.280" / "THU: 7,280" / "THU 7280" (không kèm +SHIP)
+                // Đây là số thực tế thu từ khách, chính xác hơn số cuối trên hóa đơn in.
+                // CHỈ match khi nhãn đứng riêng (không đi cùng SHIP, KHÔNG THU SHIP, v.v.)
+                if (string.IsNullOrEmpty(fields.GetValueOrDefault("TIỀN THU", "")))
+                {
+                    var thuOnly = Regex.Match(
+                        text,
+                        @"(?<!\+\s*)(?<!\bKO\s)(?<!\bKHÔNG\s)(?<!\bKONG\s)\bTHU\s*[:\s]*(\d{1,3}(?:[.,]\d{3})+|\d{3,})\b(?!\s*\+\s*SHIP)",
+                        RegexOptions.IgnoreCase
+                    );
+                    if (thuOnly.Success)
+                    {
+                        var raw0b = thuOnly.Groups[1].Value.TrimEnd('.', ',');
+                        var digits0b = raw0b.Replace(",", "").Replace(".", "");
+                        fields["TIỀN THU"] = long.TryParse(digits0b, out long v0b)
+                            ? v0b.ToString()
+                            : digits0b;
+                        // Đánh dấu đã được set từ nhãn THU — để sau bước INVOICE_TYPE biết
+                        fields["_THU_FROM_LABEL"] = "1";
+                    }
                 }
 
                 // Bước 1: lấy số cuối cùng trong text (>= 3 chữ số, có dấu phẩy ngăn cách)
@@ -222,6 +249,11 @@ namespace TextInputter.Services
             //   "không thu ship" / "ko thu ship" / "khong thu" → SHIP_ONLY_FREE  (thu=0, hàng=-ship)
             //   "thu ship" (không kèm "không") → SHIP_ONLY_PAID  (thu=0, hàng=+ship)
             //   còn lại (có TIỀN THU > 0) → COD (thu=x, hàng=x+ship)  ← format cũ
+            //
+            // 9c. NOTE TÌNH TRẠNG — detect ghi chú đặc biệt trên nhãn viết tay:
+            //   "đã ck" / "da ck" / "đã chuyển khoản" → ghi vào TÌNH TRẠNG: "đã CK"
+            //   Hàng sỉ: "sỉ" / "si" / "hang si" → ghi vào TÌNH TRẠNG: "hàng sỉ"
+            //   Kết hợp cho phép: "hàng sỉ | đã CK" v.v.
             bool hasKhongThuShip = Regex.IsMatch(
                 text,
                 @"không\s+thu\s+ship|ko\s+thu\s+ship|khong\s+thu\s+ship|không\s+thu\b|ko\s+thu\b",
@@ -240,9 +272,52 @@ namespace TextInputter.Services
                 fields["INVOICE_TYPE"] = "SHIP_ONLY_PAID"; // hàng = +ship
                 fields["TIỀN THU"] = "0";
             }
-            else
+            else if (fields.GetValueOrDefault("INVOICE_TYPE", "") != "COD_PLUS_SHIP")
             {
-                fields["INVOICE_TYPE"] = "COD"; // format cũ: hàng = thu + ship
+                fields["INVOICE_TYPE"] = "COD"; // format cũ: hàng = thu - ship
+            }
+
+            // Nếu đang COD mà TIỀN THU được lấy từ nhãn "THU X" (bước 0b) thì ok, giữ nguyên.
+            // Nếu SHIP_ONLY_FREE/PAID thì bước trên đã set TIỀN THU = 0 → ok.
+
+            // 9c. Detect TÌNH TRẠNG đặc biệt từ nhãn viết tay
+            {
+                var tinhTrangParts = new List<string>();
+
+                // "đã CK" / "da ck" / "đã chuyển khoản" / "da chuyen khoan"
+                bool daCK = Regex.IsMatch(
+                    text,
+                    @"\bđ[aã]\s*ck\b|\bda\s*ck\b|\bđ[aã]\s*chuy[eêề]n\s*kho[aả]n|\bda\s*chuyen\s*khoan",
+                    RegexOptions.IgnoreCase
+                );
+                if (daCK)
+                    tinhTrangParts.Add("đã CK");
+
+                // Hàng sỉ: "sỉ" / "si" đứng riêng hoặc "hàng sỉ" / "hang si" / "hs"
+                bool hangSi = Regex.IsMatch(
+                    text,
+                    @"\bh[aà]ng\s*s[ỉi]\b|\bs[ỉi]\b|\bhs\b",
+                    RegexOptions.IgnoreCase
+                );
+                if (hangSi)
+                    tinhTrangParts.Add("hàng sỉ");
+
+                // SHIP_ONLY_FREE / SHIP_ONLY_PAID → ghi rõ vào TÌNH TRẠNG
+                if (hasKhongThuShip)
+                    tinhTrangParts.Add("KO THU SHIP");
+                else if (hasThuShip)
+                    tinhTrangParts.Add("THU SHIP");
+
+                // COD_PLUS_SHIP: ghi note "THU X + SHIP" thẳng vào GHI CHÚ, KHÔNG vào TÌNH TRẠNG
+                // (TÌNH TRẠNG chỉ chứa "hàng sỉ" hoặc rỗng)
+                if (fields.GetValueOrDefault("INVOICE_TYPE", "") == "COD_PLUS_SHIP")
+                {
+                    string thuAmt = fields.GetValueOrDefault("TIỀN THU", "");
+                    fields["GHI CHÚ"] = $"THU {thuAmt} + SHIP";
+                }
+
+                if (tinhTrangParts.Count > 0)
+                    fields["TÌNH TRẠNG"] = string.Join(" | ", tinhTrangParts);
             }
 
             // 10. NGÀY LẤY
@@ -252,37 +327,30 @@ namespace TextInputter.Services
             // Sau khi OCR parsing xong toàn bộ → kiểm tra field nào còn trống.
             // Nếu bất kỳ field quan trọng nào thiếu → trigger Gemini đọc ảnh gốc.
             // Chỉ log FAILED nếu sau Gemini vẫn còn trống.
+            // Gemini critical fields — nếu thiếu bất kỳ field nào thì trigger fallback
+            var geminiCriticalFields = new[]
+            {
+                "SHOP",
+                "QUẬN",
+                "ĐỊA CHỈ",
+                "TIỀN THU",
+                "TÊN KH",
+                "MÃ",
+                "NGÀY LẤY",
+            };
+            var fieldsSnapshot = fields; // local copy để dùng trong lambda (out param không dùng được)
             bool needGemini =
-                (
-                    string.IsNullOrEmpty(fields["SHOP"])
-                    || string.IsNullOrEmpty(fields["QUẬN"])
-                    || string.IsNullOrEmpty(fields["ĐỊA CHỈ"])
-                    || string.IsNullOrEmpty(fields["TIỀN THU"])
-                    || string.IsNullOrEmpty(fields["TÊN KH"])
-                    || string.IsNullOrEmpty(fields["MÃ"])
-                    || string.IsNullOrEmpty(fields["NGÀY LẤY"])
+                geminiCriticalFields.Any(f =>
+                    string.IsNullOrEmpty(fieldsSnapshot.GetValueOrDefault(f, ""))
                 )
                 && _gemini.IsConfigured
                 && !string.IsNullOrEmpty(CurrentImagePath);
             if (needGemini)
             {
                 string imgName = System.IO.Path.GetFileName(CurrentImagePath);
-                // Log các field còn thiếu để dễ debug
-                var missingBefore = new List<string>();
-                if (string.IsNullOrEmpty(fields["SHOP"]))
-                    missingBefore.Add("SHOP");
-                if (string.IsNullOrEmpty(fields["QUẬN"]))
-                    missingBefore.Add("QUẬN");
-                if (string.IsNullOrEmpty(fields["ĐỊA CHỈ"]))
-                    missingBefore.Add("ĐỊA CHỈ");
-                if (string.IsNullOrEmpty(fields["TIỀN THU"]))
-                    missingBefore.Add("TIỀN THU");
-                if (string.IsNullOrEmpty(fields["TÊN KH"]))
-                    missingBefore.Add("TÊN KH");
-                if (string.IsNullOrEmpty(fields["MÃ"]))
-                    missingBefore.Add("MÃ");
-                if (string.IsNullOrEmpty(fields["NGÀY LẤY"]))
-                    missingBefore.Add("NGÀY LẤY");
+                var missingBefore = geminiCriticalFields
+                    .Where(f => string.IsNullOrEmpty(fieldsSnapshot.GetValueOrDefault(f, "")))
+                    .ToList();
                 AddGeminiLog(
                     geminiLog,
                     $"TRIGGERED for: {imgName} | THIẾU: {string.Join(", ", missingBefore)}"
@@ -368,6 +436,23 @@ namespace TextInputter.Services
                                 || g.InvoiceType == "SHIP_ONLY_PAID"
                             )
                                 fields["TIỀN THU"] = "0";
+                            // Sync TÌNH TRẠNG khi Gemini detect type đặc biệt
+                            if (g.InvoiceType == "SHIP_ONLY_FREE")
+                            {
+                                var tt = fields.GetValueOrDefault("TÌNH TRẠNG", "");
+                                if (!tt.Contains("KO THU SHIP"))
+                                    fields["TÌNH TRẠNG"] = string.IsNullOrEmpty(tt)
+                                        ? "KO THU SHIP"
+                                        : tt + " | KO THU SHIP";
+                            }
+                            else if (g.InvoiceType == "SHIP_ONLY_PAID")
+                            {
+                                var tt = fields.GetValueOrDefault("TÌNH TRẠNG", "");
+                                if (!tt.Contains("THU SHIP"))
+                                    fields["TÌNH TRẠNG"] = string.IsNullOrEmpty(tt)
+                                        ? "THU SHIP"
+                                        : tt + " | THU SHIP";
+                            }
                             AddGeminiLog(
                                 geminiLog,
                                 $"INVOICE_TYPE override → {g.InvoiceType} (OCR was: {currentType})"

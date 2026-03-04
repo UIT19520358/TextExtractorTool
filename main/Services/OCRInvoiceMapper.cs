@@ -27,12 +27,17 @@ namespace TextInputter.Services
     public class OCRInvoiceMapper
     {
         /// <summary>
-        /// Tra cứu phí ship: ưu tiên theo PHƯỜNG (tier-3), fallback về QUẬN (tier-2).
+        /// Tra cứu phí ship với đầy đủ thông tin phường, quận và tên đường.
+        /// Tier-3   : SHIPPING_FEES_BY_WARD  (tên phường)
+        /// Tier-2.8 : SHIPPING_FEES_BY_STREET (tên đường) — override base quận
+        /// Tier-2.5 : WARD_TO_DISTRICT_MAP   (phường → quận → giá quận đó)
+        /// Tier-2   : SHIPPING_FEES_BY_QUAN  (quận trực tiếp)
         /// Trả về null nếu không tìm được → TIỀN SHIP để trống, user tự điền.
         /// </summary>
-        /// <param name="phuong">Tên phường từ AddressParser (không dấu, lowercase)</param>
-        /// <param name="quan">Tên quận từ AddressParser (không dấu, lowercase)</param>
-        public static decimal? GetShipFee(string phuong, string quan)
+        /// <param name="phuong">Tên phường từ AddressParser</param>
+        /// <param name="quan">Tên quận từ AddressParser</param>
+        /// <param name="duong">Tên đường từ AddressParser (có thể null/empty)</param>
+        public static decimal? GetShipFee(string phuong, string quan, string duong = null)
         {
             // Tier-3: tra theo phường trong SHIPPING_FEES_BY_WARD (override giá quận)
             if (!string.IsNullOrWhiteSpace(phuong))
@@ -43,9 +48,27 @@ namespace TextInputter.Services
                     if (NormalizeKey(kv.Key) == normWard)
                         return kv.Value;
                 }
+            }
 
-                // Tier-2.5: phường không có trong SHIPPING_FEES_BY_WARD
-                // → thử tra WARD_TO_DISTRICT_MAP để ra quận, rồi tra ship theo quận đó
+            // Tier-2.8: tra theo tên đường trong SHIPPING_FEES_BY_STREET
+            // Override giá quận khi cùng quận nhưng đường cụ thể có phí khác.
+            // Tên đường được match nếu normStreet chứa normKey (partial match).
+            if (!string.IsNullOrWhiteSpace(duong))
+            {
+                string normStreet = NormalizeKey(duong);
+                foreach (var kv in AppConstants.SHIPPING_FEES_BY_STREET)
+                {
+                    string normKey = NormalizeKey(kv.Key);
+                    if (normStreet == normKey || normStreet.Contains(normKey))
+                        return kv.Value;
+                }
+            }
+
+            // Tier-2.5: phường không có trong SHIPPING_FEES_BY_WARD
+            // → thử tra WARD_TO_DISTRICT_MAP để ra quận, rồi tra ship theo quận đó
+            if (!string.IsNullOrWhiteSpace(phuong))
+            {
+                string normWard = NormalizeKey(phuong);
                 foreach (var kv in AppConstants.WARD_TO_DISTRICT_MAP)
                 {
                     if (NormalizeKey(kv.Key) == normWard)

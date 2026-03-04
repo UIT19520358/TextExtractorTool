@@ -136,19 +136,24 @@ namespace TextInputter
             dgvInvoice.ScrollBars = ScrollBars.Both;
             dgvInvoice.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
 
-            lblInvoiceTotal.AutoSize = true;
+            lblInvoiceTotal.AutoSize = false;
+            lblInvoiceTotal.Height = 40;
             lblInvoiceTotal.Font = new System.Drawing.Font(
                 "Arial",
                 11F,
                 System.Drawing.FontStyle.Bold
             );
             lblInvoiceTotal.ForeColor = System.Drawing.Color.FromArgb(40, 40, 40);
+            lblInvoiceTotal.BackColor = System.Drawing.Color.LightYellow;
             lblInvoiceTotal.Name = "lblInvoiceTotal";
             lblInvoiceTotal.Text = "TỔNG CỘNG: 0 đ";
-            lblInvoiceTotal.Dock = DockStyle.Bottom;
+            lblInvoiceTotal.Dock = DockStyle.Top;
+            lblInvoiceTotal.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            lblInvoiceTotal.Padding = new Padding(10, 0, 0, 0);
+            lblInvoiceTotal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
 
-            tabInvoice.Controls.Add(dgvInvoice);
             tabInvoice.Controls.Add(lblInvoiceTotal);
+            tabInvoice.Controls.Add(dgvInvoice);
 
             // ── Legacy hidden buttons (chỉ instantiate để tránh NullRef, không add vào UI) ──
             btnAddInvoiceRow.Visible = false;

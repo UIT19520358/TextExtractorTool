@@ -1,0 +1,641 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using ClosedXML.Excel;
+
+namespace TextInputter
+{
+    // ─── Daily Report Display + Save ────────────────────────────────────────────
+    public partial class MainForm
+    {
+        private void DisplayDailyReport()
+        {
+            if (currentDailyReport == null)
+                return;
+
+            Panel pnlTop = tabInvoice.Controls["pnlInvoiceTop"] as Panel;
+            Panel pnlBottom = tabInvoice.Controls["pnlDailyReportBottom"] as Panel;
+
+            if (pnlTop == null)
+            {
+                tabInvoice.Controls.Clear();
+
+                // WinForms Dock layout rule: Bottom/Top phải add TRƯỚC Fill.
+                // Thứ tự add = thứ tự layout từ ngoài vào trong.
+                pnlBottom = new Panel
+                {
+                    Name = "pnlDailyReportBottom",
+                    Dock = DockStyle.Bottom,
+                    BackColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    Height = AppConstants.DAILY_REPORT_PANEL_HEIGHT,
+                };
+                tabInvoice.Controls.Add(pnlBottom);
+
+                // lblInvoiceTotal: Dock=Top — add trước dgvInvoice (Dock=Fill)
+                tabInvoice.Controls.Add(lblInvoiceTotal);
+
+                // dgvInvoice: Dock=Fill — add sau cùng để chiếm phần còn lại
+                tabInvoice.Controls.Add(dgvInvoice);
+
+                // pnlTop dùng để check "đã khởi tạo" — tạo dummy để các lần sau skip
+                pnlTop = new Panel
+                {
+                    Name = "pnlInvoiceTop",
+                    Visible = false,
+                    Width = 0,
+                    Height = 0,
+                };
+                tabInvoice.Controls.Add(pnlTop);
+            }
+
+            pnlBottom.Controls.Clear();
+
+            var r = currentDailyReport;
+            string soDonStr = r.SoDon.ToString("N0");
+            string thuStr = r.TongTienThu.ToString("N0");
+            decimal tongShipRaw = -r.TongTienShip; // -SUMIFS toàn bộ TIỀN SHIP
+            // KẾT = dùng TongKetCuoi đã tính ở BtnCalculateExcelData_Click (bao gồm cả đơn âm)
+            decimal ketTong = r.TongKetCuoi;
+            string ketStr = ketTong.ToString("N0");
+
+            Debug.WriteLine(
+                $"DisplayDailyReport: TongThu={r.TongTienThu}, TongShip={r.TongTienShip}, KhoanTru={r.KhoanTruShip}, TongKet={r.TongKetCuoi}, SoDon={r.SoDon}"
+            );
+
+            // ── Helper: tạo 1 DataGridView report nhỏ ─────────────────────────
+            DataGridView MakeReportGrid()
+            {
+                var g = new DataGridView
+                {
+                    BackgroundColor = Color.White,
+                    AllowUserToAddRows = false,
+                    AllowUserToDeleteRows = false,
+                    ReadOnly = true,
+                    ColumnHeadersVisible = false,
+                    RowHeadersVisible = false,
+                    ScrollBars = ScrollBars.Vertical,
+                    DefaultCellStyle =
+                    {
+                        Font = new Font("Arial", 10),
+                        Alignment = DataGridViewContentAlignment.MiddleLeft,
+                    },
+                    AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+                };
+                g.Columns.Add("TenMuc", "");
+                g.Columns.Add("Tien", "");
+                g.Columns.Add("SoDon", "");
+                g.Columns[0].Width = 220;
+                g.Columns[1].Width = 120;
+                g.Columns[2].Width = 90;
+                g.Columns[1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                g.Columns[2].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                return g;
+            }
+
+            // ── Panel chứa tất cả reports theo chiều ngang ────────────────────
+            // Layout: [Report Tổng] | [Report người 1] | [Report người 2] | ...
+            var pnlReports = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.White,
+            };
+            pnlBottom.Controls.Add(pnlReports);
+
+            int panelWidth = 450;
+            int nguoiPanelWidth = 360;
+            int panelX = 0;
+
+            // ── Report TỔNG (bên trái) ────────────────────────────────────────
+            {
+                var pnlTong = new Panel
+                {
+                    Location = new Point(panelX, 0),
+                    Width = panelWidth,
+                    Height = pnlBottom.Height - 4,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    BackColor = Color.White,
+                };
+                panelX += panelWidth + 6;
+
+                var lblTong = new Label
+                {
+                    Text = "📊 TỔNG HỢP",
+                    Dock = DockStyle.Top,
+                    Height = 22,
+                    Font = new Font("Arial", 9, FontStyle.Bold),
+                    BackColor = Color.LightSteelBlue,
+                    TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
+                };
+                pnlTong.Controls.Add(lblTong);
+
+                var dgvTong = MakeReportGrid();
+                dgvTong.Dock = DockStyle.Fill;
+
+                int ri;
+                ri = dgvTong.Rows.Add("", "Tiền Thu", "Số đơn");
+                dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightSteelBlue;
+                dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
+
+                ri = dgvTong.Rows.Add("TỔNG ĐƠN", thuStr, soDonStr);
+                dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+
+                ri = dgvTong.Rows.Add("tiền ship", tongShipRaw.ToString("N0"), "");
+                dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                dgvTong.Rows[ri].Cells[1].Style.ForeColor =
+                    tongShipRaw < 0 ? Color.Red : Color.Black;
+
+                ri = dgvTong.Rows.Add("đơn trả", "", "");
+                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                ri = dgvTong.Rows.Add("đơn cũ ck", "", "");
+                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                ri = dgvTong.Rows.Add("", ketStr, soDonStr);
+                dgvTong.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
+                dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
+                dgvTong.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
+
+                pnlTong.Controls.Add(dgvTong);
+                pnlReports.Controls.Add(pnlTong);
+            }
+
+            // ── Report nhỏ theo từng NGƯỜI ĐI ────────────────────────────────
+            if (r.ReportByNguoiDi != null && r.ReportByNguoiDi.Count > 0)
+            {
+                foreach (var kvp in r.ReportByNguoiDi.OrderBy(k => k.Key))
+                {
+                    string tenNguoi = kvp.Key;
+                    decimal tienThuNguoi = kvp.Value.TienThu;
+                    decimal tienShipNguoi = kvp.Value.TienShip;
+                    decimal soDonNguoi = kvp.Value.SoDon;
+
+                    var pnlNguoi = new Panel
+                    {
+                        Location = new Point(panelX, 0),
+                        Width = nguoiPanelWidth,
+                        Height = pnlBottom.Height - 4,
+                        BorderStyle = BorderStyle.FixedSingle,
+                        BackColor = Color.White,
+                    };
+                    panelX += nguoiPanelWidth + 6;
+
+                    var lblNguoi = new Label
+                    {
+                        Text = $"👤 {tenNguoi.ToUpper()}",
+                        Dock = DockStyle.Top,
+                        Height = 22,
+                        Font = new Font("Arial", 9, FontStyle.Bold),
+                        BackColor = Color.FromArgb(200, 230, 255),
+                        TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
+                    };
+                    pnlNguoi.Controls.Add(lblNguoi);
+
+                    var dgvNguoi = MakeReportGrid();
+                    dgvNguoi.Dock = DockStyle.Fill;
+                    dgvNguoi.Columns[0].Width = 150;
+                    dgvNguoi.Columns[1].Width = 100;
+                    dgvNguoi.Columns[2].Width = 70;
+
+                    int ri;
+                    // Header
+                    ri = dgvNguoi.Rows.Add("", "Tiền Thu", "Số đơn");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(200, 230, 255);
+                    dgvNguoi.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
+
+                    // TỔNG ĐƠN NHẬN
+                    ri = dgvNguoi.Rows.Add(
+                        "TỔNG ĐƠN",
+                        tienThuNguoi.ToString("N0"),
+                        soDonNguoi.ToString("N0")
+                    );
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+
+                    // tiền ship = -(tổng tiền ship của người đó)
+                    decimal khoanShipNguoi = -tienShipNguoi;
+                    ri = dgvNguoi.Rows.Add("tiền ship", khoanShipNguoi.ToString("N0"), "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    dgvNguoi.Rows[ri].Cells[1].Style.ForeColor =
+                        khoanShipNguoi < 0 ? Color.Red : Color.Black;
+
+                    // đơn trả (placeholder đỏ, tự điền)
+                    ri = dgvNguoi.Rows.Add("đơn trả", "", "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                    // đơn cũ ck (placeholder đỏ, tự điền)
+                    ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                    // Dòng KẾT = TỔNG ĐƠN + tiền ship (đơn trả/cũ ck để trống → không cộng)
+                    decimal ketNguoi = tienThuNguoi + khoanShipNguoi;
+                    ri = dgvNguoi.Rows.Add("", ketNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
+                    dgvNguoi.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
+                    dgvNguoi.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
+
+                    pnlNguoi.Controls.Add(dgvNguoi);
+                    pnlReports.Controls.Add(pnlNguoi);
+                }
+            }
+
+            // Mở rộng pnlReports nếu nội dung vượt quá chiều rộng
+            pnlReports.AutoScrollMinSize = new System.Drawing.Size(panelX, 0);
+        }
+
+        // ─── Invoice Button Panel ──────────────────────────────────────────────
+
+        private void InitializeInvoiceButtonPanel()
+        {
+            Panel pnlButtons = tabInvoice.Controls["pnlInvoiceButtons"] as Panel;
+            if (pnlButtons != null)
+                return;
+
+            pnlButtons = new Panel
+            {
+                Name = "pnlInvoiceButtons",
+                BackColor = Color.FromArgb(40, 40, 40),
+                Height = 40,
+                Dock = DockStyle.Top,
+            };
+
+            // Với WinForms, Dock=Top phải nằm trong Controls collection SAU Dock=Bottom
+            // nhưng TRƯỚC Dock=Fill. Ta remove dgvInvoice, add pnlButtons, rồi add lại dgvInvoice
+            // để đảm bảo thứ tự: Bottom → Top (lblInvoiceTotal) → Top (pnlButtons) → Fill (dgvInvoice)
+            tabInvoice.Controls.Remove(dgvInvoice);
+            tabInvoice.Controls.Add(pnlButtons);
+            tabInvoice.Controls.Add(dgvInvoice);
+
+            Button MakeBtn(string text, int x) =>
+                new Button
+                {
+                    Text = text,
+                    BackColor = Color.FromArgb(40, 40, 40),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Arial", 9),
+                    Size = new Size(75, 30),
+                    Location = new Point(x, 5),
+                };
+            Button btnSave = MakeBtn("💾 Lưu", 10);
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.Click += async (s, e) => await SaveDailyReportToExcelAsync(btnSave);
+            Button btnUndo = MakeBtn("↶ Undo", 90);
+            btnUndo.FlatAppearance.BorderSize = 0;
+            btnUndo.Click += (s, e) => MessageBox.Show("↶ Undo thay đổi");
+            Button btnClose = MakeBtn("✕ Đóng", 170);
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) =>
+            {
+                dgvInvoice.Rows.Clear();
+                dgvInvoice.Columns.Clear();
+                foreach (string name in new[] { "pnlDailyReport", "pnlInvoiceButtons" })
+                {
+                    var p = tabInvoice.Controls[name] as Panel;
+                    if (p != null)
+                    {
+                        tabInvoice.Controls.Remove(p);
+                        p.Dispose();
+                    }
+                }
+            };
+
+            pnlButtons.Controls.AddRange(new[] { btnSave, btnUndo, btnClose });
+        }
+
+        // ─── Save Daily Report → Excel ─────────────────────────────────────────
+
+        private async Task SaveDailyReportToExcelAsync(Button callerBtn = null)
+        {
+            if (callerBtn != null)
+                callerBtn.Enabled = false;
+            Panel overlay = null;
+            try
+            {
+                if (dgvInvoice.Rows.Count == 0)
+                {
+                    MessageBox.Show(
+                        "Không có dữ liệu để lưu!",
+                        "Thông báo",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                    return;
+                }
+
+                // ── Chọn file lưu (thường là file tháng hiện tại) ────────────
+                string defaultName =
+                    (currentDailyReport?.Date is string d2 && !string.IsNullOrEmpty(d2))
+                        ? $"DailyReport_{d2.Replace("/", "-").Replace(".", "-")}.xlsx"
+                        : "DailyReport.xlsx";
+
+                using var sfd = new SaveFileDialog
+                {
+                    Title = "Lưu báo cáo hàng ngày",
+                    Filter = "Excel Files (*.xlsx)|*.xlsx",
+                    DefaultExt = "xlsx",
+                    FileName = defaultName,
+                    InitialDirectory = System.IO.Directory.Exists(
+                        System.IO.Path.GetDirectoryName(currentExcelFilePath ?? "")
+                    )
+                        ? System.IO.Path.GetDirectoryName(currentExcelFilePath)
+                        : AppDomain.CurrentDomain.BaseDirectory,
+                };
+                if (sfd.ShowDialog() != DialogResult.OK)
+                    return;
+                string excelPath = sfd.FileName;
+
+                // ── Nếu file có sẵn → hỏi sheet name ─────────────────────────
+                string sheetName;
+                if (System.IO.File.Exists(excelPath))
+                {
+                    List<string> existingSheets;
+                    try
+                    {
+                        using var wbRead = new XLWorkbook(excelPath);
+                        existingSheets = wbRead.Worksheets.Select(ws => ws.Name).ToList();
+                    }
+                    catch
+                    {
+                        existingSheets = new List<string>();
+                    }
+
+                    string suggested =
+                        tabExcelSheets.SelectedTab?.Text ?? DateTime.Now.ToString("dd-MM");
+                    sheetName = PickOrCreateSheetName(existingSheets, suggested);
+                    if (sheetName == null)
+                        return; // user hủy
+                }
+                else
+                {
+                    sheetName = tabExcelSheets.SelectedTab?.Text ?? DateTime.Now.ToString("dd-MM");
+                }
+
+                // ── Snapshot data từ UI thread ────────────────────────────────
+                // Chỉ lấy các data row thực sự — bỏ qua row ▶ TỔNG, ▶ KẾT (row tổng kết do UI tạo ra)
+                var dgvRows = dgvInvoice
+                    .Rows.Cast<DataGridViewRow>()
+                    .Where(r =>
+                    {
+                        if (r.IsNewRow)
+                            return false;
+                        // Bỏ row tổng kết (cell 0 bắt đầu bằng "▶")
+                        string firstCell =
+                            r.Cells.Count > 0 ? r.Cells[0].Value?.ToString() ?? "" : "";
+                        if (firstCell.StartsWith("▶"))
+                            return false;
+                        return true;
+                    })
+                    .Select(r =>
+                        r.Cells.Cast<DataGridViewCell>()
+                            .Select(c => c.Value?.ToString() ?? "")
+                            .ToList()
+                    )
+                    .ToList();
+                var colHeaders = dgvInvoice
+                    .Columns.Cast<DataGridViewColumn>()
+                    .Select(c => c.HeaderText)
+                    .ToList();
+
+                // ── Ghi workbook (background thread) ──────────────────────────
+                overlay = ShowLoadingOverlay("⏳ Đang ghi dữ liệu vào Excel...");
+                await Task.Run(() =>
+                    WriteSheetToWorkbook(excelPath, sheetName, colHeaders, dgvRows)
+                );
+
+                // ── Ghi formula + bảng tổng kết ───────────────────────────────
+                HideLoadingOverlay(overlay);
+                overlay = ShowLoadingOverlay("⏳ Đang ghi công thức + bảng tổng kết...");
+
+                DateTime sheetDate = DateTime.Now;
+                if (
+                    !DateTime.TryParseExact(
+                        sheetName,
+                        "dd-MM",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None,
+                        out sheetDate
+                    )
+                )
+                    sheetDate = DateTime.Now;
+
+                var svc = new TextInputter.Services.ExcelInvoiceService(excelPath);
+                await Task.Run(() => svc.ApplyFormulasAndSummary(sheetName, sheetDate));
+
+                MessageBox.Show(
+                    $"✅ Đã lưu thành công!\nFile: {System.IO.Path.GetFileName(excelPath)}\nSheet: {sheetName}",
+                    "✅ Lưu thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+                lblStatus.Text = $"✅ {System.IO.Path.GetFileName(excelPath)} [{sheetName}]";
+                lblStatus.ForeColor = Color.Green;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"❌ Lỗi khi lưu: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                Debug.WriteLine($"SaveDailyReport error: {ex}");
+            }
+            finally
+            {
+                if (overlay != null)
+                    HideLoadingOverlay(overlay);
+                if (callerBtn != null)
+                    callerBtn.Enabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Dialog cho user chọn sheet có sẵn hoặc nhập tên sheet mới.
+        /// Trả về null nếu user nhấn Hủy.
+        /// </summary>
+        private string PickOrCreateSheetName(List<string> existingSheets, string suggested)
+        {
+            using var dlg = new Form
+            {
+                Text = "Chọn hoặc tạo sheet",
+                Size = new System.Drawing.Size(390, 250),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+            };
+
+            // Radio: chọn sheet có sẵn
+            var rbExisting = new RadioButton
+            {
+                Text = "Ghi đè sheet có sẵn:",
+                Left = 12,
+                Top = 12,
+                Width = 340,
+                Checked = existingSheets.Count > 0,
+            };
+            var cmb = new ComboBox
+            {
+                Left = 12,
+                Top = 34,
+                Width = 354,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Enabled = existingSheets.Count > 0,
+            };
+            if (existingSheets.Count > 0)
+            {
+                cmb.Items.AddRange(existingSheets.Cast<object>().ToArray());
+                int idx = existingSheets.IndexOf(suggested);
+                cmb.SelectedIndex = idx >= 0 ? idx : 0;
+            }
+
+            // Radio: tạo sheet mới
+            var rbNew = new RadioButton
+            {
+                Text = "Tạo sheet mới:",
+                Left = 12,
+                Top = 72,
+                Width = 340,
+                Checked = existingSheets.Count == 0,
+            };
+            var txt = new TextBox
+            {
+                Left = 12,
+                Top = 94,
+                Width = 354,
+                Text = suggested,
+                Enabled = existingSheets.Count == 0,
+            };
+
+            rbExisting.CheckedChanged += (_, __) =>
+            {
+                cmb.Enabled = rbExisting.Checked;
+                txt.Enabled = !rbExisting.Checked;
+            };
+            rbNew.CheckedChanged += (_, __) =>
+            {
+                cmb.Enabled = !rbNew.Checked;
+                txt.Enabled = rbNew.Checked;
+            };
+
+            var btnOk = new Button
+            {
+                Text = "OK",
+                Left = 214,
+                Top = 170,
+                Width = 75,
+                DialogResult = DialogResult.OK,
+            };
+            var btnCancel = new Button
+            {
+                Text = "Hủy",
+                Left = 298,
+                Top = 170,
+                Width = 75,
+                DialogResult = DialogResult.Cancel,
+            };
+
+            dlg.Controls.AddRange(new Control[] { rbExisting, cmb, rbNew, txt, btnOk, btnCancel });
+            dlg.AcceptButton = btnOk;
+            dlg.CancelButton = btnCancel;
+
+            if (dlg.ShowDialog() != DialogResult.OK)
+                return null;
+
+            return rbNew.Checked
+                ? (txt.Text.Trim().Length > 0 ? txt.Text.Trim() : suggested)
+                : (cmb.SelectedItem?.ToString() ?? suggested);
+        }
+
+        /// <summary>
+        /// Mở workbook (hoặc tạo mới), xóa sheet cũ nếu trùng tên,
+        /// ghi header + data, rồi SaveAs — KHÔNG đụng đến các sheet khác.
+        /// </summary>
+        private static void WriteSheetToWorkbook(
+            string excelPath,
+            string sheetName,
+            List<string> colHeaders,
+            List<List<string>> dgvRows
+        )
+        {
+            // Mở file có sẵn → giữ nguyên tất cả sheet khác
+            // Tạo file mới nếu chưa tồn tại
+            var workbook = System.IO.File.Exists(excelPath)
+                ? new XLWorkbook(excelPath)
+                : new XLWorkbook();
+
+            using (workbook)
+            {
+                // Xóa sheet cũ cùng tên (nếu có) trước khi tạo lại
+                if (workbook.TryGetWorksheet(sheetName, out _))
+                    workbook.Worksheets.Delete(sheetName);
+
+                var ws = workbook.Worksheets.Add(sheetName);
+
+                // Row 1: tiêu đề cột
+                for (int c = 0; c < colHeaders.Count; c++)
+                {
+                    var cell = ws.Cell(1, c + 1);
+                    cell.Value = colHeaders[c];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Fill.BackgroundColor = XLColor.LightGray;
+                }
+
+                // Row 3 trở đi: data (row 2 để trống cho cấu trúc DATA_START_ROW=3)
+                for (int r = 0; r < dgvRows.Count; r++)
+                {
+                    for (int c = 0; c < dgvRows[r].Count; c++)
+                    {
+                        var cell = ws.Cell(r + 3, c + 1);
+                        string val = dgvRows[r][c];
+                        if (
+                            double.TryParse(
+                                val,
+                                System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                out double num
+                            )
+                        )
+                        {
+                            cell.Value = num;
+                            cell.Style.NumberFormat.Format = "#,##0";
+                        }
+                        else
+                            cell.Value = val;
+                    }
+                }
+
+                ws.Columns().AdjustToContents();
+                workbook.SaveAs(excelPath);
+            }
+        }
+
+        // Giữ lại để tương thích nếu có nơi gọi trực tiếp
+        private void SaveDailyReportToExcel()
+        {
+            _ = SaveDailyReportToExcelAsync();
+        }
+
+        // ─── Legacy handlers (buttons hidden in Designer, kept to avoid Designer wire errors) ──
+
+        // NOTE: btnSaveInvoice, btnImportFromExcel, btnCalculateInvoice đều Visible=false trong Designer.
+        // Flow chính dùng BtnCalculateExcelData_Click + SaveDailyReportToExcel thay thế.
+
+        private void BtnSaveInvoice_Click(
+            object sender,
+            EventArgs e
+        ) { /* hidden – dùng 💾 Lưu trong button panel */
+        }
+
+        private void BtnImportFromExcel_Click(
+            object sender,
+            EventArgs e
+        ) { /* hidden – dùng BtnOpenExcel_Click + BtnCalculateExcelData_Click */
+        }
+    }
+}

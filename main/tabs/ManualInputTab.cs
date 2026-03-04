@@ -106,14 +106,14 @@ namespace TextInputter
                     return;
                 }
 
-                // Tiền Hàng: dùng giá trị nhập nếu có, không thì tự tính = Thu + Ship
+                // Tiền Hàng: dùng giá trị nhập nếu có, không thì tự tính = Thu - Ship
                 decimal tienHangVal;
                 if (
                     string.IsNullOrWhiteSpace(tienHang)
                     || !decimal.TryParse(tienHang, out tienHangVal)
                     || tienHangVal < 0
                 )
-                    tienHangVal = tienThuVal + tienShipVal;
+                    tienHangVal = tienThuVal - tienShipVal;
 
                 // ── Chọn file Excel ───────────────────────────────────────────
                 using var openDialog = new OpenFileDialog

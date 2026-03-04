@@ -1,250 +1,135 @@
-# 📄 TextInputter - Ứng dụng OCR hóa đơn tiếng Việt
+# TextInputter
 
-Ứng dụng **Windows WinForms** để quét, nhận diện và trích xuất thông tin từ hình ảnh hóa đơn tiếng Việt với độ chính xác cực kỳ cao (99%+) nhờ **Google Cloud Vision API**, kết hợp **Gemini Vision AI** làm fallback khi parse địa chỉ thất bại.
-
----
-
-## ⚠️ BƯỚC QUAN TRỌNG: Setup Google Cloud Credentials
-
-Chương trình cần **Google Cloud service account credentials** để hoạt động.
-### 1️⃣ Tạo Google Cloud Project
-
-1. Truy cập: https://console.cloud.google.com
-2. Tạo project mới (Project Name: `TextInputter` hoặc tùy ý)
-3. Bật **Vision API**:
-   - Menu → APIs & Services → Library
-   - Search: "Cloud Vision API"
-   - Click → Enable
-4. Bật **Billing** (Google cung cấp 1000 requests/tháng miễn phí):
-   - Menu → Billing
-   - Link tài khoản billing
-
-### 2️⃣ Tạo Service Account Credentials
-
-1. Vào: APIs & Services → Credentials
-2. Click: Create Credentials → Service Account
-3. Điền thông tin:
-   - Service account name: `textinputter-ocr`
-   - Click: Create and Continue
-4. Tạo Key:
-   - Service Account → Keys tab
-   - Add Key → Create new key
-   - Format: **JSON**
-   - Download file JSON (ví dụ: `textinputter-4a7bda4ef67a.json`)
-
-### 3️⃣ Copy vào project
-
-- Đặt file JSON vào **gốc project**:
-  ```
-  d:\Work\Freelance\TextInputter\[tên-file-credentials].json
-  ```
-
-- **HOẶC** rename thành tên mặc định:
-  ```
-  textinputter-4a7bda4ef67a.json
-  ```
-
-### 4️⃣ ⚠️ Thêm vào .gitignore (ĐẬU BẮT BUỘC!)
-
-File credentials chứa **private key** → **KHÔNG được public lên GitHub**
-
-Kiểm tra `.gitignore` có dòng này không:
-```gitignore
-textinputter-4a7bda4ef67a.json
-```
-
-Nếu chưa có, thêm vào `.gitignore`
+Ứng dụng Windows (C# WinForms) hỗ trợ nhân viên giao hàng nhập liệu hóa đơn nhanh từ ảnh chụp, xuất thẳng vào file Excel theo định dạng của khách.
 
 ---
 
-## 🤖 (Tuỳ chọn) Setup Gemini AI Fallback
+## Tính năng chính
 
-Khi OCR parsing không đủ field (địa chỉ bị wrap dòng, quận không rõ...), app tự gửi ảnh lên **Gemini Vision** để đọc lại.
+### 🔍 Tab OCR — Xử lý hàng loạt
+- Chọn thư mục ảnh → quét toàn bộ bằng **Google Cloud Vision**
+- Tự động extract 12 fields: `SHOP`, `TÊN KH`, `MÃ`, `ĐỊA CHỈ`, `QUẬN`, `PHƯỜNG`, `TÊN ĐƯỜNG`, `TIỀN THU`, `TIỀN SHIP`, `NGÀY LẤY`, `NGƯỜI ĐI`, `GHI CHÚ`
+- **Gemini fallback tự động** khi regex thiếu field — thử tuần tự 5 model (2.5-flash-lite → 2.5-pro)
+- Tự động tra **phí ship 4 cấp** theo địa chỉ:
+  - Tier 3: theo phường cụ thể (Q8 chia đôi P.5–16)
+  - Tier 2.8: theo tên đường cụ thể (Yên Thế, Vinhome, Đặng Nguyên Cẩn...)
+  - Tier 2.5: phường → quận (qua bảng map)
+  - Tier 2: theo quận
+- Tự động điền **người đi** theo khu vực (c.hieu / c.cuong / a.quyen / An Tam dd-MM)
+- Hỗ trợ **manual override** người đi/người lấy
+- **Xuất Excel** → user chọn file đích qua dialog → ghi vào sheet `dd-MM`
+- **Tính tiền** riêng: tính TIỀN HÀNG + sinh bảng tổng per SHOP và per NGƯỜI ĐI
 
-### Lấy API key miễn phí:
-1. Truy cập: https://aistudio.google.com/apikey
-2. Tạo API key mới (không cần billing)
-3. Mở `main/AppConstants.cs`, điền key vào:
-   ```csharp
-   public const string GEMINI_API_KEY = "YOUR_KEY_HERE";
-   ```
+### 📋 Tab Invoice — Xem & tính báo cáo ngày
+- Mở file Excel bất kỳ, tự detect header
+- Tính tổng TIỀN THU / TIỀN SHIP / TIỀN HÀNG per SHOP
+- Lưu báo cáo ngày ra `DailyTotalReport.xlsx`
 
-### Model fallback tự động (quota nhiều → ít):
-```
-gemini-2.5-flash-lite → gemini-2.0-flash-lite → gemini-2.0-flash → gemini-2.5-flash → gemini-2.5-pro
-```
-Hết quota model nào → tự động thử model tiếp theo.
-
-> ⚠️ Để trống `""` = tắt Gemini, chỉ dùng rule-based parser.  
-> ⚠️ Không commit API key lên git nếu repo public.
-
----
-
-## 📝 File Sample Credentials
-
-Sử dụng template trong `textinputter-google-credential-sample.json` để guide người khác setup:
-
-```json
-{
-  "type": "service_account",
-  "project_id": "textinputter",
-  "private_key_id": "{private_key_id}",
-  "private_key": "-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----\n",
-  "client_email": "textinputter-ocr@textinputter.iam.gserviceaccount.com",
-  "client_id": "{client_id}",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/...",
-  "universe_domain": "googleapis.com"
-}
-```
-
-**Thay đổi các trường:**
-- `{private_key_id}` → Lấy từ file JSON download
-- `{private_key}` → Lấy từ file JSON download (toàn bộ private key)
-- `{client_id}` → Lấy từ file JSON download
+### ✍️ Tab Manual Input
+- Nhập tay thông tin đơn hàng (đang phát triển)
 
 ---
 
-## 🚀 Chạy chương trình
+## Cài đặt & chạy
 
-### Yêu cầu:
-- ✅ .NET 8.0 SDK
-- ✅ File credentials JSON đã copy vào folder
-- ✅ Google Cloud Vision API đã enable
-- ✅ Billing đã setup
+### Yêu cầu
+- Windows 10/11
+- .NET 8.0 SDK (để build) hoặc chỉ cần Runtime (để chạy bản publish)
 
-### Chạy:
+### Build & chạy từ source
 ```powershell
-cd d:\Work\Freelance\TextInputter
+git clone <repo>
+cd TextInputter
 dotnet run
 ```
 
-### Quy trình sử dụng:
-1. **OCR Tab:** Chọn folder ảnh hóa đơn → nhập Người Đi / Người Lấy → Bắt Đầu
-2. App gửi từng ảnh lên Google Vision → extract text → parse 12 fields (SHOP, TÊN KH, MÃ, địa chỉ, tiền, ngày...)
-3. Nếu thiếu field: tự động fallback Gemini Vision đọc ảnh gốc. Nếu vẫn thiếu → đơn vẫn được xuất, các cell thiếu tô đỏ để điền tay
-4. Kết quả hiện ở log theo **đúng thứ tự ảnh đã quét** → Xuất Excel
-5. **Invoice Tab:** Mở file Excel của khách → Tính → xem Daily Report → Lưu báo cáo
-
----
-
-## 📦 Build standalone .exe (Optional)
-
+### Publish ra file .exe standalone
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true
-```
-
-Output `.exe`:
-```
-bin/Release/net8.0-windows/publish/TextInputter.exe
-```
-
-⚠️ **Lưu ý:** File credentials vẫn cần có trong cùng folder với `.exe`
+dotnet publish -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o publish```
+File .exe xuất ra trong thư mục `publish\`.
 
 ---
 
-## ✨ Tính năng:
+## Cấu hình
 
-✅ **OCR hàng loạt** — Batch process nhiều ảnh hóa đơn cùng lúc  
-✅ **Nhận diện chính xác** — Google Vision API (99%+)  
-✅ **Parse thông minh** — Tự động extract 12 fields: tên KH, mã HĐ, địa chỉ, tiền thu, tiền ship, ngày...  
-✅ **Gemini AI Fallback** — Khi regex fail → gửi ảnh lên Gemini Vision, tự chuyển model khi hết quota  
-✅ **Địa chỉ VN** — Tách SỐ NHÀ / TÊN ĐƯỜNG / PHƯỜNG / QUẬN, cover sáp nhập ĐVHC TP.HCM 2025  
-✅ **Auto phí ship** — Tra bảng phí theo phường/quận (Q8: split từng phường; các quận khác: tra theo quận)  
-✅ **Alias địa chỉ** — Nhận dạng viết tắt như "bh thanh" → "bình thạnh", "t binh" → "tân bình"...  
-✅ **Thứ tự quét** — Excel xuất đúng thứ tự ảnh đã quét, không đảo lộn  
-✅ **Highlight thiếu field** — Đơn thiếu field vẫn xuất, tô đỏ các cell cần điền tay (không còn row FAIL)  
-✅ **Excel export** — Xuất ra sheet theo ngày, ghi đúng 20 cột template  
-✅ **Daily Report** — Tổng hợp doanh thu, tiền ship, số đơn theo ngày  
-✅ **UI tiếng Việt** — Search log, màu sắc trực quan
+### Google Cloud Vision (OCR chính)
+1. Tạo Google Cloud project, bật **Vision API**
+2. Tạo Service Account → tải JSON key
+3. Đặt file JSON **cạnh file .exe** (hoặc cạnh thư mục project khi dev)
+4. Sửa tên file trong `AppConstants.GOOGLE_CREDENTIAL_FILE`
 
----
+### Gemini API (OCR fallback)
+1. Lấy API key tại [aistudio.google.com](https://aistudio.google.com/apikey) (free tier đủ dùng)
+2. Điền vào `AppConstants.GEMINI_API_KEY`
 
-## 💰 Chi phí
-
-**Google Cloud Vision API:**
-- Miễn phí 1,000 requests/tháng
-- Sau đó: $0.6 per 1,000 requests
-- Ví dụ: 1,000 ảnh/tháng ≈ $0.6
-
-**Gemini Vision AI:**
-- Hoàn toàn **miễn phí** (free tier) với API key từ https://aistudio.google.com/apikey
-- 5 model fallback tự động — chỉ dùng khi OCR parsing không đủ field
+> ⚠️ **Không commit API key / credential JSON lên git public**
 
 ---
 
-## 🛠️ Troubleshooting
+## Bảng phí ship hiện tại
 
-### ❌ "PermissionDenied: This API method requires billing to be enabled"
-**Nguyên nhân:** Billing chưa setup  
-**Fix:** Vào Google Cloud Console → Billing → Link tài khoản
+| Quận/Khu | Phí | Ghi chú |
+|----------|-----|---------|
+| Q1, Q3 | 20k | |
+| Q4, Q5, Q10, Q11 | 25k | |
+| Q6 | 25k | đường Đặng Nguyên Cẩn → 30k |
+| Q7, Q2, Q12 | 30k | |
+| Q8 | 25k | P.5–7, P.11–16 → 30k |
+| Q9 | 30k | Vinhome Grand Park → 35k |
+| Bình Thạnh, Phú Nhuận | 20k | |
+| Gò Vấp, Tân Phú | 25k | |
+| Tân Bình | 25k | đường Yên Thế, Quách Văn Tuấn → 30k |
+| Bình Tân, Thủ Đức | 30k | |
+| Bình Chánh, Hóc Môn, Nhà Bè | 35k | |
+| Củ Chi | 40k | |
+| Cần Giờ | 50k | |
 
-### ❌ "Could not find credentials"
-**Nguyên nhân:** File JSON không ở đúng vị trí  
-**Fix:** Kiểm tra file `.json` nằm trong folder project gốc
-
-### ❌ "Vision API not enabled"
-**Nguyên nhân:** API chưa được bật  
-**Fix:** APIs & Services → Library → Cloud Vision API → Enable
-
-### ❌ "Invalid JSON in credentials"
-**Nguyên nhân:** File JSON bị lỗi  
-**Fix:** Download file mới từ Google Cloud Console
-
-### ❌ Gemini: "Quota exceeded" / "TooManyRequests"
-**Nguyên nhân:** Hết free quota của model đang dùng  
-**Fix:** App tự động fallback — không cần làm gì. Nếu tất cả 5 model đều hết → chờ reset quota (12:00 AM Pacific time) hoặc chạy lại ngày hôm sau.
+Sửa bảng phí: `main/AppConstants.cs` → `SHIPPING_FEES_BY_QUAN` / `SHIPPING_FEES_BY_WARD` / `SHIPPING_FEES_BY_STREET`
 
 ---
 
-## 📂 Cấu trúc Project
+## Cấu trúc project
 
 ```
-d:\Work\Freelance\TextInputter\
-├── main/
-│   ├── AppConstants.cs          # Config tập trung: API keys, bảng phí ship, màu sắc...
-│   ├── MainForm.cs              # Shared fields + constructor
-│   ├── MainForm.Designer.cs     # Form skeleton
-│   ├── Program.cs               # Entry point
-│   ├── tabs/
-│   │   ├── OcrTab.cs            # OCR batch tab
-│   │   ├── InvoiceTab.cs        # Excel viewer + Daily Report
-│   │   ├── InvoiceTab.UI.cs     # Invoice UI controls
-│   │   └── ManualInputTab.cs    # Manual input tab
-│   ├── Services/
-│   │   ├── OCRTextParsingService.cs  # Parse OCR text → 12 fields + Gemini fallback
-│   │   ├── GeminiService.cs          # Gemini Vision AI (5 model fallback)
-│   │   ├── AddressParser.cs          # Parse địa chỉ VN
-│   │   ├── ExcelInvoiceService.cs    # Ghi Excel
-│   │   └── OCRInvoiceMapper.cs       # Model + ship fee lookup
-│   └── utils/
-│       ├── UIHelper.cs               # WinForms factory + search
-│       └── AddressParsingDialog.cs   # Dialog xác nhận địa chỉ
-├── resources/
-│   └── app.ico
-├── data/sample/                 # File mẫu để test
-├── ARCHITECTURE.md              # Chi tiết kiến trúc, flow, edge cases
-├── TextInputter.csproj          # Project file
-├── textinputter-4a7bda4ef67a.json              # ⚠️ Credentials Google (KHÔNG push)
-└── textinputter-google-credential-sample.json  # Template sample
+main/
+├── AppConstants.cs          ← tất cả constants/hardcoded values
+├── MainForm.cs              ← shared fields + constructor
+├── tabs/
+│   ├── OcrTab.cs            ← OCR batch logic
+│   ├── InvoiceTab.cs        ← báo cáo ngày
+│   └── ManualInputTab.cs    ← nhập tay (WIP)
+└── Services/
+    ├── OCRTextParsingService.cs   ← parse OCR text → fields
+    ├── GeminiService.cs           ← Gemini fallback
+    ├── ExcelInvoiceService.cs     ← ghi/cập nhật Excel
+    ├── OCRInvoiceMapper.cs        ← tra ship fee, người đi
+    └── AddressParser.cs           ← tách địa chỉ VN
 ```
 
-> Xem `ARCHITECTURE.md` để biết chi tiết flow, services, edge cases và hướng dẫn thêm tính năng.
+Chi tiết kỹ thuật xem [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 
-## 📄 License
+## Workflow thực tế
 
-Miễn phí sử dụng - TextInputter OCR
+```
+1. Chụp ảnh hóa đơn → chép vào thư mục data/
+2. Tab OCR → Chọn Thư Mục → Bắt Đầu
+3. Kiểm tra log kết quả (txtProcessLog)
+4. Xuất Excel → chọn file Excel đích → OK
+5. Tính Tiền → sinh bảng tổng tự động
+6. Mở Excel kiểm tra kết quả
+```
 
 ---
 
-## 💡 Ghi chú quan trọng
+## Hành vi đặc biệt
 
-- **✅ Google credentials KHÔNG commit lên GitHub** — Đã thêm vào `.gitignore`
-- **✅ Gemini API key KHÔNG commit** — Điền vào `AppConstants.cs` nhưng không push nếu repo public
-- **✅ Sử dụng template `textinputter-google-credential-sample.json`** để guide người khác cách setup
-- **✅ Mỗi service account credentials khác nhau** — Thay đổi theo Google Cloud project của mình
-
+- **Hàng sỉ / ship gộp** (không có MÃ): TÌNH TRẠNG = `"hàng sỉ"`, không tô đỏ cột MÃ
+- **Người đi "An Tam"**: tự động append ngày `dd-MM` vào cuối (vd: `"An Tam 15-03"`)
+- **Duplicate MÃ**: nếu mã đơn đã tồn tại trong bất kỳ sheet nào → **cập nhật** thay vì thêm mới
+- **TIỀN THU** trong Excel = Tổng thanh toán OCR + TIỀN SHIP (để tính đúng doanh thu)
+- **TIỀN HÀNG** = TIỀN THU - TIỀN SHIP (tính sau khi bấm "Tính Tiền")

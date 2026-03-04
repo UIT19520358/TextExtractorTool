@@ -77,7 +77,7 @@ Hãy đọc kỹ ẢNH GỐC và trả về JSON theo đúng format sau, không 
   ""phuong"": ""<phường/xã của địa chỉ GIAO HÀNG, nếu có. VD: Phường 3, Phường 22, An Hội Tây, Long Thạnh Mỹ, Phú Lâm>"",
   ""quan"": ""<quận/huyện của địa chỉ GIAO HÀNG — QUAN TRỌNG: đọc kỹ toàn bộ địa chỉ để tìm quận, kể cả khi viết tắt. Chỉ ghi TÊN QUẬN hoặc SỐ QUẬN thuần túy, KHÔNG ghi 'Quận' hay 'Q.' phía trước, KHÔNG ghi tên phường. VD: 1, 4, 10, Bình Thạnh, Tân Phú, Gò Vấp, Thủ Đức, Phú Nhuận>"",
   ""tien_thu"": ""<số tiền khách trả THỰC TẾ. Loại A: số cuối cùng sau chiết khấu ('Tổng thanh toán'/'Tiền thu'). Loại D: số trong 'THU X,XXX + SHIP' (chỉ lấy số trước '+SHIP'). Loại B/C: thường không có — để trống. ĐƠN VỊ NGHÌN ĐỒNG, chỉ ghi số. VD: 7280 nếu ghi '7,280'. KHÔNG THU SHIP / KO THU SHIP → tien_thu='0'>"",
-  ""tien_ship"": ""<phí vận chuyển / tiền ship, ĐƠN VỊ NGHÌN ĐỒNG, chỉ ghi số. VD: 25. 'THU SHIP' hoặc 'THU X+SHIP' → có thu ship (tra bảng). Nếu không có ghi 0>"",
+  ""tien_ship"": ""<phí vận chuyển / tiền ship. CHỈ điền khi số tiền ship ghi RÕ RÀNG trên ảnh (VD: 'Ship: 25.000' hoặc 'SHIP 30K'). Loại D ('THU X+SHIP'): không ghi số ship cụ thể → để TRỐNG ''. 'KHÔNG THU SHIP' → tien_ship cũng để trống. ĐƠN VỊ NGHÌN ĐỒNG, chỉ ghi số. VD: 25>"",
   ""ngay_lay"": ""<ngày lấy/giao hàng, format dd-MM-yyyy. Nhãn ship thường không có → để trống>"",
   ""invoice_type"": ""<loại đơn: 'COD' nếu có tiền thu bình thường; 'SHIP_ONLY_FREE' nếu thấy 'KHÔNG THU SHIP'/'KO THU SHIP'/'KHONG THU SHIP'/'KHÔNG THU'; 'SHIP_ONLY_PAID' nếu thấy 'THU SHIP' (không kèm 'KHÔNG'); mặc định 'COD'>""
 }
@@ -111,9 +111,9 @@ QUY TẮC QUAN TRỌNG:
    - Long Thạnh Mỹ → Thủ Đức
    - Phú Lâm → Quận 6
 5. Đọc loại đơn từ text trên nhãn:
-   - 'KHÔNG THU SHIP' / 'KO THU SHIP' / 'KHÔNG THU' → invoice_type='SHIP_ONLY_FREE', tien_thu='0'
-   - 'THU SHIP' (không kèm 'không/ko') → invoice_type='SHIP_ONLY_PAID', tien_thu='0'
-   - 'THU X,XXX + SHIP' → invoice_type='COD', tien_thu = chỉ số X,XXX (trước '+SHIP'), ĐƠN VỊ NGHÌN
+   - 'KHÔNG THU SHIP' / 'KO THU SHIP' / 'KHÔNG THU' → invoice_type='SHIP_ONLY_FREE', tien_thu='0', tien_ship=''
+   - 'THU SHIP' (không kèm 'không/ko') → invoice_type='SHIP_ONLY_PAID', tien_thu='0', tien_ship=''
+   - 'THU X,XXX + SHIP' → invoice_type='COD', tien_thu = chỉ số X,XXX (trước '+SHIP'), tien_ship='' (hệ thống tự tính theo quận)
 6. Với Loại B/C (nhãn ship): HOTLINE trên nhãn là SĐT của shop gửi hàng, KHÔNG phải SĐT khách. SĐT của khách là số kèm tên khách trong sticker địa chỉ.
 7. Nếu không đọc được field nào thì để chuỗi rỗng """".
 Chỉ trả về JSON, không có text khác.";

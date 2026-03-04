@@ -80,7 +80,22 @@ namespace TextInputter
             var combinedLog = new System.Text.StringBuilder(); // unified per-image log (raw + mapping + Gemini)
             int successCount = 0,
                 warnCount = 0;
-            mappedDataList.Clear();
+
+            // Nếu đã có data từ batch trước, hỏi user muốn append hay replace
+            if (mappedDataList.Count > 0)
+            {
+                var choice = MessageBox.Show(
+                    $"Đã có {mappedDataList.Count} đơn từ lần quét trước.\n\n"
+                        + "• YES = Giữ lại và cộng thêm batch mới\n"
+                        + "• NO  = Xóa sạch và chỉ giữ batch mới",
+                    "Giữ dữ liệu cũ?",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+                if (choice == DialogResult.No)
+                    mappedDataList.Clear();
+                // Nếu YES → giữ nguyên, append tiếp bên dưới
+            }
 
             string nguoiDi = txtNguoiDiOCR?.Text ?? "";
             string nguoiLay = txtNguoiLayOCR?.Text ?? "";
@@ -175,30 +190,51 @@ namespace TextInputter
                         // Auto-map người đi theo phường/quận, hoặc dùng giá trị tự nhập
                         string phuongForMap = fields.GetValueOrDefault("PHƯỜNG", "");
                         string quanForMap = fields.GetValueOrDefault("QUẬN", "");
-                        fields["NGƯỜI ĐI"] =
+                        string nguoiDiMapped =
                             _manualNguoiDi && !string.IsNullOrWhiteSpace(txtNguoiDiOCR?.Text)
                                 ? txtNguoiDiOCR.Text.Trim()
                                 : OCRInvoiceMapper.GetNguoiDi(phuongForMap, quanForMap);
+                        // Fix 5: Nếu người đi = mặc định "An Tam" → thêm ngày hiện tại dd-MM
+                        if (nguoiDiMapped == AppConstants.NGUOI_DI_DEFAULT)
+                            nguoiDiMapped += " " + DateTime.Now.ToString("dd-MM");
+                        fields["NGƯỜI ĐI"] = nguoiDiMapped;
                         fields["NGƯỜI LẤY"] =
                             _manualNguoiLay && !string.IsNullOrWhiteSpace(txtNguoiLayOCR?.Text)
                                 ? txtNguoiLayOCR.Text.Trim()
                                 : nguoiLay;
 
                         // Auto-fill TIỀN SHIP từ bảng phí ship theo phường/quận (tier-3 → tier-2)
-                        // Điều kiện auto-fill: TIỀN SHIP rỗng HOẶC = "0" (tức là chưa biết thực sự)
+                        // Điều kiện auto-fill:
+                        //   1. TIỀN SHIP rỗng hoặc "0" → chưa biết, lookup bảng
+                        //   2. MÃ rỗng + không phải SHIP_ONLY → hàng sỉ không có HĐ,
+                        //      Gemini thường đoán sai ship → luôn override bằng bảng phí
                         string currentShip = fields.GetValueOrDefault("TIỀN SHIP", "");
+                        string maForShip = fields.GetValueOrDefault("MÃ", "");
+                        string invTypeForShip = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
+                        bool isShipOnlyForShip =
+                            invTypeForShip == "SHIP_ONLY_FREE"
+                            || invTypeForShip == "SHIP_ONLY_PAID";
+                        bool hangSiNoMa =
+                            string.IsNullOrWhiteSpace(maForShip) && !isShipOnlyForShip;
                         bool shipIsUnknown =
-                            string.IsNullOrWhiteSpace(currentShip) || currentShip.Trim() == "0";
+                            string.IsNullOrWhiteSpace(currentShip)
+                            || currentShip.Trim() == "0"
+                            || hangSiNoMa; // hàng sỉ: bảng phí luôn đúng hơn Gemini đoán
                         if (shipIsUnknown)
                         {
                             string phuong = fields.GetValueOrDefault("PHƯỜNG", "");
                             string quan = fields.GetValueOrDefault("QUẬN", "");
-                            decimal? feeFromTable = OCRInvoiceMapper.GetShipFee(phuong, quan);
+                            string duong = fields.GetValueOrDefault("TÊN ĐƯỜNG", "");
+                            decimal? feeFromTable = OCRInvoiceMapper.GetShipFee(
+                                phuong,
+                                quan,
+                                duong
+                            );
                             if (feeFromTable.HasValue)
                             {
                                 fields["TIỀN SHIP"] = feeFromTable.Value.ToString("F0");
                                 allText.AppendLine(
-                                    $"  🗺️ Ship tự điền từ bảng: Q.{quan} P.{phuong} → {feeFromTable.Value}k"
+                                    $"  🗺️ Ship tự điền từ bảng: Q.{quan} P.{phuong} Đường.{duong} → {feeFromTable.Value}k"
                                 );
                             }
                             else
@@ -207,13 +243,13 @@ namespace TextInputter
                                 // (KHÔNG gán "0" vì "0" != rỗng sẽ block auto-fill lần sau)
                                 fields["TIỀN SHIP"] = "";
                                 allText.AppendLine(
-                                    $"  ⚠️ Ship chưa có trong bảng: Q.{quan} P.{phuong} — cần điền tay"
+                                    $"  ⚠️ Ship chưa có trong bảng: Q.{quan} P.{phuong} Đường.{duong} — cần điền tay"
                                 );
                             }
                         }
 
                         // Compute TIỀN HÀNG theo loại đơn:
-                        //   COD          : thu + ship  (format cũ)
+                        //   COD           : thu - ship  (tiền hàng = tiền thu trừ ship)
                         //   SHIP_ONLY_FREE: -ship       (không thu ship, tiền hàng âm)
                         //   SHIP_ONLY_PAID: +ship       (thu ship, tiền hàng = ship)
                         string invoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
@@ -223,7 +259,7 @@ namespace TextInputter
                         {
                             "SHIP_ONLY_FREE" => -ship,
                             "SHIP_ONLY_PAID" => ship,
-                            _ => thu + ship, // COD
+                            _ => thu - ship, // COD: tiền hàng = thu - ship
                         };
                         fields["TIỀN HÀNG"] = tienhang.ToString();
                         // Log loại đơn ra UI nếu không phải COD
@@ -231,6 +267,11 @@ namespace TextInputter
                             allText.AppendLine(
                                 $"  📦 Loại đơn: {invoiceType} → TIỀN HÀNG = {tienhang}"
                             );
+
+                        // Log TÌNH TRẠNG đặc biệt (đã CK, hàng sỉ, v.v.)
+                        string tinhTrangDetected = fields.GetValueOrDefault("TÌNH TRẠNG", "");
+                        if (!string.IsNullOrEmpty(tinhTrangDetected))
+                            allText.AppendLine($"  🏷️  Tình trạng: {tinhTrangDetected}");
 
                         fields["fileName"] = fileName;
 
@@ -406,6 +447,239 @@ namespace TextInputter
             }
         }
 
+        // ─── Load From Log (không tốn quota) ──────────────────────────────────
+
+        /// <summary>
+        /// Đọc ocr_log.txt, parse lại section [MAPPING] của từng ảnh → dựng mappedDataList.
+        /// Không gọi bất kỳ API nào — dùng khi muốn re-export từ log đã có sẵn.
+        /// </summary>
+        private void LoadFromLog()
+        {
+            try
+            {
+                // Tìm file log: ưu tiên cạnh .exe, fallback root project
+                string rootDir = Path.GetFullPath(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..")
+                );
+                string defaultLogPath = Path.Combine(rootDir, "ocr_log.txt");
+
+                using var dlg = new OpenFileDialog
+                {
+                    Title = "Chọn file log OCR (ocr_log.txt)",
+                    Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*",
+                    FileName = "ocr_log.txt",
+                    InitialDirectory = File.Exists(defaultLogPath)
+                        ? rootDir
+                        : AppDomain.CurrentDomain.BaseDirectory,
+                };
+                if (dlg.ShowDialog() != DialogResult.OK)
+                    return;
+
+                string logPath = dlg.FileName;
+                string[] lines = File.ReadAllLines(logPath, System.Text.Encoding.UTF8);
+
+                // Nếu đã có data cũ → hỏi
+                if (mappedDataList.Count > 0)
+                {
+                    var choice = MessageBox.Show(
+                        $"Đã có {mappedDataList.Count} đơn trong bộ nhớ.\n\n"
+                            + "• YES = Giữ lại và cộng thêm từ log\n"
+                            + "• NO  = Xóa sạch và chỉ dùng log",
+                        "Giữ dữ liệu cũ?",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question
+                    );
+                    if (choice == DialogResult.No)
+                        mappedDataList.Clear();
+                }
+
+                // ── Parse log ─────────────────────────────────────────────────
+                // Format per image block:
+                //   ════...════
+                //   📄 [i/n] filename  (confidence: X%)
+                //   ────...────
+                //   [RAW OCR]
+                //   ...raw text...
+                //
+                //   [MAPPING]
+                //   📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields   (hoặc ⚠️ THIẾU ...)
+                //     ✓ FIELD: value
+                //     ⚠️ FIELD: (trống)
+                //   (blank line)
+
+                // Fields ta muốn khôi phục (đúng thứ tự không quan trọng)
+                var wantedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "SHOP",
+                    "TÊN KH",
+                    "MÃ",
+                    "QUẬN",
+                    "PHƯỜNG",
+                    "TÊN ĐƯỜNG",
+                    "ĐỊA CHỈ",
+                    "TIỀN THU",
+                    "TIỀN SHIP",
+                    "TIỀN HÀNG",
+                    "INVOICE_TYPE",
+                    "TÌNH TRẠNG",
+                    "NGÀY LẤY",
+                    "NGƯỜI ĐI",
+                    "NGƯỜI LẤY",
+                    "GHI CHÚ",
+                    "IS_FAIL",
+                    "MISSING_FIELDS",
+                };
+
+                int loaded = 0;
+                Dictionary<string, string> currentFields = null;
+                string currentFileName = null;
+                bool inMapping = false;
+                bool isMissingBlock = false;
+                var missingList = new List<string>();
+
+                void FlushCurrent()
+                {
+                    if (currentFields == null)
+                        return;
+                    currentFields["fileName"] = currentFileName ?? "";
+                    // Tái tạo MISSING_FIELDS nếu chưa có (từ các field trống)
+                    if (!currentFields.ContainsKey("MISSING_FIELDS"))
+                    {
+                        if (isMissingBlock && missingList.Count > 0)
+                            currentFields["MISSING_FIELDS"] = string.Join(",", missingList);
+                        else
+                            currentFields["MISSING_FIELDS"] = "";
+                    }
+                    if (!currentFields.ContainsKey("IS_FAIL"))
+                        currentFields["IS_FAIL"] = "0";
+                    mappedDataList.Add(currentFields);
+                    loaded++;
+                    currentFields = null;
+                    currentFileName = null;
+                    inMapping = false;
+                    isMissingBlock = false;
+                    missingList.Clear();
+                }
+
+                foreach (string rawLine in lines)
+                {
+                    string line = rawLine.TrimEnd();
+
+                    // Bắt đầu block mới: dòng có "📄 [i/n] filename"
+                    if (line.Contains("📄 [") && line.Contains("]"))
+                    {
+                        FlushCurrent(); // flush block trước nếu có
+
+                        // Trích filename: "📄 [2/36] 2.jpg  (confidence: ...)"
+                        int bracket = line.IndexOf(']');
+                        if (bracket >= 0 && bracket + 1 < line.Length)
+                        {
+                            string afterBracket = line.Substring(bracket + 1).Trim();
+                            // Bỏ phần "(confidence: ...)"
+                            int paren = afterBracket.IndexOf('(');
+                            currentFileName =
+                                paren > 0
+                                    ? afterBracket.Substring(0, paren).Trim()
+                                    : afterBracket.Trim();
+                        }
+                        inMapping = false;
+                        isMissingBlock = false;
+                        missingList.Clear();
+                        continue;
+                    }
+
+                    // Bắt đầu section [MAPPING]
+                    if (line == "[MAPPING]")
+                    {
+                        inMapping = true;
+                        currentFields = new Dictionary<string, string>(
+                            StringComparer.OrdinalIgnoreCase
+                        );
+                        continue;
+                    }
+
+                    if (!inMapping)
+                        continue;
+
+                    // Dòng kết quả tổng: "📊 KẾT QUẢ MAP: ✅ ..." hoặc "📊 KẾT QUẢ MAP: ⚠️ THIẾU ..."
+                    if (line.Contains("📊 KẾT QUẢ MAP"))
+                    {
+                        isMissingBlock = line.Contains("THIẾU") || line.Contains("⚠️");
+                        continue;
+                    }
+
+                    // Dòng field đủ: "  ✓ FIELD: value"
+                    if (line.Contains("✓ ") && line.Contains(":"))
+                    {
+                        int colon = line.IndexOf(':');
+                        // Tìm vị trí sau "✓ "
+                        int tick = line.IndexOf('✓');
+                        if (tick >= 0 && colon > tick)
+                        {
+                            string key = line.Substring(tick + 1, colon - tick - 1).Trim();
+                            string val =
+                                colon + 1 < line.Length ? line.Substring(colon + 1).Trim() : "";
+                            if (wantedFields.Contains(key))
+                                currentFields[key] = val;
+                        }
+                        continue;
+                    }
+
+                    // Dòng field thiếu: "  ⚠️ FIELD: (trống)"
+                    if (line.Contains("⚠️ ") && line.Contains(": (trống)"))
+                    {
+                        int warn = line.IndexOf('⚠');
+                        int colon = line.IndexOf(':');
+                        if (warn >= 0 && colon > warn)
+                        {
+                            string key = line.Substring(warn + 1, colon - warn - 1).Trim();
+                            // Bỏ emoji "️ " nếu còn sót
+                            key = key.TrimStart('️', ' ').Trim();
+                            if (wantedFields.Contains(key))
+                            {
+                                currentFields[key] = "";
+                                missingList.Add(key);
+                            }
+                        }
+                        continue;
+                    }
+
+                    // Dòng trắng / kẻ ═══ sau [MAPPING] → kết thúc block (flush xử lý ở block tiếp)
+                }
+
+                FlushCurrent(); // flush block cuối
+
+                // ── Update UI ─────────────────────────────────────────────────
+                string summary =
+                    $"✅ Tải từ log: {loaded} đơn\n"
+                    + $"📄 File: {Path.GetFileName(logPath)}\n"
+                    + $"💾 Sẵn sàng xuất {mappedDataList.Count} dòng sang Excel";
+
+                txtProcessLog.Text = summary;
+                txtRawOCRLog?.Clear();
+                txtRawOCRLog?.AppendText($"[Tải từ log — không quét OCR]\n{summary}");
+                lblStatus.Text = $"✅ Log: {loaded} đơn";
+                lblStatus.ForeColor = Color.Green;
+                lblCurrentFile.Text = $"📄 {loaded} đơn từ {Path.GetFileName(logPath)}";
+
+                MessageBox.Show(
+                    summary,
+                    "✅ Tải từ log thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"❌ Lỗi đọc log:\n{ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
         // ─── Export Mapped Data → Excel ────────────────────────────────────────
 
         /// <summary>
@@ -455,6 +729,28 @@ namespace TextInputter
 
                 // ── Group by sheet name theo mode user chọn ───────────────────
                 var now = DateTime.Now;
+
+                // Deduplicate theo MÃ trước khi export: giữ entry CUỐI CÙNG cho mỗi MÃ
+                // (trường hợp user quét 2 folder append → cùng MÃ xuất hiện 2 lần)
+                // Đơn MÃ rỗng (isMissing) giữ tất cả vì không thể so sánh
+                var deduped = new List<Dictionary<string, string>>();
+                var seenMa = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                // Duyệt ngược để giữ entry cuối (mới nhất) khi có trùng
+                for (int di = mappedDataList.Count - 1; di >= 0; di--)
+                {
+                    var d = mappedDataList[di];
+                    string ma = d.GetValueOrDefault("MÃ", "");
+                    if (string.IsNullOrWhiteSpace(ma))
+                    {
+                        deduped.Insert(0, d); // MÃ rỗng → giữ tất cả, đặt theo thứ tự gốc
+                    }
+                    else if (seenMa.Add(ma))
+                    {
+                        deduped.Insert(0, d); // MÃ chưa thấy → giữ, đặt trước (giữ thứ tự gốc)
+                    }
+                    // Nếu đã thấy MÃ này → bỏ qua (entry sau = entry mới hơn đã được giữ)
+                }
+                int dupCount = mappedDataList.Count - deduped.Count;
 
                 // Validate ngày tự nhập nếu đang ở mode "Ngày khác"
                 if (_exportUseToday == null)
@@ -507,10 +803,7 @@ namespace TextInputter
                     return now.ToString("dd-MM");
                 }
 
-                var grouped = mappedDataList
-                    .GroupBy(d => GetSheetName(d))
-                    .OrderBy(g => g.Key)
-                    .ToList();
+                var grouped = deduped.GroupBy(d => GetSheetName(d)).OrderBy(g => g.Key).ToList();
 
                 var service = new ExcelInvoiceService(excelPath);
                 int totalAdded = 0,
@@ -545,13 +838,17 @@ namespace TextInputter
                 }
 
                 string detailText = string.Join("\n", sheetSummaries);
+                string dupNote =
+                    dupCount > 0
+                        ? $"\n⚠️ Đã bỏ {dupCount} đơn trùng MÃ (giữ lần quét mới nhất)"
+                        : "";
 
                 this.Invoke(
                     (MethodInvoker)
                         delegate
                         {
                             MessageBox.Show(
-                                $"✅ Xuất thành công!\n\n{detailText}\n\n➕ Tổng thêm mới: {totalAdded}\n✏️ Tổng ghi đè: {totalUpdated}\n📂 File: {Path.GetFileName(excelPath)}",
+                                $"✅ Xuất thành công!\n\n{detailText}{dupNote}\n\n➕ Tổng thêm mới: {totalAdded}\n✏️ Tổng ghi đè: {totalUpdated}\n📂 File: {Path.GetFileName(excelPath)}",
                                 "✅ Thành công",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Information

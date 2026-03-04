@@ -97,10 +97,11 @@ namespace TextInputter
             var pnl = new Panel
             {
                 Location    = new Point(10, y),
-                Width       = parent.ClientSize.Width - 20,
+                Width       = parent.ClientSize.Width > 50 ? parent.ClientSize.Width - 20 : 500,
                 Height      = 28,
                 BackColor   = Color.FromArgb(230, 240, 255),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.FixedSingle,
+                Anchor      = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
             };
 
             var lblIcon = new Label

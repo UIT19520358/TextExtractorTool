@@ -59,6 +59,8 @@ namespace TextInputter.Services
             { "tduc", "thu duc" },
             { "pnhuan", "phu nhuan" },
             { "btan", "binh tan" },
+            { "tp thu duc", "thu duc" }, // "TP Thủ Đức" trong địa chỉ → thu duc
+            { "tpthu duc", "thu duc" },  // không dấu compact
         };
 
         private static readonly Dictionary<string, string> WardNameDict = new Dictionary<

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ClosedXML.Excel;
 
 namespace TextInputter.Services
@@ -162,13 +163,31 @@ namespace TextInputter.Services
                     AddHeaderRow(worksheet, sheetDate);
                 }
 
-                // Tìm SUBTOTAL row (nếu đã có) để chèn data trước nó
+                // Tìm SUBTOTAL row (nếu đã có) — KHÔNG ghi đè vào đó, chỉ ghi đè khi MÃ trùng
                 int existingSubtotalRow = FindSubtotalRow(worksheet);
 
-                // Next empty data row = trước SUBTOTAL row (nếu có), hoặc sau last used row
+                // Next empty data row = hàng trước SUBTOTAL (nếu có) hoặc sau last used row.
+                // Nếu SUBTOTAL tồn tại, ta cần INSERT rows để đẩy SUBTOTAL xuống thay vì overwrite.
                 int nextRow = DATA_START_ROW;
                 if (existingSubtotalRow > 0)
                 {
+                    // Đếm số đơn mới thực sự (không phải upsert) để biết cần chèn bao nhiêu row
+                    int newRowsNeeded = dataList.Count(d =>
+                    {
+                        string mCheck = d.GetValueOrDefault("MÃ", "");
+                        if (string.IsNullOrWhiteSpace(mCheck))
+                        {
+                            // MÃ rỗng → kiểm tra có row khớp TÊN KH + NGÀY LẤY không
+                            string tenKhCheck = d.GetValueOrDefault("TÊN KH", "");
+                            string ngayLayCheck = d.GetValueOrDefault("NGÀY LẤY", "");
+                            return FindRowByTenKhNgay(worksheet, tenKhCheck, ngayLayCheck) < 0; // không tìm thấy → thêm mới
+                        }
+                        return FindRowByMa(worksheet, mCheck) < 0; // không tìm thấy → thêm mới
+                    });
+                    // Chèn đủ số hàng trống trước SUBTOTAL row
+                    if (newRowsNeeded > 0)
+                        worksheet.Row(existingSubtotalRow).InsertRowsAbove(newRowsNeeded);
+                    // nextRow bắt đầu từ vị trí trước khi chèn (SUBTOTAL đã dịch xuống)
                     nextRow = existingSubtotalRow;
                 }
                 else
@@ -182,10 +201,23 @@ namespace TextInputter.Services
                 {
                     string ma = data.GetValueOrDefault("MÃ", "");
                     bool isMissing = string.IsNullOrWhiteSpace(ma);
-                    bool hasMissingFields = !string.IsNullOrEmpty(data.GetValueOrDefault("MISSING_FIELDS", ""));
+                    bool hasMissingFields = !string.IsNullOrEmpty(
+                        data.GetValueOrDefault("MISSING_FIELDS", "")
+                    );
 
-                    // Upsert: tìm row có MÃ trùng → ghi đè; nếu MÃ rỗng hoặc không tìm thấy → thêm mới
-                    int targetRow = isMissing ? -1 : FindRowByMa(worksheet, ma);
+                    // Upsert: tìm row có MÃ trùng → ghi đè; nếu MÃ rỗng → tìm theo TÊN KH + NGÀY LẤY
+                    // (đơn hàng sỉ không có MÃ HĐ); nếu vẫn không thấy → append mới
+                    int targetRow;
+                    if (!isMissing)
+                    {
+                        targetRow = FindRowByMa(worksheet, ma);
+                    }
+                    else
+                    {
+                        string tenKh = data.GetValueOrDefault("TÊN KH", "");
+                        string ngayLay = data.GetValueOrDefault("NGÀY LẤY", "");
+                        targetRow = FindRowByTenKhNgay(worksheet, tenKh, ngayLay);
+                    }
                     bool isUpdate = targetRow > 0;
                     if (!isUpdate)
                     {
@@ -281,20 +313,50 @@ namespace TextInputter.Services
                 }
 
                 // ── Tìm last data row ──────────────────────────────────────────
+                // Chỉ tính row có MÃ (cột D) — tránh bị summary cũ làm sai lastDataRow
                 int lastDataRow = DATA_START_ROW - 1;
                 foreach (var row in worksheet.RowsUsed())
                 {
                     int rn = row.RowNumber();
                     if (rn < DATA_START_ROW)
                         continue;
-                    string shopVal = row.Cell(COL_SHOP).GetString();
-                    string thuVal = row.Cell(COL_TIENTHU).GetString();
-                    if (string.IsNullOrWhiteSpace(shopVal) && string.IsNullOrWhiteSpace(thuVal))
+                    string maVal = row.Cell(COL_MA).GetString().Trim();
+                    string shopVal = row.Cell(COL_SHOP).GetString().Trim();
+                    // Bỏ qua row header
+                    if (shopVal.Equals("SHOP", StringComparison.OrdinalIgnoreCase))
                         continue;
+                    // Chỉ tính row có MÃ ĐƠN (data thật), hoặc có SHOP nhưng ko có MÃ (đơn hàng si/hoàn)
+                    // Bỏ qua row từ summary cũ (có text như "cod", "Trừ Tiền Ship", "THANH TOÁN" trong COL_SHOP nhưng ko có MÃ)
+                    if (string.IsNullOrWhiteSpace(maVal))
+                    {
+                        // Không có MÃ → chỉ tính nếu SHOP là tên shop thật (không phải text summary)
+                        if (string.IsNullOrWhiteSpace(shopVal))
+                            continue;
+                        string shopLower = shopVal.ToLower();
+                        if (
+                            shopLower == "cod"
+                            || shopLower.StartsWith("trừ")
+                            || shopLower.StartsWith("tru")
+                            || shopLower.StartsWith("tiền")
+                            || shopLower.StartsWith("tien")
+                            || shopLower == "đơn đơn"
+                            || shopLower.StartsWith("don")
+                            || shopLower == "nợ cũ"
+                            || shopLower.StartsWith("no ")
+                            || shopLower == "thanh toán"
+                            || shopLower == "thanh toan"
+                            || shopLower == "hàng si"
+                            || shopLower == "hang si"
+                        )
+                            continue; // đây là summary row cũ
+                    }
                     lastDataRow = rn;
                 }
                 if (lastDataRow < DATA_START_ROW)
-                    throw new InvalidOperationException("Sheet không có dữ liệu.");
+                    throw new InvalidOperationException(
+                        $"Sheet '{sheetName}' không có dữ liệu đơn hàng (từ row {DATA_START_ROW} trở đi).\n"
+                            + "Vui lòng chọn file Excel đã có data nhập vào (cùng format với file gốc)."
+                    );
 
                 // ── Fix TIỀN HÀNG formula cho data rows (ghi đè = đảm bảo đúng) ──
                 string thuColLetter = ColLetter(COL_TIENTHU);
@@ -316,28 +378,22 @@ namespace TextInputter.Services
                         existingFormula == $"-{shipColLetter}{r}"
                         || existingFormula == $"{shipColLetter}{r}";
                     if (!isShipOnlyFormula)
-                        hangCell.FormulaA1 = $"{thuColLetter}{r}+{shipColLetter}{r}"; // COD: thu + ship
+                        hangCell.FormulaA1 = $"{thuColLetter}{r}-{shipColLetter}{r}"; // COD: thu - ship
+                    hangCell.Style.NumberFormat.Format = "#,##0";
                 }
 
                 // ── SUBTOTAL row ───────────────────────────────────────────────
                 int subtotalRow = lastDataRow + 2;
                 worksheet.Row(lastDataRow + 1).Clear();
 
+                // Chỉ SUBTOTAL các cột số thực sự — bỏ cột text (NGƯỜI ĐI, NGÀY LẤY, GHI CHÚ, v.v.)
                 int[] subtotalCols =
                 {
                     COL_TIENTHU,
                     COL_TIENSHIP,
                     COL_TIENHANG,
-                    COL_NGUOIDI,
-                    COL_NGUOILAY,
-                    COL_NGAYLAY,
-                    COL_GHICHU,
                     COL_UNGIEN,
                     COL_HANGTON,
-                    COL_FAIL,
-                    COL_COL1,
-                    COL_COL2,
-                    COL_COL3,
                 };
                 foreach (int col in subtotalCols)
                 {
@@ -347,17 +403,14 @@ namespace TextInputter.Services
                         $"SUBTOTAL(9,{colLetter}{DATA_START_ROW}:{colLetter}{lastDataRow})";
                     stCell.Style.Font.Bold = true;
                     stCell.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                    stCell.Style.NumberFormat.Format = "#,##0";
                 }
-
-                // COUNTA cột MÃ để đếm số đơn (SUBTOTAL(9) sai vì FAIL="" = 0)
-                var maCountCell = worksheet.Cell(subtotalRow, COL_MA);
-                maCountCell.FormulaA1 =
-                    $"COUNTA({ColLetter(COL_MA)}{DATA_START_ROW}:{ColLetter(COL_MA)}{lastDataRow})";
-                maCountCell.Style.Font.Bold = true;
-                maCountCell.Style.Fill.BackgroundColor = XLColor.LightYellow;
 
                 // ── Bảng tổng kết ─────────────────────────────────────────────
                 int summaryRow = subtotalRow + 2;
+
+                // Clear row giữa SUBTOTAL và summary để tránh dư data cũ
+                worksheet.Row(subtotalRow + 1).Clear();
 
                 // Thu thập distinct SHOPs, NGƯỜI ĐIs và ngày đầu tiên từ data rows
                 var distinctShops = new List<string>();
@@ -406,7 +459,7 @@ namespace TextInputter.Services
                     rThu,
                     rShip,
                     rNguoiDi,
-                    rMa
+                    rShop
                 );
 
                 // ── BẢNG TRÁI: per SHOP ───────────────────────────────────────
@@ -462,6 +515,220 @@ namespace TextInputter.Services
         }
 
         /// <summary>
+        /// Tìm row cho đơn không có MÃ HĐ (hàng sỉ) bằng cách khớp TÊN KH + NGÀY LẤY.
+        /// Chỉ khớp row có MÃ rỗng (tránh overwrite đơn có MÃ trùng tên KH).
+        /// Trả về -1 nếu không tìm thấy → sẽ append row mới.
+        /// </summary>
+        private int FindRowByTenKhNgay(IXLWorksheet worksheet, string tenKh, string ngayLay)
+        {
+            if (string.IsNullOrWhiteSpace(tenKh))
+                return -1;
+            // Normalize ngày: chỉ lấy dd-MM (bỏ năm và dấu chấm cuối)
+            string normNgay = "";
+            if (!string.IsNullOrWhiteSpace(ngayLay))
+            {
+                var parts = ngayLay.TrimEnd('.').Split('-');
+                if (parts.Length >= 2)
+                    normNgay = $"{parts[0]}-{parts[1]}";
+            }
+            foreach (var row in worksheet.RowsUsed())
+            {
+                if (row.RowNumber() <= 2)
+                    continue;
+                // Chỉ xét row mà cột MÃ rỗng (hàng sỉ)
+                if (!string.IsNullOrWhiteSpace(row.Cell(COL_MA).GetString()))
+                    continue;
+                string rowTenKh = row.Cell(COL_TENKH).GetString().Trim();
+                if (!rowTenKh.Equals(tenKh.Trim(), StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Khớp ngày nếu có
+                if (!string.IsNullOrEmpty(normNgay))
+                {
+                    string rowNgay = row.Cell(COL_NGAYLAY).GetString().TrimEnd('.');
+                    var rParts = rowNgay.Split('-');
+                    string rowNormNgay = rParts.Length >= 2 ? $"{rParts[0]}-{rParts[1]}" : rowNgay;
+                    if (!rowNormNgay.Equals(normNgay, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+                return row.RowNumber();
+            }
+            return -1;
+        }
+
+        // ── Mapping tên cột → index (dùng cho UpdateInvoiceFields) ─────────────
+        private static readonly Dictionary<string, int> _colNameToIndex = new Dictionary<
+            string,
+            int
+        >(StringComparer.OrdinalIgnoreCase)
+        {
+            { "TÌNH TRẠNG TT", COL_TINHTRANG },
+            { "SHOP", COL_SHOP },
+            { "TÊN KH", COL_TENKH },
+            { "MÃ", COL_MA },
+            { "ĐỊA CHỈ", COL_DIACHI },
+            { "QUẬN", COL_QUAN },
+            { "TIỀN THU", COL_TIENTHU },
+            { "TIỀN SHIP", COL_TIENSHIP },
+            { "TIỀN HÀNG", COL_TIENHANG },
+            { "NGƯỜI ĐI", COL_NGUOIDI },
+            { "NGƯỜI LẤY", COL_NGUOILAY },
+            { "NGÀY LẤY", COL_NGAYLAY },
+            { "GHI CHÚ", COL_GHICHU },
+            { "ỨNG TIỀN", COL_UNGIEN },
+            { "HÀNG TỒN", COL_HANGTON },
+            { "FAIL", COL_FAIL },
+        };
+
+        /// <summary>
+        /// Danh sách tên cột có thể chỉnh sửa (dùng để build UI checkbox).
+        /// Bỏ qua MÃ (key định danh) và các cột ẩn (COL1-3).
+        /// </summary>
+        public static IReadOnlyList<string> EditableColumnNames { get; } =
+            new[]
+            {
+                "TÌNH TRẠNG TT",
+                "SHOP",
+                "TÊN KH",
+                "ĐỊA CHỈ",
+                "QUẬN",
+                "TIỀN THU",
+                "TIỀN SHIP",
+                "TIỀN HÀNG",
+                "NGƯỜI ĐI",
+                "NGƯỜI LẤY",
+                "NGÀY LẤY",
+                "GHI CHÚ",
+                "ỨNG TIỀN",
+                "HÀNG TỒN",
+                "FAIL",
+            };
+
+        /// <summary>
+        /// Cập nhật các field của invoice theo MÃ HĐ.
+        /// Nếu sheetName != null → chỉ tìm trong sheet đó.
+        /// Nếu sheetName == null → quét toàn bộ sheets (đơn không rõ ngày).
+        /// </summary>
+        /// <param name="sheetName">Tên sheet cụ thể, hoặc null để quét tất cả sheets.</param>
+        /// <param name="maList">Danh sách mã HĐ cần cập nhật.</param>
+        /// <param name="fieldValues">Dict: tên cột → giá trị mới. Key phải là tên trong EditableColumnNames.</param>
+        /// <returns>Tuple: (số dòng đã cập nhật, danh sách mã không tìm thấy)</returns>
+        public (int updated, List<string> notFound) UpdateInvoiceFields(
+            string sheetName,
+            IEnumerable<string> maList,
+            Dictionary<string, string> fieldValues
+        )
+        {
+            int updated = 0;
+            var notFound = new List<string>();
+
+            if (fieldValues == null || fieldValues.Count == 0)
+                return (0, notFound);
+
+            using (var workbook = new XLWorkbook(_excelFilePath))
+            {
+                // Lấy danh sách sheet cần tìm (1 sheet cụ thể hoặc toàn bộ)
+                IEnumerable<IXLWorksheet> sheetsToSearch =
+                    sheetName != null
+                        ? workbook.TryGetWorksheet(sheetName, out var ws)
+                            ? new[] { ws }
+                            : Array.Empty<IXLWorksheet>()
+                        : workbook.Worksheets;
+
+                foreach (var ma in maList)
+                {
+                    if (string.IsNullOrWhiteSpace(ma))
+                        continue;
+
+                    bool found = false;
+                    foreach (var worksheet in sheetsToSearch)
+                    {
+                        int rowNum = FindRowByMa(worksheet, ma.Trim());
+                        if (rowNum < 0)
+                            continue;
+
+                        found = true;
+                        ApplyFieldValuesToRow(worksheet, rowNum, fieldValues);
+                        updated++;
+                        break; // MÃ unique → dừng sau khi tìm thấy
+                    }
+
+                    if (!found)
+                        notFound.Add(ma);
+                }
+
+                // Nếu sheetName có sẵn nhưng sheet không tồn tại
+                if (sheetName != null && !workbook.TryGetWorksheet(sheetName, out _))
+                    notFound.AddRange(maList);
+
+                workbook.SaveAs(_excelFilePath);
+            }
+
+            return (updated, notFound);
+        }
+
+        /// <summary>
+        /// Overload không cần chỉ định sheet — quét toàn bộ sheets.
+        /// </summary>
+        public (int updated, List<string> notFound) UpdateInvoiceFields(
+            IEnumerable<string> maList,
+            Dictionary<string, string> fieldValues
+        ) => UpdateInvoiceFields(null, maList, fieldValues);
+
+        /// <summary>
+        /// Ghi fieldValues vào 1 row cụ thể trong worksheet.
+        /// Tái sử dụng bởi cả hai overload UpdateInvoiceFields.
+        /// </summary>
+        private static void ApplyFieldValuesToRow(
+            IXLWorksheet worksheet,
+            int rowNum,
+            Dictionary<string, string> fieldValues
+        )
+        {
+            foreach (var kv in fieldValues)
+            {
+                if (!_colNameToIndex.TryGetValue(kv.Key, out int colIdx))
+                    continue;
+                var cell = worksheet.Cell(rowNum, colIdx);
+                if (decimal.TryParse(kv.Value, out decimal num))
+                    cell.SetValue(num);
+                else
+                    cell.SetValue(kv.Value);
+            }
+        }
+
+        /// <summary>
+        /// Chuyển đổi TÌNH TRẠNG từ OCR → text ghi vào GHI CHÚ (nếu có nhãn đặc biệt).
+        /// Cột TÌNH TRẠNG TT trong Excel luôn = "hàng sỉ".
+        /// Các nhãn đặc biệt (KO THU SHIP, THU SHIP, đã CK, v.v.) được chuyển sang GHI CHÚ.
+        /// "hàng sỉ" thuần túy (không kèm nhãn đặc biệt) → không cần ghi GHI CHÚ.
+        /// </summary>
+        private static string BuildGhiChuFromTinhTrang(string tinhTrang, string invoiceType)
+        {
+            // Ưu tiên: nếu là ship-only → dùng nhãn từ INVOICE_TYPE (chuẩn nhất)
+            if (invoiceType == "SHIP_ONLY_FREE")
+                return "KO THU SHIP";
+            if (invoiceType == "SHIP_ONLY_PAID")
+                return "THU SHIP";
+
+            // Với đơn COD: lọc các nhãn đặc biệt ra khỏi TÌNH TRẠNG (bỏ "hàng sỉ")
+            if (string.IsNullOrEmpty(tinhTrang))
+                return "";
+
+            var parts = tinhTrang
+                .Split(new[] { '|', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Trim())
+                .Where(p =>
+                    !string.IsNullOrEmpty(p)
+                    && !p.Equals("hàng sỉ", StringComparison.OrdinalIgnoreCase)
+                    && !p.Equals("hang si", StringComparison.OrdinalIgnoreCase)
+                    && !p.Equals("hs", StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+
+            return string.Join(" | ", parts);
+        }
+
+        /// <summary>
         /// Kiểm tra shopVal có trông như ghi chú thủ công không.
         /// Chỉ true nếu SHOP chứa từ khoá ghi chú (dùng AppConstants.SHOP_EXCLUSION_PATTERN).
         /// Tên shop hợp lệ như "ĐOÀN NGÂN CHÂU" sẽ không bị nhận nhầm.
@@ -496,69 +763,122 @@ namespace TextInputter.Services
             // Map tên field → số cột để tô màu cell thiếu
             var fieldToCol = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                { "SHOP",      COL_SHOP    },
-                { "TÊN KH",   COL_TENKH   },
-                { "MÃ",       COL_MA      },
-                { "ĐỊA CHỈ",  COL_DIACHI  },
-                { "QUẬN",     COL_QUAN    },
+                { "SHOP", COL_SHOP },
+                { "TÊN KH", COL_TENKH },
+                { "MÃ", COL_MA },
+                { "ĐỊA CHỈ", COL_DIACHI },
+                { "QUẬN", COL_QUAN },
                 { "TIỀN THU", COL_TIENTHU },
-                { "TIỀN SHIP",COL_TIENSHIP},
+                { "TIỀN SHIP", COL_TIENSHIP },
                 { "NGÀY LẤY", COL_NGAYLAY },
-                { "GHI CHÚ",  COL_GHICHU  },
+                { "GHI CHÚ", COL_GHICHU },
             };
             var missingSet = new HashSet<string>(
-                (data.GetValueOrDefault("MISSING_FIELDS", ""))
-                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries),
+                (data.GetValueOrDefault("MISSING_FIELDS", "")).Split(
+                    new[] { ',' },
+                    StringSplitOptions.RemoveEmptyEntries
+                ),
                 StringComparer.OrdinalIgnoreCase
             );
 
-            worksheet.Cell(targetRow, COL_TINHTRANG).Value = "";
+            // ── TÌNH TRẠNG logic (theo Excel mẫu) ─────────────────────────────────
+            // - Đơn có MÃ HĐ (COD/SHIP_ONLY) → TÌNH TRẠNG TT = "" (bỏ trống)
+            // - Đơn KHÔNG có MÃ (hàng sỉ thực sự) → TÌNH TRẠNG TT = "hàng sỉ"
+            // Các nhãn đặc biệt (KO THU SHIP, THU SHIP, đã CK, v.v.) → ghi vào GHI CHÚ.
+            string tinhTrangVal = data.GetValueOrDefault("TÌNH TRẠNG", "");
+            string invType = data.GetValueOrDefault("INVOICE_TYPE", "COD");
+
+            // Xây GHI CHÚ: lấy các nhãn đặc biệt (loại trừ "hàng sỉ") từ TÌNH TRẠNG
+            // rồi merge với ghichuVal gốc (từ caller)
+            string tinhTrangNote = BuildGhiChuFromTinhTrang(tinhTrangVal, invType);
+            if (!string.IsNullOrEmpty(tinhTrangNote))
+            {
+                ghichuVal = string.IsNullOrEmpty(ghichuVal)
+                    ? tinhTrangNote
+                    : tinhTrangNote + " | " + ghichuVal;
+            }
+
+            // COD_PLUS_SHIP: đảm bảo GHI CHÚ luôn có note "THU X + SHIP"
+            // (safety net: kể cả khi OCR service đã set, hoặc khi load từ log cũ)
+            if (invType == "COD_PLUS_SHIP")
+            {
+                string thuStr0 = data.GetValueOrDefault("TIỀN THU", "");
+                string thuNote = $"THU {thuStr0} + SHIP";
+                if (string.IsNullOrEmpty(ghichuVal))
+                    ghichuVal = thuNote;
+                else if (!ghichuVal.Contains("+ SHIP"))
+                    ghichuVal = thuNote + " | " + ghichuVal;
+            }
+
+            // Đơn có MÃ HĐ → bỏ trống TÌNH TRẠNG TT
+            // Đơn KHÔNG có MÃ (bất kể COD hay SHIP_ONLY) → luôn ghi "hàng sỉ"
+            // THU SHIP / KO THU SHIP vẫn ghi vào GHI CHÚ như bình thường
+            bool isShipOnlyType = invType == "SHIP_ONLY_FREE" || invType == "SHIP_ONLY_PAID";
+            string tinhTrangCell = string.IsNullOrWhiteSpace(ma) ? "hàng sỉ" : "";
+            worksheet.Cell(targetRow, COL_TINHTRANG).Value = tinhTrangCell;
             worksheet.Cell(targetRow, COL_SHOP).Value = shopVal;
             worksheet.Cell(targetRow, COL_TENKH).Value = data.GetValueOrDefault("TÊN KH", "");
             worksheet.Cell(targetRow, COL_MA).Value = ma;
             worksheet.Cell(targetRow, COL_DIACHI).Value = data.GetValueOrDefault("ĐỊA CHỈ", "");
             worksheet.Cell(targetRow, COL_QUAN).Value = data.GetValueOrDefault("QUẬN", "");
 
-            // TIỀN THU + TIỀN SHIP: ưu tiên ghi số, fallback ghi text
-            // Dùng InvariantCulture để "7.28" luôn parse thành 7.28 bất kể locale máy tính
+            // ── TIỀN THU + TIỀN SHIP ───────────────────────────────────────────
+            // Dùng InvariantCulture để "7.28" luôn parse đúng bất kể locale máy tính.
+            //
+            // Dữ liệu từ OCR/log:
+            //   TIỀN THU  = Tổng thanh toán khách trả (đã bao gồm giảm giá, KHÔNG cộng ship)
+            //   TIỀN SHIP = Phí ship thực tế cty trả hộ khách
+            //
+            // Ghi vào Excel:
+            //   COD           : TIỀN THU = thuVal (giữ nguyên)         | TIỀN SHIP = shipVal
+            //   COD_PLUS_SHIP : TIỀN THU = thuVal + shipVal (thu cả 2) | TIỀN SHIP = shipVal
+            //   SHIP_ONLY_FREE: TIỀN THU = 0                           | TIỀN SHIP = shipVal
+            //   SHIP_ONLY_PAID: TIỀN THU = shipVal (thu = ship)        | TIỀN SHIP = shipVal
             string thuStr = data.GetValueOrDefault("TIỀN THU", "0");
             string shipStr = data.GetValueOrDefault("TIỀN SHIP", "0");
-            if (
-                double.TryParse(
-                    thuStr,
-                    System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out double thuVal
-                )
-            )
-                worksheet.Cell(targetRow, COL_TIENTHU).Value = thuVal;
-            else
-                worksheet.Cell(targetRow, COL_TIENTHU).Value = thuStr;
-            if (
-                double.TryParse(
-                    shipStr,
-                    System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out double shipVal
-                )
-            )
-                worksheet.Cell(targetRow, COL_TIENSHIP).Value = shipVal;
-            else
-                worksheet.Cell(targetRow, COL_TIENSHIP).Value = shipStr;
+            double.TryParse(
+                shipStr,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out double shipVal
+            );
+            double.TryParse(
+                thuStr,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out double thuVal
+            );
+
+            // Ghi TIỀN THU theo loại đơn
+            double tienThuToWrite = invType switch
+            {
+                "SHIP_ONLY_FREE"  => 0,              // không thu tiền khách
+                "SHIP_ONLY_PAID"  => shipVal,         // thu đúng bằng tiền ship
+                "COD_PLUS_SHIP"   => thuVal + shipVal, // thu tiền hàng + ship
+                _                 => thuVal,           // COD: giữ nguyên Tổng thanh toán từ HĐ
+            };
+            worksheet.Cell(targetRow, COL_TIENTHU).Value = tienThuToWrite;
+            worksheet.Cell(targetRow, COL_TIENTHU).Style.NumberFormat.Format = "#,##0";
+
+            // Ghi TIỀN SHIP
+            worksheet.Cell(targetRow, COL_TIENSHIP).Value = shipVal;
+            worksheet.Cell(targetRow, COL_TIENSHIP).Style.NumberFormat.Format = "#,##0";
 
             // TIỀN HÀNG: formula theo loại đơn
-            //   COD           : =TIENTHU + TIENSHIP  (thu x + ship → hàng = x + ship)
-            //   SHIP_ONLY_FREE: =-TIENSHIP            (không thu ship → hàng âm)
-            //   SHIP_ONLY_PAID: =+TIENSHIP            (thu ship → hàng = ship)
+            //   COD           : =TIENTHU - TIENSHIP  (= Tổng thanh toán)
+            //   COD_PLUS_SHIP : =TIENTHU - TIENSHIP  (= tiền hàng thuần, đã bao gồm ship trong TIENTHU)
+            //   SHIP_ONLY_FREE: =-TIENSHIP            (không thu ship → tiền hàng âm)
+            //   SHIP_ONLY_PAID: =+TIENSHIP            (thu ship → tiền hàng = ship)
             string thuCol = ColLetter(COL_TIENTHU);
             string shipCol = ColLetter(COL_TIENSHIP);
-            string invType = data.GetValueOrDefault("INVOICE_TYPE", "COD");
-            worksheet.Cell(targetRow, COL_TIENHANG).FormulaA1 = invType switch
+            var hangCell = worksheet.Cell(targetRow, COL_TIENHANG);
+            hangCell.FormulaA1 = invType switch
             {
                 "SHIP_ONLY_FREE" => $"-{shipCol}{targetRow}",
                 "SHIP_ONLY_PAID" => $"{shipCol}{targetRow}",
-                _ => $"{thuCol}{targetRow}+{shipCol}{targetRow}", // COD: thu + ship
+                _ => $"{thuCol}{targetRow}-{shipCol}{targetRow}", // COD và COD_PLUS_SHIP đều trừ ship
             };
+            hangCell.Style.NumberFormat.Format = "#,##0";
 
             worksheet.Cell(targetRow, COL_NGUOIDI).Value = data.GetValueOrDefault("NGƯỜI ĐI", "");
             worksheet.Cell(targetRow, COL_NGUOILAY).Value = data.GetValueOrDefault("NGƯỜI LẤY", "");
@@ -567,11 +887,18 @@ namespace TextInputter.Services
             worksheet.Cell(targetRow, COL_UNGIEN).Value = data.GetValueOrDefault("ỨNG TIỀN", "");
             worksheet.Cell(targetRow, COL_HANGTON).Value = data.GetValueOrDefault("HÀNG TỒN", "");
             worksheet.Cell(targetRow, COL_FAIL).Value = data.GetValueOrDefault("FAIL", "");
-            worksheet.Cell(targetRow, COL_COL1).Value = data.GetValueOrDefault("COL1", "");
-            worksheet.Cell(targetRow, COL_COL2).Value = data.GetValueOrDefault("COL2", "");
+
+            // COL1 = 1 cho TẤT CẢ đơn (kể cả ship-only không có MÃ)
+            worksheet.Cell(targetRow, COL_COL1).Value = 1;
+
+            // COL2 = tiền ship (số) khi là SHIP_ONLY_FREE — cột theo dõi ship cty chịu
+            if (invType == "SHIP_ONLY_FREE")
+                worksheet.Cell(targetRow, COL_COL2).Value = shipVal;
+            else
+                worksheet.Cell(targetRow, COL_COL2).Value = data.GetValueOrDefault("COL2", "");
             worksheet.Cell(targetRow, COL_COL3).Value = data.GetValueOrDefault("COL3", "");
 
-            // Tô đỏ nhạt từng cell bị thiếu (thay vì tô cả hàng)
+            // Tô đỏ nhạt từng cell bị thiếu
             foreach (var fieldName in missingSet)
             {
                 if (fieldToCol.TryGetValue(fieldName, out int col))
@@ -580,8 +907,8 @@ namespace TextInputter.Services
                     );
             }
 
-            // MÃ rỗng → tô đỏ đậm hơn (luôn áp dụng kể cả khi có trong missingSet)
-            if (isMissing)
+            // MÃ rỗng → tô đỏ đậm (ship-only không có MÃ là bình thường → không tô)
+            if (isMissing && !isShipOnlyType)
             {
                 worksheet.Cell(targetRow, COL_MA).Style.Fill.BackgroundColor = XLColor.FromHtml(
                     AppConstants.COLOR_MISSING_MA
@@ -597,7 +924,7 @@ namespace TextInputter.Services
             string rThu,
             string rShip,
             string rNguoiDi,
-            string rMa
+            string rShop
         )
         {
             string nguoiLayColL = ColLetter(COL_NGUOILAY);
@@ -620,18 +947,21 @@ namespace TextInputter.Services
                 SetBoldYellow(worksheet.Cell(b0, COL_NGAYLAY), "Số đơn", XLColor.LightSteelBlue);
 
                 // Data rows
+                // COUNTIFS theo SHOP (không rỗng) thay vì MÃ — để đếm đúng cả đơn hàng si không có MÃ
                 worksheet.Cell(b1, COL_NGUOIDI).Value = "TỔNG ĐƠN NHẬN";
                 worksheet.Cell(b1, COL_NGUOILAY).FormulaA1 = $"SUMIFS({rThu},{rNguoiDi},\"{nd}\")";
+                worksheet.Cell(b1, COL_NGUOILAY).Style.NumberFormat.Format = "#,##0";
                 worksheet.Cell(b1, COL_NGAYLAY).FormulaA1 =
-                    $"COUNTIFS({rMa},\"<>\",{rNguoiDi},\"{nd}\")";
+                    $"COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")";
 
                 worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
                 worksheet.Cell(b2, COL_NGUOILAY).FormulaA1 =
                     $"-SUMIFS({rShip},{rNguoiDi},\"{nd}\")";
-
-                worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
-                worksheet.Cell(b3, COL_NGUOILAY).FormulaA1 =
-                    $"-{ngayLayColL}{b1}*{(int)AppConstants.PHI_SHIP_MOI_DON}";
+                worksheet.Cell(b2, COL_NGUOILAY).Style.NumberFormat.Format = "#,##0";
+                // TODO: tiền lấy — sẽ có logic riêng sau, tạm comment
+                // worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
+                // worksheet.Cell(b3, COL_NGUOILAY).FormulaA1 =
+                //     $"-{ngayLayColL}{b1}*{(int)AppConstants.PHI_SHIP_MOI_DON}";
 
                 worksheet.Cell(b4, COL_NGUOIDI).Value = "đơn trả";
                 worksheet.Cell(b4, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
@@ -644,6 +974,7 @@ namespace TextInputter.Services
                 cTotal.FormulaA1 = $"SUBTOTAL(9,{nguoiLayColL}{b1}:{nguoiLayColL}{b5})";
                 cTotal.Style.Font.Bold = true;
                 cTotal.Style.Fill.BackgroundColor = XLColor.LightBlue;
+                cTotal.Style.NumberFormat.Format = "#,##0";
 
                 var cTotalDon = worksheet.Cell(b6, COL_NGAYLAY);
                 cTotalDon.FormulaA1 = $"{ngayLayColL}{b1}";
@@ -673,79 +1004,89 @@ namespace TextInputter.Services
 
             foreach (string shop in distinctShops)
             {
-                int r0 = curRow; // tên shop + header
-                int r1 = curRow + 1; // ngày + cod row
-                int r2 = curRow + 2; // trừ tiền ship
-                int r3 = curRow + 3; // đơn trả & ck
-                int r4 = curRow + 4; // tiền hàng HCM (subtotal)
-                int r5 = curRow + 5; // đơn đơn (manual)
-                int r6 = curRow + 6; // nợ cũ (manual)
+                int r0 = curRow; // header: tên shop
+                int r1 = curRow + 1; // COD (tiền thu + số đơn theo ngày)
+                int r2 = curRow + 2; // Trừ tiền ship
+                int r3 = curRow + 3; // Đơn trả & CK (đỏ, manual)
+                int r4 = curRow + 4; // Tiền hàng HCM (subtotal r1..r3)
+                int r5 = curRow + 5; // Đơn đơn (đỏ, manual)
+                int r6 = curRow + 6; // Nợ cũ (đỏ, manual)
                 int r7 = curRow + 7; // THANH TOÁN
 
                 string aShop = $"$A${r0}";
-                string aNgay = $"$A${r1}";
+                // Tên shop ở COL_TINHTRANG (cột A), nhưng SUMIFS/COUNTIFS cần so với data cột B (COL_SHOP).
+                // Dùng string literal thay vì cell ref để tránh lệch cột.
+                string shopCriteria = $"\"{shop}\"";
 
-                // Header: tên shop
-                var cShop = worksheet.Cell(r0, COL_TINHTRANG);
-                cShop.Value = shop;
-                cShop.Style.Font.Bold = true;
-                cShop.Style.Fill.BackgroundColor = XLColor.LightYellow;
-                SetBold(worksheet.Cell(r0, COL_TENKH), "Tiền");
-                SetBold(worksheet.Cell(r0, COL_DIACHI), "Số đơn");
+                // ── R0: Header — tên shop ─────────────────────────────────────
+                SetBoldYellow(worksheet.Cell(r0, COL_TINHTRANG), shop, XLColor.LightSteelBlue);
+                SetBoldYellow(worksheet.Cell(r0, COL_SHOP), "", XLColor.LightSteelBlue);
+                SetBoldYellow(worksheet.Cell(r0, COL_TENKH), "Tiền", XLColor.LightSteelBlue);
+                SetBoldYellow(worksheet.Cell(r0, COL_MA), "Số đơn", XLColor.LightSteelBlue);
 
-                // Ngày + COD row
-                worksheet.Cell(r1, COL_TINHTRANG).Value = firstNgay;
+                // ── R1: COD — tổng tất cả ngày của shop ──────────────────────
                 worksheet.Cell(r1, COL_SHOP).Value = "cod";
-                worksheet.Cell(r1, COL_TENKH).FormulaA1 =
-                    $"SUMIFS({rThu},{rShop},{aShop},{rNgay},{aNgay})";
-                worksheet.Cell(r1, COL_DIACHI).FormulaA1 =
-                    $"COUNTIFS({rMa},\"<>\",{rShop},{aShop},{rNgay},{aNgay})";
+                worksheet.Cell(r1, COL_TENKH).FormulaA1 = $"SUMIFS({rThu},{rShop},{shopCriteria})";
+                worksheet.Cell(r1, COL_TENKH).Style.NumberFormat.Format = "#,##0";
+                // COUNTIFS: đếm đơn có SHOP = tên shop (không rỗng bao gồm cả hàng sỉ không có MÃ)
+                worksheet.Cell(r1, COL_MA).FormulaA1 = $"COUNTIFS({rShop},{shopCriteria})";
 
-                // Trừ tiền ship
+                // ── R2: Trừ tiền ship ─────────────────────────────────────────
                 worksheet.Cell(r2, COL_SHOP).Value = "Trừ Tiền Ship";
                 worksheet.Cell(r2, COL_TENKH).FormulaA1 =
-                    $"-SUMIFS({rShip},{rShop},{aShop},{rNgay},{aNgay})";
+                    $"-SUMIFS({rShip},{rShop},{shopCriteria})";
+                worksheet.Cell(r2, COL_TENKH).Style.NumberFormat.Format = "#,##0";
 
-                // Đơn trả (manual, tô đỏ)
+                // ── R3: Đơn trả (manual, tô đỏ) ──────────────────────────────
                 worksheet.Cell(r3, COL_SHOP).Value = "Đơn trả & c.khoản";
                 worksheet.Cell(r3, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
-                // Tiền Hàng HCM (subtotal r1..r3)
+                // ── R4: Tiền Hàng HCM (subtotal r1..r3) ──────────────────────
                 worksheet.Cell(r4, COL_SHOP).Value = "Tiền Hàng Hcm";
+                worksheet.Cell(r4, COL_SHOP).Style.Font.Bold = true;
                 worksheet.Cell(r4, COL_TENKH).FormulaA1 =
                     $"SUBTOTAL(9,{tenkhColL}{r1}:{tenkhColL}{r3})";
-                worksheet.Cell(r4, COL_DIACHI).FormulaA1 = $"{diachiColL}{r1}";
+                worksheet.Cell(r4, COL_TENKH).Style.Font.Bold = true;
+                worksheet.Cell(r4, COL_TENKH).Style.NumberFormat.Format = "#,##0";
+                worksheet.Cell(r4, COL_MA).FormulaA1 = $"{diachiColL}{r1}";
+                worksheet.Cell(r4, COL_MA).Style.Font.Bold = true;
 
-                // Đơn đơn + nợ cũ (manual, tô đỏ)
+                // ── R5: Đơn đơn (manual, tô đỏ) ─────────────────────────────
                 worksheet.Cell(r5, COL_SHOP).Value = "đơn đơn";
                 worksheet.Cell(r5, COL_SHOP).Style.Font.FontColor = XLColor.Red;
+
+                // ── R6: Nợ cũ (manual, tô đỏ) ────────────────────────────────
                 worksheet.Cell(r6, COL_SHOP).Value = "nợ cũ";
                 worksheet.Cell(r6, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
-                // THANH TOÁN
-                var cTT = worksheet.Cell(r7, COL_SHOP);
-                cTT.Value = "THANH TOÁN";
-                cTT.Style.Font.Bold = true;
-                cTT.Style.Fill.BackgroundColor = XLColor.LightGreen;
+                // ── R7: THANH TOÁN ────────────────────────────────────────────
+                SetBoldYellow(worksheet.Cell(r7, COL_TINHTRANG), "", XLColor.LightGreen);
+                SetBoldYellow(worksheet.Cell(r7, COL_SHOP), "THANH TOÁN", XLColor.LightGreen);
                 var cTTVal = worksheet.Cell(r7, COL_TENKH);
                 cTTVal.FormulaA1 = $"{tenkhColL}{r4}+{tenkhColL}{r5}+{tenkhColL}{r6}";
                 cTTVal.Style.Font.Bold = true;
                 cTTVal.Style.Fill.BackgroundColor = XLColor.LightGreen;
-                worksheet.Cell(r7, COL_DIACHI).Value = "CK Đủ 100%";
+                cTTVal.Style.NumberFormat.Format = "#,##0";
+                SetBoldYellow(worksheet.Cell(r7, COL_MA), "CK Đủ 100%", XLColor.LightGreen);
 
-                // Nền LightCyan cho toàn block (trừ ô đã có màu riêng)
+                // ── Nền nhạt cho cả block ─────────────────────────────────────
                 for (int r = r0; r <= r7; r++)
-                for (int c = COL_TINHTRANG; c <= COL_QUAN; c++)
+                for (int c = COL_TINHTRANG; c <= COL_MA; c++)
                 {
-                    var bg = worksheet.Cell(r, c).Style.Fill.BackgroundColor;
+                    var cell = worksheet.Cell(r, c);
+                    var bg = cell.Style.Fill.BackgroundColor;
                     if (bg.Equals(XLColor.NoColor) || bg.Equals(XLColor.White))
-                        worksheet.Cell(r, c).Style.Fill.BackgroundColor = XLColor.LightCyan;
+                        cell.Style.Fill.BackgroundColor = XLColor.LightCyan;
                 }
 
-                // Restore màu ưu tiên cho header + footer
-                cShop.Style.Fill.BackgroundColor = XLColor.LightYellow;
-                cTT.Style.Fill.BackgroundColor = XLColor.LightGreen;
-                cTTVal.Style.Fill.BackgroundColor = XLColor.LightGreen;
+                // ── Viền ngoài block ──────────────────────────────────────────
+                var blockRange = worksheet.Range(r0, COL_TINHTRANG, r7, COL_MA);
+                blockRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+                blockRange.Style.Border.OutsideBorderColor = XLColor.SteelBlue;
+                // Đường kẻ ngang mỏng giữa các dòng
+                for (int r = r0; r <= r7; r++)
+                    worksheet.Range(r, COL_TINHTRANG, r, COL_MA).Style.Border.BottomBorder =
+                        XLBorderStyleValues.Thin;
 
                 curRow += SUMMARY_LEFT_BLOCK_HEIGHT + 1;
             }
@@ -889,6 +1230,9 @@ namespace TextInputter.Services
                 cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = XLColor.LightGray;
             }
+
+            // AutoFilter on header row (sort/filter dropdown trên tất cả cột)
+            worksheet.Range(1, 1, 1, headers.Length).SetAutoFilter();
 
             // Row 2: THU x | NGAY x-x (matches existing sheet pattern)
             // Day of week: Mon=THU 2, Tue=THU 3, ... Sun=CHU NHAT

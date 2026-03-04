@@ -36,6 +36,7 @@ namespace TextInputter
         private TabPage tabExcelViewer;
         private TabPage tabInvoice;
         private TabPage tabManualInput;
+        private TabPage tabUpdate;
 
         private void InitializeComponent()
         {
@@ -59,6 +60,7 @@ namespace TextInputter
             tabExcelViewer  = new TabPage();
             tabInvoice      = new TabPage();
             tabManualInput  = new TabPage();
+            tabUpdate       = new TabPage();
 
             panelTop.SuspendLayout();
             panelLeft.SuspendLayout();
@@ -255,6 +257,7 @@ namespace TextInputter
             tabMainControl.Controls.Add(tabExcelViewer);
             tabMainControl.Controls.Add(tabInvoice);
             tabMainControl.Controls.Add(tabManualInput);
+            tabMainControl.Controls.Add(tabUpdate);
 
             // tabOCR — content thêm bởi InitializeOCRTab() trong OcrTab.cs
             tabOCR.Controls.Add(txtResult);
@@ -292,6 +295,15 @@ namespace TextInputter
             tabManualInput.TabIndex      = 3;
             tabManualInput.Text          = "Manual Input";
             tabManualInput.UseVisualStyleBackColor = true;
+
+            // tabUpdate — content thêm bởi InitializeUpdateTab() trong UpdateTab.UI.cs
+            tabUpdate.Location      = new Point(4, 24);
+            tabUpdate.Name          = "tabUpdate";
+            tabUpdate.Padding       = new Padding(3);
+            tabUpdate.Size          = new Size(942, 572);
+            tabUpdate.TabIndex      = 4;
+            tabUpdate.Text          = "✏️ Cập nhật";
+            tabUpdate.UseVisualStyleBackColor = true;
 
             // MainForm
             AutoScaleDimensions = new SizeF(7F, 15F);

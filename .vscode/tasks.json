@@ -1,44 +1,91 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "build",
-      "command": "dotnet",
-      "type": "shell",
-      "args": ["build"],
-      "problemMatcher": "$msCompile",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always"
-      }
-    },
-    {
-      "label": "run",
-      "command": "dotnet",
-      "type": "shell",
-      "args": ["run"],
-      "dependsOn": "build",
-      "group": {
-        "kind": "test"
-      },
-      "presentation": {
-        "reveal": "always"
-      }
-    },
-    {
-      "label": "build-and-run",
-      "type": "shell",
-      "command": "dotnet",
-      "args": ["run"],
-      "group": {
-        "kind": "build"
-      },
-      "presentation": {
-        "reveal": "always"
-      }
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"command": "dotnet",
+			"type": "shell",
+			"args": [
+				"build"
+			],
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"label": "run",
+			"command": "dotnet",
+			"type": "shell",
+			"args": [
+				"run"
+			],
+			"dependsOn": "build",
+			"group": {
+				"kind": "test"
+			},
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"label": "build-and-run",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run"
+			],
+			"group": {
+				"kind": "build"
+			},
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"label": "fix-invoice-tab",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"D:\\Work\\Freelance\\TextInputter\\_fix_invoice_tab.py"
+			]
+		},
+		{
+			"label": "dotnet-build-verify",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"D:\\Work\\Freelance\\TextInputter\\TextInputter.csproj"
+			]
+		},
+		{
+			"label": "dotnet-publish",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"publish",
+				"TextInputter.csproj",
+				"-c",
+				"Release",
+				"-o",
+				"publish",
+				"--self-contained",
+				"false"
+			]
+		},
+		{
+			"label": "cleanup-temp",
+			"type": "shell",
+			"command": "Remove-Item",
+			"args": [
+				"-Force",
+				"D:\\Work\\Freelance\\TextInputter\\_fix_invoice_tab.py"
+			]
+		}
+	]
 }
