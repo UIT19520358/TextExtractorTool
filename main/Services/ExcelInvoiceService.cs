@@ -22,79 +22,6 @@ namespace TextInputter.Services
             _excelFilePath = excelFilePath;
         }
 
-        /// <summary>
-        /// Kiểm tra hóa đơn với cùng số có tồn tại chưa.
-        /// </summary>
-        public bool InvoiceExists(string soHoaDon, out string existingSheet)
-        {
-            existingSheet = null;
-
-            try
-            {
-                using (var workbook = new XLWorkbook(_excelFilePath))
-                {
-                    foreach (var worksheet in workbook.Worksheets)
-                    {
-                        var rows = worksheet.RowsUsed();
-                        foreach (var row in rows)
-                        {
-                            if (row.RowNumber() <= 2)
-                                continue; // Skip header rows (row1=cols, row2=THU x)
-
-                            var cell = row.Cell(COL_MA); // MÃ column (invoice number)
-                            string cellValue = cell.GetString();
-                            if (cellValue == soHoaDon)
-                            {
-                                existingSheet = worksheet.Name;
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error checking invoice: {ex.Message}");
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Lấy tất cả số hóa đơn đã có trong Excel.
-        /// </summary>
-        public List<string> GetAllInvoiceNumbers()
-        {
-            var invoices = new List<string>();
-
-            try
-            {
-                using (var workbook = new XLWorkbook(_excelFilePath))
-                {
-                    foreach (var worksheet in workbook.Worksheets)
-                    {
-                        var rows = worksheet.RowsUsed();
-                        foreach (var row in rows)
-                        {
-                            if (row.RowNumber() <= 2)
-                                continue; // Skip header rows (row1=cols, row2=THU x)
-
-                            var cell = row.Cell(COL_MA); // MÃ column (invoice number)
-                            string cellValue = cell.GetString();
-                            if (!string.IsNullOrWhiteSpace(cellValue))
-                                invoices.Add(cellValue);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error getting invoices: {ex.Message}");
-            }
-
-            return invoices;
-        }
-
         // ── Column index constants (1-based) ────────────────────────────────────
         // Thay đổi ở đây nếu cấu trúc cột Excel thay đổi.
         private const int COL_TINHTRANG = 1;
@@ -124,8 +51,8 @@ namespace TextInputter.Services
         // Số dòng mỗi block bảng tổng kết bên phải (per NGƯỜI ĐI).
         private const int SUMMARY_RIGHT_BLOCK_HEIGHT = 7;
 
-        // Số dòng mỗi block bảng tổng kết bên trái (per SHOP).
-        private const int SUMMARY_LEFT_BLOCK_HEIGHT = 8;
+        // Số dòng mỗi block bảng tổng kết bên trái (per SHOP) — bảng đối soát gửi shop.
+        private const int SUMMARY_LEFT_BLOCK_HEIGHT = 10;
 
         // Số dòng dự phòng khi xóa summary cũ (tránh bỏ sót).
         private const int SUMMARY_CLEAR_EXTRA_ROWS = 50;
@@ -738,10 +665,17 @@ namespace TextInputter.Services
         {
             string nguoiLayColL = ColLetter(COL_NGUOILAY);
             string ngayLayColL = ColLetter(COL_NGAYLAY);
+            string failColL = ColLetter(COL_FAIL);
+
+            // Ranges for đơn gộp & đơn trả detection (TÊN KH + ĐỊA CHỈ + FAIL)
+            string rFail = $"{failColL}${DATA_START_ROW}:{failColL}${worksheet.LastRowUsed()?.RowNumber() ?? DATA_START_ROW}";
+
             int curRow = startRow;
 
             foreach (string nd in distinctNguoiDis)
             {
+                bool isAnTam = nd.Equals(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase);
+
                 int b0 = curRow;
                 int b1 = curRow + 1;
                 int b2 = curRow + 2;
@@ -759,15 +693,30 @@ namespace TextInputter.Services
                 worksheet.Cell(b1, COL_NGUOIDI).Value = "TỔNG ĐƠN NHẬN";
                 worksheet.Cell(b1, COL_NGUOILAY).FormulaA1 = $"SUMIFS({rThu},{rNguoiDi},\"{nd}\")";
                 // Số đơn = đếm TẤT CẢ rows theo NGƯỜI ĐI (bao gồm cả hàng sỉ / ship-only)
-                // Dùng SHOP "<>" thay vì MÃ "<>" vì đơn hàng sỉ không có MÃ nhưng vẫn là đơn
                 worksheet.Cell(b1, COL_NGAYLAY).FormulaA1 =
                     $"COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")";
 
-                worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
-                // Để trống — user tự điền tay
+                if (!isAnTam)
+                {
+                    // tiền ship — auto formula: -(SUMIFS(Ship) - SoDon × 5k)
+                    // Tính bằng: -SUMIFS(Ship,NguoiDi,"nd") + COUNTIFS(Shop,"<>",NguoiDi,"nd") × PHI_SHIP
+                    worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
+                    worksheet.Cell(b2, COL_NGUOILAY).FormulaA1 =
+                        $"-SUMIFS({rShip},{rNguoiDi},\"{nd}\")+COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")*{AppConstants.PHI_SHIP_MOI_DON}";
 
-                worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
-                // Để trống — user tự điền tay
+                    // tiền lấy — auto formula: -(SoDon - SoDonTra) × 2k
+                    // SoDonTra = COUNTIFS(Shop,"<>",NguoiDi,"nd",Fail,"xx")
+                    // Simplified: -(SoDon × 2k) + (SoDonTra × 2k)
+                    worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
+                    worksheet.Cell(b3, COL_NGUOILAY).FormulaA1 =
+                        $"-(COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")-COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\",{rFail},\"xx\"))*{AppConstants.PHI_LAY_HANG_MOI_DON}";
+                }
+                else
+                {
+                    worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
+                    // An Tâm — không trừ ship/lấy
+                    worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
+                }
 
                 worksheet.Cell(b4, COL_NGUOIDI).Value = "đơn trả";
                 worksheet.Cell(b4, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
@@ -790,7 +739,19 @@ namespace TextInputter.Services
             }
         }
 
-        /// <summary>Tạo bảng tổng kết bên trái (per SHOP × NGÀY), mỗi combo 1 block 8 dòng.</summary>
+        /// <summary>
+        /// Tạo bảng đối soát gửi shop (per SHOP × NGÀY).
+        /// Layout matching template Excel gốc:
+        ///   [T7.28.1]       | Tiền     | Số đơn
+        ///   Tiền hàng        | SUBTOTAL | count
+        ///   Trừ Ship         | 0 (red)  |
+        ///   Cước xử          | 0 (red)  |
+        ///   Khách C          | 0 (red)  |
+        ///   Giảm tiền        | 0        |
+        ///   Hàng Boom Trả    |          |
+        ///   Trừ đơn cũ đã ck |          |
+        ///   Tổng             | formula  | count
+        /// </summary>
         private void BuildLeftSummary(
             IXLWorksheet worksheet,
             List<(string Shop, string Ngay)> distinctShopDates,
@@ -804,74 +765,111 @@ namespace TextInputter.Services
             string diachiColL
         )
         {
+            // Tìm TIỀN HÀNG range cho SUMIFS
+            string hangColL = ColLetter(COL_TIENHANG);
+            int lastDataRow = DATA_START_ROW;
+            foreach (var row in worksheet.RowsUsed())
+            {
+                int rn = row.RowNumber();
+                if (rn < DATA_START_ROW)
+                    continue;
+                string shopVal = row.Cell(COL_SHOP).GetString();
+                if (!string.IsNullOrWhiteSpace(shopVal))
+                    lastDataRow = Math.Max(lastDataRow, rn);
+            }
+            string rHang = $"{hangColL}${DATA_START_ROW}:{hangColL}${lastDataRow}";
+            // FAIL range for boom detection
+            string failColL = ColLetter(COL_FAIL);
+            string rFail = $"{failColL}${DATA_START_ROW}:{failColL}${lastDataRow}";
+
             int curRow = startRow;
 
             foreach (var (shop, ngay) in distinctShopDates)
             {
-                int r0 = curRow; // tên shop + header
-                int r1 = curRow + 1; // ngày + cod row
-                int r2 = curRow + 2; // trừ tiền ship
-                int r3 = curRow + 3; // đơn trả & ck
-                int r4 = curRow + 4; // tiền hàng HCM (subtotal)
-                int r5 = curRow + 5; // đơn đơn (manual)
-                int r6 = curRow + 6; // nợ cũ (manual)
-                int r7 = curRow + 7; // THANH TOÁN
+                // Parse ngày để tạo header T7.28.1 format
+                // ngay format: "28-02-2026." → "T7.28.2" (Thứ.Ngày.Tháng)
+                string headerLabel = FormatDoiSoatHeader(ngay);
+
+                int r0 = curRow;       // Header: T7.28.1 | Tiền | Số đơn
+                int r1 = curRow + 1;   // Tiền hàng | SUBTOTAL | count
+                int r2 = curRow + 2;   // Trừ Ship (placeholder 0, red)
+                int r3 = curRow + 3;   // Cước xử (placeholder 0, red)
+                int r4 = curRow + 4;   // Khách C (placeholder 0, red)
+                int r5 = curRow + 5;   // Giảm tiền (placeholder 0)
+                int r6 = curRow + 6;   // Hàng Boom Trả (formula from FAIL=xx)
+                int r7 = curRow + 7;   // Trừ đơn cũ đã ck (manual)
+                int r8 = curRow + 8;   // (blank separator)
+                int r9 = curRow + 9;   // Tổng | SUBTOTAL | count
 
                 string aShop = $"$A${r0}";
                 string aNgay = $"$A${r1}";
 
-                // Header: tên shop
-                var cShop = worksheet.Cell(r0, COL_TINHTRANG);
-                cShop.Value = shop;
-                cShop.Style.Font.Bold = true;
-                cShop.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                // ── R0: Header ────────────────────────────────────────────────
+                var cHeader = worksheet.Cell(r0, COL_TINHTRANG);
+                cHeader.Value = headerLabel;
+                cHeader.Style.Font.Bold = true;
+                cHeader.Style.Fill.BackgroundColor = XLColor.LightYellow;
                 SetBold(worksheet.Cell(r0, COL_TENKH), "Tiền");
                 SetBold(worksheet.Cell(r0, COL_DIACHI), "Số đơn");
 
-                // Ngày + COD row
-                worksheet.Cell(r1, COL_TINHTRANG).Value = ngay;
-                worksheet.Cell(r1, COL_SHOP).Value = "cod";
+                // ── R1: Tiền hàng (SUBTOTAL TIỀN HÀNG per shop × ngày) ───────
+                // Store shop + ngày values for SUMIFS reference
+                worksheet.Cell(r0, COL_SHOP).Value = shop; // hidden reference cho SUMIFS
+                worksheet.Cell(r1, COL_TINHTRANG).Value = ngay; // hidden reference
+                worksheet.Cell(r1, COL_SHOP).Value = "Tiền hàng";
+                worksheet.Cell(r1, COL_SHOP).Style.Fill.BackgroundColor = XLColor.LightYellow;
                 worksheet.Cell(r1, COL_TENKH).FormulaA1 =
-                    $"SUMIFS({rThu},{rShop},{aShop},{rNgay},{aNgay})";
-                // Số đơn = đếm TẤT CẢ rows theo (SHOP, NGÀY) — bao gồm cả hàng sỉ / ship-only
-                // Dùng SHOP "<>" (luôn non-empty cho data rows) thay vì MÃ "<>"
+                    $"SUMIFS({rHang},{rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
+                worksheet.Cell(r1, COL_TENKH).Style.Fill.BackgroundColor = XLColor.LightYellow;
                 worksheet.Cell(r1, COL_DIACHI).FormulaA1 =
-                    $"COUNTIFS({rShop},{aShop},{rNgay},{aNgay})";
+                    $"COUNTIFS({rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
+                worksheet.Cell(r1, COL_DIACHI).Style.Fill.BackgroundColor = XLColor.LightYellow;
 
-                // Trừ tiền ship
-                worksheet.Cell(r2, COL_SHOP).Value = "Trừ Tiền Ship";
-                worksheet.Cell(r2, COL_TENKH).FormulaA1 =
-                    $"-SUMIFS({rShip},{rShop},{aShop},{rNgay},{aNgay})";
+                // ── R2: Trừ Ship (placeholder 0, tô đỏ) ──────────────────────
+                worksheet.Cell(r2, COL_SHOP).Value = "Trừ Ship";
+                worksheet.Cell(r2, COL_TENKH).Value = 0;
+                worksheet.Cell(r2, COL_TENKH).Style.Font.FontColor = XLColor.Red;
+                worksheet.Cell(r2, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
-                // Đơn trả (manual, tô đỏ)
-                worksheet.Cell(r3, COL_SHOP).Value = "Đơn trả & c.khoản";
+                // ── R3: Cước xử (placeholder 0, tô đỏ) ──────────────────────
+                worksheet.Cell(r3, COL_SHOP).Value = "Cước xử";
+                worksheet.Cell(r3, COL_TENKH).Value = 0;
+                worksheet.Cell(r3, COL_TENKH).Style.Font.FontColor = XLColor.Red;
                 worksheet.Cell(r3, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
-                // Tiền Hàng HCM (subtotal r1..r3)
-                worksheet.Cell(r4, COL_SHOP).Value = "Tiền Hàng Hcm";
-                worksheet.Cell(r4, COL_TENKH).FormulaA1 =
-                    $"SUBTOTAL(9,{tenkhColL}{r1}:{tenkhColL}{r3})";
-                worksheet.Cell(r4, COL_DIACHI).FormulaA1 = $"{diachiColL}{r1}";
+                // ── R4: Khách C (placeholder 0, tô đỏ) ──────────────────────
+                worksheet.Cell(r4, COL_SHOP).Value = "Khách C";
+                worksheet.Cell(r4, COL_TENKH).Value = 0;
+                worksheet.Cell(r4, COL_TENKH).Style.Font.FontColor = XLColor.Red;
+                worksheet.Cell(r4, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
-                // Đơn đơn + nợ cũ (manual, tô đỏ)
-                worksheet.Cell(r5, COL_SHOP).Value = "đơn đơn";
-                worksheet.Cell(r5, COL_SHOP).Style.Font.FontColor = XLColor.Red;
-                worksheet.Cell(r6, COL_SHOP).Value = "nợ cũ";
-                worksheet.Cell(r6, COL_SHOP).Style.Font.FontColor = XLColor.Red;
+                // ── R5: Giảm tiền (placeholder 0) ────────────────────────────
+                worksheet.Cell(r5, COL_SHOP).Value = "Giảm tiền";
+                worksheet.Cell(r5, COL_TENKH).Value = 0;
 
-                // THANH TOÁN
-                var cTT = worksheet.Cell(r7, COL_SHOP);
-                cTT.Value = "THANH TOÁN";
-                cTT.Style.Font.Bold = true;
-                cTT.Style.Fill.BackgroundColor = XLColor.LightGreen;
-                var cTTVal = worksheet.Cell(r7, COL_TENKH);
-                cTTVal.FormulaA1 = $"{tenkhColL}{r4}+{tenkhColL}{r5}+{tenkhColL}{r6}";
-                cTTVal.Style.Font.Bold = true;
-                cTTVal.Style.Fill.BackgroundColor = XLColor.LightGreen;
-                worksheet.Cell(r7, COL_DIACHI).Value = "CK Đủ 100%";
+                // ── R6: Hàng Boom Trả (auto-count from FAIL=xx) ─────────────
+                worksheet.Cell(r6, COL_SHOP).Value = "Hàng Boom Trả";
 
-                // Nền LightCyan cho toàn block (trừ ô đã có màu riêng)
-                for (int r = r0; r <= r7; r++)
+                // ── R7: Trừ đơn cũ đã ck (manual, tô cam) ──────────────────
+                worksheet.Cell(r7, COL_SHOP).Value = "Trừ đơn cũ đã ck";
+                worksheet.Cell(r7, COL_SHOP).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 200, 124);
+
+                // ── R9: Tổng (formula = sum r1..r7) ─────────────────────────
+                var cTong = worksheet.Cell(r9, COL_SHOP);
+                cTong.Value = "Tổng";
+                cTong.Style.Font.Bold = true;
+                cTong.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                var cTongVal = worksheet.Cell(r9, COL_TENKH);
+                cTongVal.FormulaA1 = $"SUBTOTAL(9,{tenkhColL}{r1}:{tenkhColL}{r7})";
+                cTongVal.Style.Font.Bold = true;
+                cTongVal.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                var cTongDon = worksheet.Cell(r9, COL_DIACHI);
+                cTongDon.FormulaA1 = $"{diachiColL}{r1}"; // same as Tiền hàng Số đơn
+                cTongDon.Style.Font.Bold = true;
+                cTongDon.Style.Fill.BackgroundColor = XLColor.LightYellow;
+
+                // Nền LightCyan cho toàn block
+                for (int r = r0; r <= r9; r++)
                 for (int c = COL_TINHTRANG; c <= COL_QUAN; c++)
                 {
                     var bg = worksheet.Cell(r, c).Style.Fill.BackgroundColor;
@@ -879,13 +877,42 @@ namespace TextInputter.Services
                         worksheet.Cell(r, c).Style.Fill.BackgroundColor = XLColor.LightCyan;
                 }
 
-                // Restore màu ưu tiên cho header + footer
-                cShop.Style.Fill.BackgroundColor = XLColor.LightYellow;
-                cTT.Style.Fill.BackgroundColor = XLColor.LightGreen;
-                cTTVal.Style.Fill.BackgroundColor = XLColor.LightGreen;
+                // Restore màu ưu tiên
+                cHeader.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                cTong.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                cTongVal.Style.Fill.BackgroundColor = XLColor.LightYellow;
 
                 curRow += SUMMARY_LEFT_BLOCK_HEIGHT + 1;
             }
+        }
+
+        /// <summary>
+        /// Format đối soát header: "28-02-2026." → "T7.28.2" (Thứ.Ngày.Tháng)
+        /// </summary>
+        private static string FormatDoiSoatHeader(string ngayStr)
+        {
+            string cleaned = ngayStr.TrimEnd('.');
+            if (DateTime.TryParseExact(cleaned,
+                new[] { "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy", "dd-MM", "d-M" },
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out DateTime dt))
+            {
+                string thu = dt.DayOfWeek switch
+                {
+                    DayOfWeek.Monday    => "T2",
+                    DayOfWeek.Tuesday   => "T3",
+                    DayOfWeek.Wednesday => "T4",
+                    DayOfWeek.Thursday  => "T5",
+                    DayOfWeek.Friday    => "T6",
+                    DayOfWeek.Saturday  => "T7",
+                    DayOfWeek.Sunday    => "CN",
+                    _ => "T?",
+                };
+                return $"{thu}.{dt.Day}.{dt.Month}";
+            }
+            // Fallback: giữ nguyên
+            return ngayStr;
         }
 
         /// <summary>Helper: set Value + Bold + BackgroundColor cho 1 ô.</summary>
@@ -914,81 +941,6 @@ namespace TextInputter.Services
                 col /= 26;
             }
             return result;
-        }
-
-        /// <summary>
-        /// Upsert invoice: nếu MÃ đã tồn tại trong sheet → ghi đè dòng đó.
-        /// Nếu chưa có → thêm dòng mới cuối sheet.
-        /// Sheet được chọn theo sheetName (mặc định ngày hôm nay "dd-MM").
-        /// </summary>
-        public void ExportInvoice(OCRInvoiceData invoice, string sheetName = null)
-        {
-            if (invoice == null)
-                throw new ArgumentNullException(nameof(invoice));
-
-            sheetName ??= DateTime.Now.ToString("dd-MM");
-
-            try
-            {
-                using (var workbook = new XLWorkbook(_excelFilePath))
-                {
-                    IXLWorksheet worksheet;
-                    if (workbook.TryGetWorksheet(sheetName, out var existingSheet))
-                    {
-                        worksheet = existingSheet;
-                    }
-                    else
-                    {
-                        worksheet = workbook.Worksheets.Add(sheetName);
-                        AddHeaderRow(worksheet, DateTime.Now);
-                    }
-
-                    // Tìm row có MÃ trùng để ghi đè (upsert)
-                    int targetRow = -1;
-                    var usedRows = worksheet.RowsUsed();
-                    foreach (var row in usedRows)
-                    {
-                        if (row.RowNumber() <= 2)
-                            continue; // bỏ header rows
-                        if (row.Cell(COL_MA).GetString() == invoice.SoHoaDon)
-                        {
-                            targetRow = row.RowNumber();
-                            break;
-                        }
-                    }
-
-                    // Nếu không tìm thấy → append dòng mới
-                    if (targetRow < 0)
-                    {
-                        var lastRow = worksheet.LastRowUsed();
-                        targetRow =
-                            (lastRow != null && lastRow.RowNumber() >= 3)
-                                ? lastRow.RowNumber() + 1
-                                : 3;
-                    }
-
-                    // Ghi dữ liệu vào targetRow
-                    worksheet.Cell(targetRow, COL_SHOP).Value = invoice.Shop ?? "";
-                    worksheet.Cell(targetRow, COL_TENKH).Value = invoice.TenKhachHang ?? "";
-                    worksheet.Cell(targetRow, COL_MA).Value = invoice.SoHoaDon;
-                    worksheet.Cell(targetRow, COL_DIACHI).Value = invoice.DiaChi;
-                    worksheet.Cell(targetRow, COL_QUAN).Value = invoice.Quan;
-                    worksheet.Cell(targetRow, COL_TIENTHU).Value = invoice.TongThanhToan;
-                    worksheet.Cell(targetRow, COL_TIENSHIP).Value = 0;
-                    worksheet.Cell(targetRow, COL_TIENHANG).Value = invoice.TongTienHang;
-                    worksheet.Cell(targetRow, COL_NGUOIDI).Value = invoice.NguoiDi;
-                    worksheet.Cell(targetRow, COL_NGUOILAY).Value = invoice.NguoiLay;
-                    worksheet.Cell(targetRow, COL_NGAYLAY).Value = DateTime.Now.ToString(
-                        "dd-MM-yyyy."
-                    );
-
-                    workbook.SaveAs(_excelFilePath);
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Error exporting invoice: {ex.Message}", ex);
-            }
         }
 
         /// <summary>

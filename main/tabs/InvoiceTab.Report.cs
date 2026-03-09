@@ -138,6 +138,11 @@ namespace TextInputter
                 dgvTong.Dock = DockStyle.Fill;
 
                 int ri;
+                // Sum đơn trả tổng hợp từ per-person details
+                decimal totalTienDonTra = 0;
+                if (r.DetailByNguoiDi != null)
+                    totalTienDonTra = r.DetailByNguoiDi.Values.Sum(nd => nd.TienDonTra);
+
                 // Tính Tiền Hàng = TongThu - TongShip (trước khi trừ đơn âm)
                 decimal tienHangTong = r.TongTienThu + tongShipRaw; // tongShipRaw = -TongTienShip
 
@@ -145,34 +150,57 @@ namespace TextInputter
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightSteelBlue;
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
 
-                ri = dgvTong.Rows.Add("TỔNG ĐƠN NHẬN", thuStr, soDonStr);
+                // Tiền hàng (= tổng TIỀN THU)
+                ri = dgvTong.Rows.Add("Tiền hàng", thuStr, soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                // tiền ship = -TongTienShip (số âm = khoản trừ)
-                ri = dgvTong.Rows.Add("tiền ship", tongShipRaw.ToString("N0"), soDonStr);
-                dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
-                dgvTong.Rows[ri].Cells[1].Style.ForeColor = Color.Black;
-
-                // Đơn trả & (placeholder đỏ — user tự điền)
-                ri = dgvTong.Rows.Add("Đơn trả &", "0", "0");
+                // Trừ Ship (tổng tiền ship dương → hiển thị ngược dấu = âm)
+                ri = dgvTong.Rows.Add("Trừ Ship", tongShipRaw.ToString("N0"), soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                // Tiền Hàng = TongThu - TongShip
-                ri = dgvTong.Rows.Add("Tiền Hàng", tienHangTong.ToString("N0"), soDonStr);
-                dgvTong.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
-                dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
-                dgvTong.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
-
-                // đền đơn (placeholder đỏ — user tự điền)
-                ri = dgvTong.Rows.Add("đền đơn", "", "");
+                // Cước xử (placeholder 0 — user tự điền)
+                ri = dgvTong.Rows.Add("Cước xử", "0", "");
                 dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                // nợ cũ (placeholder đỏ — user tự điền)
-                ri = dgvTong.Rows.Add("nợ cũ", "", "");
+                // Khách C (placeholder 0 — user tự điền)
+                ri = dgvTong.Rows.Add("Khách C", "0", "");
                 dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                // THANH TOÁN = Tiền Hàng (kết cuối sau khi trừ hết)
-                ri = dgvTong.Rows.Add("THANH TOÁN", tienHangTong.ToString("N0"), "ĐỦ 100%");
+                // Giảm tiền (placeholder 0 — user tự điền)
+                ri = dgvTong.Rows.Add("Giảm tiền", "0", "");
+                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+
+                // Hàng Boom Trả — auto-filled từ đơn trả
+                if (r.TotalDonTra > 0)
+                {
+                    ri = dgvTong.Rows.Add("Hàng Boom Trả", totalTienDonTra.ToString("N0"), r.TotalDonTra.ToString());
+                    dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+                }
+                else
+                {
+                    ri = dgvTong.Rows.Add("Hàng Boom Trả", "", "");
+                    dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                }
+
+                // Trừ đơn cũ đã ck — auto-filled từ NegativeRows nếu có
+                decimal totalNegative = r.NegativeRows?.Sum(nr => nr.Amount) ?? 0;
+                if (r.NegativeRows != null && r.NegativeRows.Count > 0)
+                {
+                    string negLabel = r.NegativeRows.Count == 1
+                        ? r.NegativeRows[0].Label
+                        : "Trừ đơn cũ đã ck";
+                    ri = dgvTong.Rows.Add(negLabel, totalNegative.ToString("N0"), $"{r.NegativeRows.Count} dòng");
+                    dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.FromArgb(200, 100, 0); // cam
+                }
+                else
+                {
+                    ri = dgvTong.Rows.Add("Trừ đơn cũ đã ck", "", "");
+                    dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.FromArgb(200, 100, 0);
+                }
+
+                // Tổng = Tiền hàng + Trừ Ship + Boom Trả + Đơn cũ ck
+                decimal tongFinal = r.TongTienThu + tongShipRaw + totalTienDonTra + totalNegative;
+                ri = dgvTong.Rows.Add("Tổng", tongFinal.ToString("N0"), soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightGreen;
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
                 dgvTong.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
@@ -182,14 +210,15 @@ namespace TextInputter
             }
 
             // ── Report nhỏ theo từng NGƯỜI ĐI ────────────────────────────────
-            if (r.ReportByNguoiDi != null && r.ReportByNguoiDi.Count > 0)
+            if (r.DetailByNguoiDi != null && r.DetailByNguoiDi.Count > 0)
             {
-                foreach (var kvp in r.ReportByNguoiDi.OrderBy(k => k.Key))
+                foreach (var kvp in r.DetailByNguoiDi.OrderBy(k => k.Key))
                 {
                     string tenNguoi = kvp.Key;
-                    decimal tienThuNguoi = kvp.Value.TienThu;
-                    decimal tienShipNguoi = kvp.Value.TienShip;
-                    decimal soDonNguoi = kvp.Value.SoDon;
+                    var nd = kvp.Value;
+                    decimal tienThuNguoi = nd.TienThu;
+                    decimal tienShipNguoi = nd.TienShip;
+                    decimal soDonNguoi = nd.SoDon;
 
                     var pnlNguoi = new Panel
                     {
@@ -232,24 +261,58 @@ namespace TextInputter
                     );
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                    // tiền ship — để trống, user tự điền
-                    ri = dgvNguoi.Rows.Add("tiền ship", "", "");
-                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    if (!nd.IsAnTam)
+                    {
+                        // tiền ship — auto-filled: -(TongShip - SoDonGiao × 5k)
+                        string shipInfo = nd.SoDonGop > 0
+                            ? $"giao {nd.SoDonGiao:N0} ({nd.SoDonGop} gộp)"
+                            : $"giao {nd.SoDonGiao:N0}";
+                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        if (nd.TienShipTru < 0)
+                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
 
-                    // tiền lấy — để trống, user tự điền
-                    ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
-                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        // tiền lấy — auto-filled: -((SoDon - SoDonTra - SoDonGop) × 2k)
+                        decimal donLayThucTe = nd.SoDon - nd.SoDonTra - nd.SoDonGop;
+                        if (donLayThucTe < 0) donLayThucTe = 0;
+                        ri = dgvNguoi.Rows.Add("tiền lấy", nd.TienLay.ToString("N0"), $"{donLayThucTe:N0} đơn");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        if (nd.TienLay < 0)
+                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
 
-                    // đơn trả (placeholder đỏ, tự điền)
-                    ri = dgvNguoi.Rows.Add("đơn trả", "", "");
-                    dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+                        // đơn trả — auto-filled nếu có, đỏ nếu chưa có
+                        if (nd.SoDonTra > 0)
+                        {
+                            ri = dgvNguoi.Rows.Add("đơn trả", nd.TienDonTra.ToString("N0"), $"{nd.SoDonTra} đơn");
+                            dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+                        }
+                        else
+                        {
+                            ri = dgvNguoi.Rows.Add("đơn trả", "0", "0");
+                            dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                        }
 
-                    // đơn cũ ck (placeholder đỏ, tự điền)
-                    ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
-                    dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+                        // đơn cũ ck (placeholder đỏ, vẫn cần user tự điền)
+                        ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                    // Dòng KẾT — chỉ hiện Số đơn, Tiền để trống (sẽ có SUBTOTAL trong Excel)
-                    ri = dgvNguoi.Rows.Add("", "", soDonNguoi.ToString("N0"));
+                        // Dòng KẾT — tính tự động: thu + ship + lấy + trả
+                        decimal ketNguoi = tienThuNguoi + nd.TienShipTru + nd.TienLay + nd.TienDonTra;
+                        ri = dgvNguoi.Rows.Add("KẾT", ketNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
+                    }
+                    else
+                    {
+                        // An Tâm: không tính ship/lấy/trả
+                        ri = dgvNguoi.Rows.Add("tiền ship", "—", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                        ri = dgvNguoi.Rows.Add("tiền lấy", "—", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                        ri = dgvNguoi.Rows.Add("đơn trả", "—", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                        ri = dgvNguoi.Rows.Add("đơn cũ ck", "—", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                        ri = dgvNguoi.Rows.Add("KẾT", tienThuNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
+                    }
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
                     dgvNguoi.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
                     dgvNguoi.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
@@ -633,27 +696,5 @@ namespace TextInputter
             }
         }
 
-        // Giữ lại để tương thích nếu có nơi gọi trực tiếp
-        private void SaveDailyReportToExcel()
-        {
-            _ = SaveDailyReportToExcelAsync();
-        }
-
-        // ─── Legacy handlers (buttons hidden in Designer, kept to avoid Designer wire errors) ──
-
-        // NOTE: btnSaveInvoice, btnImportFromExcel, btnCalculateInvoice đều Visible=false trong Designer.
-        // Flow chính dùng BtnCalculateExcelData_Click + SaveDailyReportToExcel thay thế.
-
-        private void BtnSaveInvoice_Click(
-            object sender,
-            EventArgs e
-        ) { /* hidden – dùng 💾 Lưu trong button panel */
-        }
-
-        private void BtnImportFromExcel_Click(
-            object sender,
-            EventArgs e
-        ) { /* hidden – dùng BtnOpenExcel_Click + BtnCalculateExcelData_Click */
-        }
     }
 }

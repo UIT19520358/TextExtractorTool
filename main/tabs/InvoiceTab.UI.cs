@@ -23,10 +23,7 @@ namespace TextInputter
 
         // ─── Controls tham chiếu (ẩn, giữ để tránh lỗi wire Designer) ────────
         private Label lblInvoiceDate;
-        private Button btnAddInvoiceRow;
-        private Button btnSaveInvoice;
-        private Button btnImportFromExcel;
-        private Button btnCalculateInvoice;
+
 
         // ─── State ────────────────────────────────────────────────────────────
         private string currentExcelFilePath;
@@ -48,10 +45,7 @@ namespace TextInputter
             dgvInvoice = new DataGridView();
             lblInvoiceTotal = new Label();
             lblInvoiceDate = new Label();
-            btnAddInvoiceRow = new Button();
-            btnSaveInvoice = new Button();
-            btnImportFromExcel = new Button();
-            btnCalculateInvoice = new Button();
+
 
             // ── tabExcelViewer layout ─────────────────────────────────────────
 
@@ -111,10 +105,26 @@ namespace TextInputter
             btnCalculateExcelData.Font = new System.Drawing.Font("Arial", 9F);
             btnCalculateExcelData.Click += BtnCalculateExcelData_Click;
 
+            // btnMarkReturns — nút đánh dấu đơn trả
+            var btnMarkReturns = new Button
+            {
+                BackColor = System.Drawing.Color.FromArgb(40, 40, 40),
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = System.Drawing.Color.White,
+                Location = new System.Drawing.Point(325, 5),
+                Name = "btnMarkReturns",
+                Size = new System.Drawing.Size(100, 25),
+                Text = "↩ Đơn Trả",
+                Font = new System.Drawing.Font("Arial", 9F),
+            };
+            btnMarkReturns.FlatAppearance.BorderSize = 0;
+            btnMarkReturns.Click += (s, e) => ShowReturnDialog();
+
             panelExcelButtons.Controls.Add(btnSaveExcelEditor);
             panelExcelButtons.Controls.Add(btnUndoExcelEditor);
             panelExcelButtons.Controls.Add(btnCancelExcelEditor);
             panelExcelButtons.Controls.Add(btnCalculateExcelData);
+            panelExcelButtons.Controls.Add(btnMarkReturns);
 
             // tabExcelSheets (fill phần còn lại bên dưới toolbar)
             tabExcelSheets.Dock = DockStyle.Fill;
@@ -155,17 +165,6 @@ namespace TextInputter
             tabInvoice.Controls.Add(lblInvoiceTotal);
             tabInvoice.Controls.Add(dgvInvoice);
 
-            // ── Legacy hidden buttons (chỉ instantiate để tránh NullRef, không add vào UI) ──
-            btnAddInvoiceRow.Visible = false;
-            btnSaveInvoice.Visible = false;
-            btnImportFromExcel.Visible = false;
-            btnCalculateInvoice.Visible = false;
-            // Wire legacy handlers (visible=false, sẽ không bao giờ trigger UI nhưng giữ để
-            // tránh event subscription lỗi nếu code gọi trực tiếp)
-            btnAddInvoiceRow.Click += BtnAddInvoiceRow_Click;
-            btnSaveInvoice.Click += BtnSaveInvoice_Click;
-            btnImportFromExcel.Click += BtnImportFromExcel_Click;
-            btnCalculateInvoice.Click += BtnCalculateInvoice_Click;
         }
     }
 }

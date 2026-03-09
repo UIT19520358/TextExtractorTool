@@ -8,9 +8,32 @@ namespace TextInputter
     ///   InvoiceTab.ExcelViewer.cs  — mở / đọc / lưu Excel viewer
     ///   InvoiceTab.Calculate.cs    — tính tiền từ Excel → daily report
     ///   InvoiceTab.Report.cs       — hiển thị + lưu daily report
+    ///   InvoiceTab.Returns.cs      — đánh dấu hàng trả + import đối soát
     /// </summary>
     public partial class MainForm
     {
+        // ─── Per-person detailed report ───────────────────────────────────────
+
+        private class NguoiDiDetail
+        {
+            public decimal TienThu { get; set; }       // Tổng tiền thu
+            public decimal TienShip { get; set; }      // Tổng tiền ship
+            public decimal SoDon { get; set; }         // Tổng số đơn
+            public int SoDonGop { get; set; }          // Số đơn gộp (giao 1 lần cho nhiều đơn cùng địa chỉ)
+            public int SoDonTra { get; set; }          // Số đơn trả (đã đánh dấu FAIL=xx)
+            public decimal TienShipTru { get; set; }   // -(TongShip - SoDonGiao × 5k), số âm
+            public decimal TienLay { get; set; }       // -((SoDon - SoDonTra - SoDonGop) × 2k), số âm
+            public decimal TienDonTra { get; set; }    // Tổng tiền trừ đơn trả, số âm
+            public bool IsAnTam { get; set; }          // true = An Tâm → skip ship/lấy/trả calculation
+
+            /// <summary>Số đơn giao thực tế = SoDon − SoDonGop</summary>
+            public decimal SoDonGiao => SoDon - SoDonGop;
+
+            /// <summary>Chi tiết từng đơn trả: (MÃ HĐ, TiềnThu, ShipFee theo quận, Tiền trừ)</summary>
+            public System.Collections.Generic.List<(string Ma, decimal TienThu, decimal ShipFee, decimal Deduction)>
+                DonTraDetails { get; set; } = new();
+        }
+
         // ─── Shared data class ────────────────────────────────────────────────
 
         private class DailyReportData
@@ -21,16 +44,15 @@ namespace TextInputter
             public decimal KhoanTruShip { get; set; }  // -(TongShip - SoDon×5), số âm
             public decimal TongKetCuoi { get; set; }   // TongHangDuong + row âm
             public decimal SoDon { get; set; }
+            public int TotalDonGop { get; set; }       // Tổng đơn gộp (toàn bộ)
+            public int TotalDonTra { get; set; }       // Tổng đơn trả (toàn bộ)
 
             // Các row âm (đơn trả, đơn cũ ck...) lấy từ Excel
             public System.Collections.Generic.List<(string Label, decimal Amount)> NegativeRows { get; set; } = new();
 
-            // Report nhỏ theo từng người đi: Key = tên người, Value = (TienThu, TienShip, SoDon)
-            public System.Collections.Generic.Dictionary<
-                string,
-                (decimal TienThu, decimal TienShip, decimal SoDon)
-            > ReportByNguoiDi { get; set; } =
-                new System.Collections.Generic.Dictionary<string, (decimal, decimal, decimal)>(
+            // Report chi tiết theo từng người đi (thay thế tuple cũ)
+            public System.Collections.Generic.Dictionary<string, NguoiDiDetail> DetailByNguoiDi { get; set; } =
+                new System.Collections.Generic.Dictionary<string, NguoiDiDetail>(
                     System.StringComparer.OrdinalIgnoreCase
                 );
         }

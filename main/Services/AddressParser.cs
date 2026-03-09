@@ -640,18 +640,5 @@ namespace TextInputter.Services
             return text;
         }
 
-        public static string FormatAddress(ParsedAddress addr)
-        {
-            var parts = new List<string>();
-            if (!string.IsNullOrEmpty(addr.SoNha))
-                parts.Add(addr.SoNha);
-            if (!string.IsNullOrEmpty(addr.TenDuong))
-                parts.Add(addr.TenDuong);
-            if (!string.IsNullOrEmpty(addr.Phuong))
-                parts.Add(addr.Phuong);
-            if (!string.IsNullOrEmpty(addr.Quan))
-                parts.Add(addr.Quan);
-            return string.Join(", ", parts.Where(p => !string.IsNullOrEmpty(p)));
-        }
     }
 }

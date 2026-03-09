@@ -4,24 +4,6 @@ using System.Collections.Generic;
 namespace TextInputter.Services
 {
     /// <summary>
-    /// Model: tất cả fields của 1 invoice (dùng bởi ExcelInvoiceService).
-    /// </summary>
-    public class OCRInvoiceData
-    {
-        public string Shop { get; set; } = "";
-        public string TenKhachHang { get; set; } = "";
-        public string SoHoaDon { get; set; } = "";
-        public string DiaChi { get; set; } = "";
-        public string Phuong { get; set; } = "";
-        public string Quan { get; set; } = "";
-        public decimal TongTienHang { get; set; } = 0;
-        public decimal ChietKhau { get; set; } = 0;
-        public decimal TongThanhToan { get; set; } = 0;
-        public string NguoiDi { get; set; } = "";
-        public string NguoiLay { get; set; } = "";
-    }
-
-    /// <summary>
     /// Helper tra cứu phí ship và người phụ trách theo địa chỉ.
     /// </summary>
     public class OCRInvoiceMapper
@@ -98,11 +80,6 @@ namespace TextInputter.Services
 
             return null;
         }
-
-        /// <summary>
-        /// Backward-compat overload: chỉ tra theo quận (không có phường).
-        /// </summary>
-        public static decimal? GetShipFeeByQuan(string quan) => GetShipFee(null, quan);
 
         /// <summary>
         /// Tra cứu người phụ trách theo phường hoặc quận.

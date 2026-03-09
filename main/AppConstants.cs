@@ -67,6 +67,20 @@ namespace TextInputter
         public const decimal PHI_SHIP_MOI_DON = 5m;
 
         /// <summary>
+        /// Phí lấy hàng mỗi đơn (nghìn đồng).
+        /// Công thức: tienLay = (SoDon - SoDonTra - SoDonGop) × PHI_LAY_HANG_MOI_DON
+        /// ⚠️ HARDCODED: 2k/đơn.
+        /// </summary>
+        public const decimal PHI_LAY_HANG_MOI_DON = 2m;
+
+        /// <summary>
+        /// Phí công mỗi đơn trả (nghìn đồng) — phạt shipper khi đơn bị trả.
+        /// Công thức trừ đơn trả: -(tienThu - shipFee + PHI_CONG_DON_TRA)
+        /// ⚠️ HARDCODED: 5k/đơn trả.
+        /// </summary>
+        public const decimal PHI_CONG_DON_TRA = 5m;
+
+        /// <summary>
         /// Người đi fallback — dùng khi quận/phường không có trong AREA_TO_NGUOI_DI.
         /// </summary>
         public const string NGUOI_DI_DEFAULT = "An Tam";
