@@ -177,9 +177,7 @@ namespace TextInputter.Services
                     fields["TIỀN THU"] = long.TryParse(digits0, out long v0)
                         ? v0.ToString()
                         : digits0;
-                    // "THU X + SHIP" → TIỀN THU là tiền hàng, cộng thêm ship khi ghi Excel
-                    fields["INVOICE_TYPE"] = "COD_PLUS_SHIP";
-                    fields["_THU_FROM_LABEL"] = "1";
+                    // "THU X + SHIP" = COD (thu tiền hàng VÀ thu ship) → giữ COD, không đổi type
                 }
 
                 // Bước 0b: Nhãn viết tay "THU X" (không có "+SHIP") — ưu tiên cao nhất
@@ -272,53 +270,19 @@ namespace TextInputter.Services
                 fields["INVOICE_TYPE"] = "SHIP_ONLY_PAID"; // hàng = +ship
                 fields["TIỀN THU"] = "0";
             }
-            else if (fields.GetValueOrDefault("INVOICE_TYPE", "") != "COD_PLUS_SHIP")
+            else
             {
-                fields["INVOICE_TYPE"] = "COD"; // format cũ: hàng = thu - ship
+                fields["INVOICE_TYPE"] = "COD"; // format cũ: hàng = thu + ship
             }
 
             // Nếu đang COD mà TIỀN THU được lấy từ nhãn "THU X" (bước 0b) thì ok, giữ nguyên.
             // Nếu SHIP_ONLY_FREE/PAID thì bước trên đã set TIỀN THU = 0 → ok.
 
-            // 9c. Detect TÌNH TRẠNG đặc biệt từ nhãn viết tay
-            {
-                var tinhTrangParts = new List<string>();
-
-                // "đã CK" / "da ck" / "đã chuyển khoản" / "da chuyen khoan"
-                bool daCK = Regex.IsMatch(
-                    text,
-                    @"\bđ[aã]\s*ck\b|\bda\s*ck\b|\bđ[aã]\s*chuy[eêề]n\s*kho[aả]n|\bda\s*chuyen\s*khoan",
-                    RegexOptions.IgnoreCase
-                );
-                if (daCK)
-                    tinhTrangParts.Add("đã CK");
-
-                // Hàng sỉ: "sỉ" / "si" đứng riêng hoặc "hàng sỉ" / "hang si" / "hs"
-                bool hangSi = Regex.IsMatch(
-                    text,
-                    @"\bh[aà]ng\s*s[ỉi]\b|\bs[ỉi]\b|\bhs\b",
-                    RegexOptions.IgnoreCase
-                );
-                if (hangSi)
-                    tinhTrangParts.Add("hàng sỉ");
-
-                // SHIP_ONLY_FREE / SHIP_ONLY_PAID → ghi rõ vào TÌNH TRẠNG
-                if (hasKhongThuShip)
-                    tinhTrangParts.Add("KO THU SHIP");
-                else if (hasThuShip)
-                    tinhTrangParts.Add("THU SHIP");
-
-                // COD_PLUS_SHIP: ghi note "THU X + SHIP" thẳng vào GHI CHÚ, KHÔNG vào TÌNH TRẠNG
-                // (TÌNH TRẠNG chỉ chứa "hàng sỉ" hoặc rỗng)
-                if (fields.GetValueOrDefault("INVOICE_TYPE", "") == "COD_PLUS_SHIP")
-                {
-                    string thuAmt = fields.GetValueOrDefault("TIỀN THU", "");
-                    fields["GHI CHÚ"] = $"THU {thuAmt} + SHIP";
-                }
-
-                if (tinhTrangParts.Count > 0)
-                    fields["TÌNH TRẠNG"] = string.Join(" | ", tinhTrangParts);
-            }
+            // 9c. TÌNH TRẠNG — KHÔNG detect ở đây nữa.
+            // Lý do: OCR text chứa "Tổng SI", "CHUYÊN SỈ" → false positive quá nhiều.
+            // Logic hàng sỉ / đã CK / THU SHIP sẽ được tính lúc xuất Excel
+            // (ExcelInvoiceService.WriteDataRow) dựa trên INVOICE_TYPE + MÃ.
+            // → OCR log chỉ chứa raw data, không chứa TÌNH TRẠNG.
 
             // 10. NGÀY LẤY
             fields["NGÀY LẤY"] = ExtractDate(text);
@@ -327,30 +291,37 @@ namespace TextInputter.Services
             // Sau khi OCR parsing xong toàn bộ → kiểm tra field nào còn trống.
             // Nếu bất kỳ field quan trọng nào thiếu → trigger Gemini đọc ảnh gốc.
             // Chỉ log FAILED nếu sau Gemini vẫn còn trống.
-            // Gemini critical fields — nếu thiếu bất kỳ field nào thì trigger fallback
-            var geminiCriticalFields = new[]
-            {
-                "SHOP",
-                "QUẬN",
-                "ĐỊA CHỈ",
-                "TIỀN THU",
-                "TÊN KH",
-                "MÃ",
-                "NGÀY LẤY",
-            };
-            var fieldsSnapshot = fields; // local copy để dùng trong lambda (out param không dùng được)
+            // LƯU Ý: KHÔNG check MÃ trống — MÃ trống là bình thường cho đơn hàng sỉ / ship-only.
+            // Gọi Gemini chỉ vì MÃ trống sẽ lãng phí quota vì Gemini cũng ko tìm được MÃ.
             bool needGemini =
-                geminiCriticalFields.Any(f =>
-                    string.IsNullOrEmpty(fieldsSnapshot.GetValueOrDefault(f, ""))
+                (
+                    string.IsNullOrEmpty(fields["SHOP"])
+                    || string.IsNullOrEmpty(fields["QUẬN"])
+                    || string.IsNullOrEmpty(fields["ĐỊA CHỈ"])
+                    || string.IsNullOrEmpty(fields["TÊN KH"])
+                    || string.IsNullOrEmpty(fields["NGÀY LẤY"])
                 )
                 && _gemini.IsConfigured
                 && !string.IsNullOrEmpty(CurrentImagePath);
             if (needGemini)
             {
                 string imgName = System.IO.Path.GetFileName(CurrentImagePath);
-                var missingBefore = geminiCriticalFields
-                    .Where(f => string.IsNullOrEmpty(fieldsSnapshot.GetValueOrDefault(f, "")))
-                    .ToList();
+                // Log các field còn thiếu để dễ debug
+                var missingBefore = new List<string>();
+                if (string.IsNullOrEmpty(fields["SHOP"]))
+                    missingBefore.Add("SHOP");
+                if (string.IsNullOrEmpty(fields["QUẬN"]))
+                    missingBefore.Add("QUẬN");
+                if (string.IsNullOrEmpty(fields["ĐỊA CHỈ"]))
+                    missingBefore.Add("ĐỊA CHỈ");
+                if (string.IsNullOrEmpty(fields["TIỀN THU"]))
+                    missingBefore.Add("TIỀN THU");
+                if (string.IsNullOrEmpty(fields["TÊN KH"]))
+                    missingBefore.Add("TÊN KH");
+                if (string.IsNullOrEmpty(fields["MÃ"]))
+                    missingBefore.Add("MÃ");
+                if (string.IsNullOrEmpty(fields["NGÀY LẤY"]))
+                    missingBefore.Add("NGÀY LẤY");
                 AddGeminiLog(
                     geminiLog,
                     $"TRIGGERED for: {imgName} | THIẾU: {string.Join(", ", missingBefore)}"
@@ -436,23 +407,7 @@ namespace TextInputter.Services
                                 || g.InvoiceType == "SHIP_ONLY_PAID"
                             )
                                 fields["TIỀN THU"] = "0";
-                            // Sync TÌNH TRẠNG khi Gemini detect type đặc biệt
-                            if (g.InvoiceType == "SHIP_ONLY_FREE")
-                            {
-                                var tt = fields.GetValueOrDefault("TÌNH TRẠNG", "");
-                                if (!tt.Contains("KO THU SHIP"))
-                                    fields["TÌNH TRẠNG"] = string.IsNullOrEmpty(tt)
-                                        ? "KO THU SHIP"
-                                        : tt + " | KO THU SHIP";
-                            }
-                            else if (g.InvoiceType == "SHIP_ONLY_PAID")
-                            {
-                                var tt = fields.GetValueOrDefault("TÌNH TRẠNG", "");
-                                if (!tt.Contains("THU SHIP"))
-                                    fields["TÌNH TRẠNG"] = string.IsNullOrEmpty(tt)
-                                        ? "THU SHIP"
-                                        : tt + " | THU SHIP";
-                            }
+                            // TÌNH TRẠNG: không set ở đây — sẽ tính lúc xuất Excel
                             AddGeminiLog(
                                 geminiLog,
                                 $"INVOICE_TYPE override → {g.InvoiceType} (OCR was: {currentType})"

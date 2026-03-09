@@ -190,51 +190,30 @@ namespace TextInputter
                         // Auto-map người đi theo phường/quận, hoặc dùng giá trị tự nhập
                         string phuongForMap = fields.GetValueOrDefault("PHƯỜNG", "");
                         string quanForMap = fields.GetValueOrDefault("QUẬN", "");
-                        string nguoiDiMapped =
+                        fields["NGƯỜI ĐI"] =
                             _manualNguoiDi && !string.IsNullOrWhiteSpace(txtNguoiDiOCR?.Text)
                                 ? txtNguoiDiOCR.Text.Trim()
                                 : OCRInvoiceMapper.GetNguoiDi(phuongForMap, quanForMap);
-                        // Fix 5: Nếu người đi = mặc định "An Tam" → thêm ngày hiện tại dd-MM
-                        if (nguoiDiMapped == AppConstants.NGUOI_DI_DEFAULT)
-                            nguoiDiMapped += " " + DateTime.Now.ToString("dd-MM");
-                        fields["NGƯỜI ĐI"] = nguoiDiMapped;
                         fields["NGƯỜI LẤY"] =
                             _manualNguoiLay && !string.IsNullOrWhiteSpace(txtNguoiLayOCR?.Text)
                                 ? txtNguoiLayOCR.Text.Trim()
                                 : nguoiLay;
 
                         // Auto-fill TIỀN SHIP từ bảng phí ship theo phường/quận (tier-3 → tier-2)
-                        // Điều kiện auto-fill:
-                        //   1. TIỀN SHIP rỗng hoặc "0" → chưa biết, lookup bảng
-                        //   2. MÃ rỗng + không phải SHIP_ONLY → hàng sỉ không có HĐ,
-                        //      Gemini thường đoán sai ship → luôn override bằng bảng phí
+                        // Điều kiện auto-fill: TIỀN SHIP rỗng HOẶC = "0" (tức là chưa biết thực sự)
                         string currentShip = fields.GetValueOrDefault("TIỀN SHIP", "");
-                        string maForShip = fields.GetValueOrDefault("MÃ", "");
-                        string invTypeForShip = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
-                        bool isShipOnlyForShip =
-                            invTypeForShip == "SHIP_ONLY_FREE"
-                            || invTypeForShip == "SHIP_ONLY_PAID";
-                        bool hangSiNoMa =
-                            string.IsNullOrWhiteSpace(maForShip) && !isShipOnlyForShip;
                         bool shipIsUnknown =
-                            string.IsNullOrWhiteSpace(currentShip)
-                            || currentShip.Trim() == "0"
-                            || hangSiNoMa; // hàng sỉ: bảng phí luôn đúng hơn Gemini đoán
+                            string.IsNullOrWhiteSpace(currentShip) || currentShip.Trim() == "0";
                         if (shipIsUnknown)
                         {
                             string phuong = fields.GetValueOrDefault("PHƯỜNG", "");
                             string quan = fields.GetValueOrDefault("QUẬN", "");
-                            string duong = fields.GetValueOrDefault("TÊN ĐƯỜNG", "");
-                            decimal? feeFromTable = OCRInvoiceMapper.GetShipFee(
-                                phuong,
-                                quan,
-                                duong
-                            );
+                            decimal? feeFromTable = OCRInvoiceMapper.GetShipFee(phuong, quan);
                             if (feeFromTable.HasValue)
                             {
                                 fields["TIỀN SHIP"] = feeFromTable.Value.ToString("F0");
                                 allText.AppendLine(
-                                    $"  🗺️ Ship tự điền từ bảng: Q.{quan} P.{phuong} Đường.{duong} → {feeFromTable.Value}k"
+                                    $"  🗺️ Ship tự điền từ bảng: Q.{quan} P.{phuong} → {feeFromTable.Value}k"
                                 );
                             }
                             else
@@ -243,13 +222,13 @@ namespace TextInputter
                                 // (KHÔNG gán "0" vì "0" != rỗng sẽ block auto-fill lần sau)
                                 fields["TIỀN SHIP"] = "";
                                 allText.AppendLine(
-                                    $"  ⚠️ Ship chưa có trong bảng: Q.{quan} P.{phuong} Đường.{duong} — cần điền tay"
+                                    $"  ⚠️ Ship chưa có trong bảng: Q.{quan} P.{phuong} — cần điền tay"
                                 );
                             }
                         }
 
                         // Compute TIỀN HÀNG theo loại đơn:
-                        //   COD           : thu - ship  (tiền hàng = tiền thu trừ ship)
+                        //   COD          : thu + ship  (format cũ)
                         //   SHIP_ONLY_FREE: -ship       (không thu ship, tiền hàng âm)
                         //   SHIP_ONLY_PAID: +ship       (thu ship, tiền hàng = ship)
                         string invoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
@@ -259,7 +238,7 @@ namespace TextInputter
                         {
                             "SHIP_ONLY_FREE" => -ship,
                             "SHIP_ONLY_PAID" => ship,
-                            _ => thu - ship, // COD: tiền hàng = thu - ship
+                            _ => thu + ship, // COD
                         };
                         fields["TIỀN HÀNG"] = tienhang.ToString();
                         // Log loại đơn ra UI nếu không phải COD
@@ -447,11 +426,10 @@ namespace TextInputter
             }
         }
 
-        // ─── Load From Log (không tốn quota) ──────────────────────────────────
+        // ─── Load From Log ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// Đọc ocr_log.txt, parse lại section [MAPPING] của từng ảnh → dựng mappedDataList.
-        /// Không gọi bất kỳ API nào — dùng khi muốn re-export từ log đã có sẵn.
+        /// Đọc ocr_log.txt từ lần quét trước → khôi phục mappedDataList mà không tốn quota API.
         /// </summary>
         private void LoadFromLog()
         {
@@ -494,20 +472,6 @@ namespace TextInputter
                 }
 
                 // ── Parse log ─────────────────────────────────────────────────
-                // Format per image block:
-                //   ════...════
-                //   📄 [i/n] filename  (confidence: X%)
-                //   ────...────
-                //   [RAW OCR]
-                //   ...raw text...
-                //
-                //   [MAPPING]
-                //   📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields   (hoặc ⚠️ THIẾU ...)
-                //     ✓ FIELD: value
-                //     ⚠️ FIELD: (trống)
-                //   (blank line)
-
-                // Fields ta muốn khôi phục (đúng thứ tự không quan trọng)
                 var wantedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     "SHOP",
@@ -542,14 +506,11 @@ namespace TextInputter
                     if (currentFields == null)
                         return;
                     currentFields["fileName"] = currentFileName ?? "";
-                    // Tái tạo MISSING_FIELDS nếu chưa có (từ các field trống)
                     if (!currentFields.ContainsKey("MISSING_FIELDS"))
-                    {
-                        if (isMissingBlock && missingList.Count > 0)
-                            currentFields["MISSING_FIELDS"] = string.Join(",", missingList);
-                        else
-                            currentFields["MISSING_FIELDS"] = "";
-                    }
+                        currentFields["MISSING_FIELDS"] =
+                            isMissingBlock && missingList.Count > 0
+                                ? string.Join(",", missingList)
+                                : "";
                     if (!currentFields.ContainsKey("IS_FAIL"))
                         currentFields["IS_FAIL"] = "0";
                     mappedDataList.Add(currentFields);
@@ -568,14 +529,11 @@ namespace TextInputter
                     // Bắt đầu block mới: dòng có "📄 [i/n] filename"
                     if (line.Contains("📄 [") && line.Contains("]"))
                     {
-                        FlushCurrent(); // flush block trước nếu có
-
-                        // Trích filename: "📄 [2/36] 2.jpg  (confidence: ...)"
+                        FlushCurrent();
                         int bracket = line.IndexOf(']');
                         if (bracket >= 0 && bracket + 1 < line.Length)
                         {
                             string afterBracket = line.Substring(bracket + 1).Trim();
-                            // Bỏ phần "(confidence: ...)"
                             int paren = afterBracket.IndexOf('(');
                             currentFileName =
                                 paren > 0
@@ -601,19 +559,21 @@ namespace TextInputter
                     if (!inMapping)
                         continue;
 
-                    // Dòng kết quả tổng: "📊 KẾT QUẢ MAP: ✅ ..." hoặc "📊 KẾT QUẢ MAP: ⚠️ THIẾU ..."
-                    if (line.Contains("📊 KẾT QUẢ MAP"))
+                    // Dòng kết quả tổng
+                    if (line.Contains("KẾT QUẢ MAP"))
                     {
-                        isMissingBlock = line.Contains("THIẾU") || line.Contains("⚠️");
+                        isMissingBlock = line.Contains("THIẾU") || line.Contains("⚠");
                         continue;
                     }
 
-                    // Dòng field đủ: "  ✓ FIELD: value"
-                    if (line.Contains("✓ ") && line.Contains(":"))
+                    // Dòng field đủ: "  ✓ FIELD: value" hoặc "  ✔ FIELD: value"
+                    if ((line.Contains("✓ ") || line.Contains("✔ ")) && line.Contains(":"))
                     {
-                        int colon = line.IndexOf(':');
-                        // Tìm vị trí sau "✓ "
+                        // Tìm vị trí tick mark (✓ U+2713 hoặc ✔ U+2714)
                         int tick = line.IndexOf('✓');
+                        if (tick < 0)
+                            tick = line.IndexOf('✔');
+                        int colon = line.IndexOf(':', tick);
                         if (tick >= 0 && colon > tick)
                         {
                             string key = line.Substring(tick + 1, colon - tick - 1).Trim();
@@ -625,16 +585,14 @@ namespace TextInputter
                         continue;
                     }
 
-                    // Dòng field thiếu: "  ⚠️ FIELD: (trống)"
-                    if (line.Contains("⚠️ ") && line.Contains(": (trống)"))
+                    // Dòng field thiếu: "  ⚠ FIELD: (trống)"
+                    if (line.Contains("⚠ ") && line.Contains(": (trống)"))
                     {
                         int warn = line.IndexOf('⚠');
-                        int colon = line.IndexOf(':');
+                        int colon = line.IndexOf(':', warn);
                         if (warn >= 0 && colon > warn)
                         {
                             string key = line.Substring(warn + 1, colon - warn - 1).Trim();
-                            // Bỏ emoji "️ " nếu còn sót
-                            key = key.TrimStart('️', ' ').Trim();
                             if (wantedFields.Contains(key))
                             {
                                 currentFields[key] = "";
@@ -643,8 +601,6 @@ namespace TextInputter
                         }
                         continue;
                     }
-
-                    // Dòng trắng / kẻ ═══ sau [MAPPING] → kết thúc block (flush xử lý ở block tiếp)
                 }
 
                 FlushCurrent(); // flush block cuối
@@ -653,9 +609,10 @@ namespace TextInputter
                 string summary =
                     $"✅ Tải từ log: {loaded} đơn\n"
                     + $"📄 File: {Path.GetFileName(logPath)}\n"
-                    + $"💾 Sẵn sàng xuất {mappedDataList.Count} dòng sang Excel";
+                    + $"🚀 Sẵn sàng xuất {mappedDataList.Count} dòng sang Excel";
 
-                txtProcessLog.Text = summary;
+                if (txtProcessLog != null)
+                    txtProcessLog.Text = summary;
                 txtRawOCRLog?.Clear();
                 txtRawOCRLog?.AppendText($"[Tải từ log — không quét OCR]\n{summary}");
                 lblStatus.Text = $"✅ Log: {loaded} đơn";

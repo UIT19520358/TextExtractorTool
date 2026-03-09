@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -17,8 +16,11 @@
 
   <ItemGroup>
     <Compile Remove="_tmp_reader\**" />
+    <Compile Remove="tools\**" />
     <EmbeddedResource Remove="_tmp_reader\**" />
+    <EmbeddedResource Remove="tools\**" />
     <None Remove="_tmp_reader\**" />
+    <None Remove="tools\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,13 +32,11 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-  </ItemGroup>
+  <ItemGroup></ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Cloud.Vision.V1" Version="3.8.0" />
     <PackageReference Include="ClosedXML" Version="0.102.3" />
     <PackageReference Include="Mscc.GenerativeAI" Version="1.9.2" />
   </ItemGroup>
-
 </Project>

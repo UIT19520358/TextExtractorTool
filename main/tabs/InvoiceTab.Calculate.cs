@@ -93,7 +93,7 @@ namespace TextInputter
                         break;
                     }
 
-                // ── BƯỚC 1: Tìm SUM row trong Excel ────────────────────────────────
+                // ── BƯỚC 1: Tìm SUM row trong Excel (dùng làm mốc cuối data) ────────
                 decimal totalTienThu = 0,
                     totalTienShip = 0,
                     totalSoDon = 0;
@@ -123,24 +123,16 @@ namespace TextInputter
 
                     sumRowIndex = i;
                     foundSumRow = true;
-                    if (colTienThu >= 0)
-                        decimal.TryParse(row.Cells[colTienThu].Value?.ToString(), out totalTienThu);
-                    if (colTienShip >= 0)
-                        decimal.TryParse(
-                            row.Cells[colTienShip].Value?.ToString(),
-                            out totalTienShip
-                        );
-                    // Không đọc totalSoDon từ SUM row vì cột "số đơn" thường không có trong source Excel.
-                    // Sẽ đếm chính xác từ data rows bên dưới.
                     Debug.WriteLine(
-                        $"SUM row idx={i}: TienThu={totalTienThu}, Ship={totalTienShip}"
+                        $"SUM row idx={i}: detected (dùng làm mốc cuối data, ko lấy giá trị)"
                     );
                     break;
                 }
 
-                // Luôn đếm số đơn từ data rows thực tế (không dùng SUM row) để đảm bảo chính xác
-                int endCountIdx = sumRowIndex >= 0 ? sumRowIndex : sourceGridView.Rows.Count;
-                for (int i = 0; i < endCountIdx; i++)
+                // LUÔN tính THU + SHIP từ từng row DATA (không dùng SUM row)
+                // Đảm bảo UI giống exported Excel (cũng dùng SUBTOTAL per-row).
+                int endDataIdx = sumRowIndex >= 0 ? sumRowIndex : sourceGridView.Rows.Count;
+                for (int i = 0; i < endDataIdx; i++)
                 {
                     var row = sourceGridView.Rows[i];
                     if (row.IsNewRow)
@@ -150,42 +142,26 @@ namespace TextInputter
                         continue;
                     if (IsDateLabelRow(row, colShop, colMa))
                         continue;
-                    totalSoDon++;
-                }
 
-                // Nếu không có SUM row → tự cộng từng row DATA
-                if (!foundSumRow)
-                {
-                    foreach (DataGridViewRow row in sourceGridView.Rows)
-                    {
-                        if (row.IsNewRow)
-                            continue;
-                        string sv = colShop >= 0 ? row.Cells[colShop].Value?.ToString() ?? "" : "";
-                        if (string.IsNullOrWhiteSpace(sv))
-                            continue;
-                        if (IsDateLabelRow(row, colShop, colMa))
-                            continue;
-                        if (colTienThu >= 0)
-                        {
-                            if (
-                                decimal.TryParse(
-                                    row.Cells[colTienThu].Value?.ToString(),
-                                    out decimal t
-                                )
+                    totalSoDon++;
+
+                    if (colTienThu >= 0 && colTienThu < row.Cells.Count)
+                        if (
+                            decimal.TryParse(
+                                row.Cells[colTienThu].Value?.ToString() ?? "",
+                                out decimal t
                             )
-                                totalTienThu += t;
-                        }
-                        if (colTienShip >= 0)
-                        {
-                            if (
-                                decimal.TryParse(
-                                    row.Cells[colTienShip].Value?.ToString(),
-                                    out decimal s
-                                )
+                        )
+                            totalTienThu += t;
+
+                    if (colTienShip >= 0 && colTienShip < row.Cells.Count)
+                        if (
+                            decimal.TryParse(
+                                row.Cells[colTienShip].Value?.ToString() ?? "",
+                                out decimal s
                             )
-                                totalTienShip += s;
-                        }
-                    }
+                        )
+                            totalTienShip += s;
                 }
 
                 // Thu thập các row âm (đơn trả, đơn cũ ck):
@@ -296,6 +272,8 @@ namespace TextInputter
                         if (!reportByNguoiDi.ContainsKey(nguoiRow))
                             reportByNguoiDi[nguoiRow] = (0, 0, 0);
                         var cur = reportByNguoiDi[nguoiRow];
+                        // Số đơn: đếm TẤT CẢ rows (bao gồm cả hàng sỉ / ship-only)
+                        // Match với Excel COUNTIFS(rShop,"<>",rNguoiDi,...) trong BuildRightSummary
                         reportByNguoiDi[nguoiRow] = (
                             cur.TienThu + tienThuRow,
                             cur.TienShip + tienShipRow,
@@ -471,9 +449,23 @@ namespace TextInputter
                 lblInvoiceTotal.Text =
                     $"TỔNG THU: {totalTienThu:N0} đ | SHIP: {totalTienShip:N0} đ | SỐ ĐƠN: {totalSoDon:N0} | KẾT: {tongKetCuoi:N0} đ";
 
+                // Giới hạn chiều rộng cột (ĐỊA CHỈ quá dài đẩy mất cột đầu)
+                foreach (DataGridViewColumn col in dgvInvoice.Columns)
+                {
+                    if (col.Width > 300)
+                        col.Width = 300;
+                }
+                // Scroll về cột đầu tiên để ko bị mất mấy cột bên trái
+                if (dgvInvoice.Columns.Count > 0)
+                    dgvInvoice.FirstDisplayedScrollingColumnIndex = 0;
+                // Scroll về hàng đầu tiên để ko bị che data phía trên
+                if (dgvInvoice.Rows.Count > 0)
+                    dgvInvoice.FirstDisplayedScrollingRowIndex = 0;
+
                 DisplayDailyReport();
                 InitializeInvoiceButtonPanel();
                 tabMainControl.SelectedIndex = 2;
+                tabInvoice.PerformLayout();
 
                 lblStatus.Text = "✅ Đã tính tiền — bấm 💾 Lưu để ghi vào Excel";
                 lblStatus.ForeColor = Color.Green;

@@ -91,22 +91,87 @@ namespace TextInputter
                 int rowCount = usedRange.RowCount();
                 int colCount = usedRange.ColumnCount();
 
-                int headerRowIndex = 2;
+                // Tìm header row: quét tối đa 5 dòng đầu, tìm dòng chứa tên cột quen thuộc
+                int headerRowIndex = -1;
                 for (int row = 1; row <= Math.Min(5, rowCount); row++)
                 {
-                    string firstCell = worksheet.Cell(row, 1).GetString()?.Trim() ?? "";
-                    if (firstCell == "SHOP" || firstCell.Contains("Tình trạng"))
+                    // Quét tất cả cells trong row này để tìm keyword
+                    bool rowHasHeader = false;
+                    for (int col = 1; col <= Math.Min(colCount, 5); col++)
+                    {
+                        string cellVal = worksheet.Cell(row, col).GetString()?.Trim() ?? "";
+                        if (
+                            cellVal == "SHOP"
+                            || cellVal.Contains("Tình trạng", StringComparison.OrdinalIgnoreCase)
+                            || cellVal.Contains("TIỀN THU", StringComparison.OrdinalIgnoreCase)
+                            || cellVal.Contains("TÊN KH", StringComparison.OrdinalIgnoreCase)
+                        )
+                        {
+                            rowHasHeader = true;
+                            break;
+                        }
+                    }
+                    if (rowHasHeader)
                     {
                         headerRowIndex = row;
                         break;
                     }
                 }
+                // Nếu không tìm thấy header row → dùng cột mặc định theo vị trí (ExcelInvoiceService chuẩn)
+                if (headerRowIndex < 0)
+                {
+                    // Không có header row trong file → fake DataTable với tên cột cố định
+                    var fixedHeaders = new[]
+                    {
+                        "TÌNH TRẠNG TT",
+                        "SHOP",
+                        "TÊN KH",
+                        "MÃ",
+                        "ĐỊA CHỈ",
+                        "QUẬN",
+                        "TIỀN THU",
+                        "TIỀN SHIP",
+                        "TIỀN HÀNG",
+                        "NGƯỜI ĐI",
+                        "NGƯỜI LẤY",
+                        "NGÀY LẤY",
+                        "GHI CHÚ",
+                        "ỨNG TIỀN",
+                        "HÀNG TỒN",
+                        "FAIL",
+                        "_col17",
+                        "_col18",
+                        "_col19",
+                    };
+                    System.Data.DataTable dtNoHeader = new System.Data.DataTable();
+                    for (int col = 1; col <= colCount; col++)
+                    {
+                        string h =
+                            (col - 1 < fixedHeaders.Length) ? fixedHeaders[col - 1] : $"_col{col}";
+                        dtNoHeader.Columns.Add(h);
+                    }
+                    for (int row = 1; row <= rowCount; row++)
+                    {
+                        var dataRow = dtNoHeader.NewRow();
+                        for (int col = 1; col <= colCount; col++)
+                            dataRow[col - 1] = worksheet.Cell(row, col).GetString() ?? "";
+                        dtNoHeader.Rows.Add(dataRow);
+                    }
+                    dgv.DataSource = dtNoHeader;
+                    dgv.AutoResizeColumns();
+                    return;
+                }
 
                 System.Data.DataTable dataTable = new System.Data.DataTable();
                 for (int col = 1; col <= colCount; col++)
-                    dataTable.Columns.Add(
-                        worksheet.Cell(headerRowIndex, col).GetString()?.Trim() ?? ""
-                    );
+                {
+                    string colHeader =
+                        worksheet.Cell(headerRowIndex, col).GetString()?.Trim() ?? "";
+                    // Nếu header trống → dùng tên placeholder để tránh DataTable duplicate/rename
+                    if (string.IsNullOrEmpty(colHeader))
+                        colHeader = $"_col{col}";
+                    dataTable.Columns.Add(colHeader);
+                }
 
                 // Row ngay sau header là "THỨ x / NGÀY x-x" — bỏ qua, không phải đơn hàng
                 int dayHeaderRowIndex = -1;
@@ -127,8 +192,7 @@ namespace TextInputter
                 {
                     if (row == headerRowIndex)
                         continue;
-                    if (row == dayHeaderRowIndex)
-                        continue; // bỏ qua row "THỨ x | NGÀY x-x"
+                    // Không skip row "THU x / NGAY x-x" nữa — đưa vào DGV để khi Lưu không bị mất
                     var dataRow = dataTable.NewRow();
                     for (int col = 1; col <= colCount; col++)
                         dataRow[col - 1] = worksheet.Cell(row, col).GetString() ?? "";
@@ -172,17 +236,61 @@ namespace TextInputter
                             continue;
 
                         var worksheet = workbook.Worksheet(tabPage.Text);
-                        worksheet.Clear();
 
-                        for (int col = 0; col < dgv.Columns.Count; col++)
-                            worksheet.Cell(1, col + 1).Value = dgv.Columns[col].HeaderText;
-
-                        for (int row = 0; row < dgv.Rows.Count; row++)
-                        for (int col = 0; col < dgv.Columns.Count; col++)
+                        // Tìm headerRowIndex giống LoadSheetData
+                        var usedRange = worksheet.RangeUsed();
+                        if (usedRange == null)
+                            continue;
+                        int rowCount = usedRange.RowCount();
+                        int colCount = usedRange.ColumnCount();
+                        int headerRow = -1;
+                        for (int r = 1; r <= Math.Min(5, rowCount); r++)
                         {
-                            var cellValue = dgv.Rows[row].Cells[col].Value;
-                            if (cellValue != null)
-                                worksheet.Cell(row + 2, col + 1).Value = cellValue.ToString();
+                            bool found = false;
+                            for (int c = 1; c <= Math.Min(colCount, 5); c++)
+                            {
+                                string cv = worksheet.Cell(r, c).GetString()?.Trim() ?? "";
+                                if (
+                                    cv == "SHOP"
+                                    || cv.Contains("Tình trạng", StringComparison.OrdinalIgnoreCase)
+                                    || cv.Contains("TIỀN THU", StringComparison.OrdinalIgnoreCase)
+                                    || cv.Contains("TÊN KH", StringComparison.OrdinalIgnoreCase)
+                                )
+                                {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found)
+                            {
+                                headerRow = r;
+                                break;
+                            }
+                        }
+                        // Nếu không có header row trong file → ghi từ row 1 (không skip)
+                        int dataStartRow = (headerRow > 0) ? headerRow + 1 : 1;
+                        // Chỉ ghi lại data rows từ DGV vào đúng vị trí
+                        // KHÔNG xóa sheet — giữ nguyên formatting, formulas
+                        int excelRow = dataStartRow;
+                        for (int dgvRow = 0; dgvRow < dgv.Rows.Count; dgvRow++)
+                        {
+                            if (dgv.Rows[dgvRow].IsNewRow)
+                                continue;
+                            for (int col = 0; col < dgv.Columns.Count && col < colCount; col++)
+                            {
+                                var cellValue = dgv.Rows[dgvRow].Cells[col].Value;
+                                string strVal = cellValue?.ToString() ?? "";
+                                var cell = worksheet.Cell(excelRow, col + 1);
+                                // Chỉ ghi nếu cell không có formula (tránh xóa TIỀN HÀNG formula)
+                                if (!cell.HasFormula)
+                                {
+                                    if (decimal.TryParse(strVal, out decimal numVal))
+                                        cell.SetValue(numVal);
+                                    else
+                                        cell.SetValue(strVal);
+                                }
+                            }
+                            excelRow++;
                         }
                     }
                     workbook.SaveAs(currentExcelFilePath);

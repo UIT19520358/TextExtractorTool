@@ -215,6 +215,24 @@ namespace TextInputter
         };
 
         /// <summary>
+        /// Bảng phí ship theo tên đường (Tier-2.8) — override SHIPPING_FEES_BY_QUAN khi cùng quận
+        /// nhưng đường cụ thể có phí ship khác.
+        ///
+        /// Key  : tên đường không dấu, viết thường (NormalizeKey chuẩn hoá khi tra).
+        /// Value: phí ship (nghìn đồng).
+        ///
+        /// ⚠️ HARDCODED: cập nhật khi bảng giá shipper thay đổi.
+        /// </summary>
+        public static readonly Dictionary<string, decimal> SHIPPING_FEES_BY_STREET = new Dictionary<
+            string,
+            decimal
+        >(System.StringComparer.OrdinalIgnoreCase)
+        {
+            // Thêm đường cụ thể ở đây nếu cần override giá quận
+            // VD: { "nguyen huu tho", 30m },
+        };
+
+        /// <summary>
         /// Bảng phí ship theo quận/huyện (đơn vị: nghìn đồng, cùng đơn vị với TIỀN SHIP trong Excel).
         ///
         /// Key: đúng theo giá trị mà AddressParser trả về trong field QUẬN —
@@ -356,7 +374,6 @@ namespace TextInputter
             { "binh loi trung", "binh thanh" }, // Phường Bình Lợi Trung (mới 2025, từ P.05+11+13)
             { "thanh my tay", "binh thanh" }, // Phường Thạnh Mỹ Tây (mới 2025, từ P.19+22+25)
             { "binh quoi", "binh thanh" }, // Phường Bình Quới (mới 2025, từ P.27+28)
-            { "hiep binh chanh", "thu duc" }, // Phường Hiệp Bình Chánh — TP.Thủ Đức cũ (không phải Bình Thạnh!)
             // TODO: Bình Thạnh sau sáp nhập phường vẫn số cũ → khó map
 
             // ── Quận Gò Vấp (ship 25k) ────────────────────────────────────────
@@ -385,7 +402,12 @@ namespace TextInputter
             { "binh khanh", "2" }, // Phường Bình Khánh — Q2 cũ
             { "binh an", "2" }, // Phường Bình An — Q2 cũ
             { "an phu", "2" }, // Phường An Phú — Q2 cũ
-            { "cat lai", "2" }, // Phường Cát Lái — Q2 cũ (nay Q9 mới?)
+            { "cat lai", "2" }, // Phường Cát Lái — Q2 cũ
+            { "thao dien", "2" }, // Phường Thảo Điền — Q2 cũ (khu villa/expat)
+            { "an khanh", "2" }, // Phường An Khánh — Q2 cũ
+            { "binh trung dong", "2" }, // Phường Bình Trưng Đông — Q2 cũ
+            { "binh trung tay", "2" }, // Phường Bình Trưng Tây — Q2 cũ
+            { "binh trung", "2" }, // Dự phòng nếu OCR không phân biệt Đông/Tây
             { "long binh", "9" }, // Phường Long Bình — Q9 cũ → 30k
             { "long thanh my", "9" }, // Phường Long Thạnh Mỹ — Q9 cũ
             { "long phuoc", "9" }, // Phường Long Phước — Q9 cũ
@@ -396,6 +418,9 @@ namespace TextInputter
             { "truong thanh", "9" }, // Phường Trường Thạnh — Q9 cũ
             { "phu huu", "9" }, // Phường Phú Hữu — Q9 cũ
             { "hiep phu", "9" }, // Phường Hiệp Phú — Q9 cũ
+            { "phuoc binh", "9" }, // Phường Phước Bình — Q9 cũ
+            { "phu chanh", "9" }, // Phường Phú Chânh — Q9 cũ (nay thuộc TP.Thủ Đức mới)
+            { "phu lac", "9" }, // Phường Phú Lạc — Q9 cũ
             { "linh xuan", "thu duc" }, // Phường Linh Xuân — Thủ Đức cũ
             { "linh dong", "thu duc" }, // Phường Linh Đông — Thủ Đức cũ
             { "linh chieu", "thu duc" }, // Phường Linh Chiểu — Thủ Đức cũ
@@ -407,6 +432,9 @@ namespace TextInputter
             { "tam binh", "thu duc" }, // Phường Tam Bình — Thủ Đức cũ
             { "truong tho", "thu duc" }, // Phường Trường Thọ — Thủ Đức cũ
             { "hiep binh phuoc", "thu duc" }, // Phường Hiệp Bình Phước — Thủ Đức cũ
+            { "hiep binh chanh", "thu duc" }, // Phường Hiệp Bình Chánh — Thủ Đức cũ
+            { "phu my hung", "7" }, // Khu đô thị Phú Mỹ Hưng — Q7
+            { "nguyen van linh", "7" }, // Đại lộ Nguyễn Văn Linh — Q7 phổ biến
             // ── Quận 6 (ship 25k) ─────────────────────────────────────────────
             // Sau NQ1685/2025 (01/07/2025): Q6 giải thể quận, còn 4 phường tên mới
             { "binh tien", "6" }, // Phường Bình Tiên (mới 2025, từ P.1+7+8) — ĐÃ CÓ ✅
@@ -449,6 +477,35 @@ namespace TextInputter
             { "dong hung thuan", "12" }, // Phường Đông Hưng Thuận
             { "thoi an", "12" }, // Phường Thới An
             { "hiep thanh", "12" }, // Phường Hiệp Thành — Q12
+            { "tan thoi hiep", "12" }, // Phường Tân Thới Hiệp — Q12
+            // ── Bình Chánh (ship 35k) ──────────────────────────────────────────
+            { "binh chanh", "binh chanh" }, // Thị trấn Bình Chánh
+            { "tan tuc", "binh chanh" }, // Phường Tân Túc — Bình Chánh
+            { "binh hung", "binh chanh" }, // Phường Bình Hưng — Bình Chánh
+            { "binh dien", "binh chanh" }, // Phường Bình Điền — Bình Chánh
+            { "da phuoc", "binh chanh" }, // Phường Đa Phước — Bình Chánh
+            { "phong phu", "binh chanh" }, // Phường Phong Phú — Bình Chánh
+            { "an phu tay", "binh chanh" }, // Phường An Phú Tây — Bình Chánh
+            { "hung long", "binh chanh" }, // Phường Hưng Long — Bình Chánh
+            { "quy duc", "binh chanh" }, // Phường Quy Đức — Bình Chánh
+            { "le minh xuan", "binh chanh" }, // Phường Lê Minh Xuân — Bình Chánh
+            // ── Hóc Môn (ship 35k) ────────────────────────────────────────────
+            { "hoc mon", "hoc mon" }, // Thị trấn Hóc Môn
+            { "xuan thoi dong", "hoc mon" }, // Phường Xuân Thới Đông
+            { "xuan thoi son", "hoc mon" }, // Phường Xuân Thới Sơn
+            { "xuan thoi thuong", "hoc mon" }, // Phường Xuân Thới Thượng
+            { "tan hiep", "hoc mon" }, // Phường Tân Hiệp — Hóc Môn
+            { "thoi tam thon", "hoc mon" }, // Phường Thới Tam Thôn — Hóc Môn
+            { "nhi binh", "hoc mon" }, // Phường Nhị Bình — Hóc Môn
+            { "dong thanh", "hoc mon" }, // Phường Đông Thạnh — Hóc Môn
+            { "bau dieu", "hoc mon" }, // Phường Bầu Điêu — Hóc Môn
+            // ── Nhà Bè (ship 35k) ─────────────────────────────────────────────
+            { "nha be", "nha be" }, // Thị trấn Nhà Bè
+            { "phuoc kien nha be", "nha be" }, // Phường Phước Kiển — Nhà Bè (tránh trùng Q7)
+            { "phuoc loc", "nha be" }, // Phường Phước Lộc — Nhà Bè
+            { "long thoi", "nha be" }, // Phường Long Thới — Nhà Bè
+            { "hiep phuoc", "nha be" }, // Phường Hiệp Phước — Nhà Bè
+            { "nhon duc", "nha be" }, // Phường Nhơn Đức — Nhà Bè
         };
 
         // ── UI colors ──────────────────────────────────────────────────────────
@@ -474,7 +531,7 @@ namespace TextInputter
         // ── UI dimensions ──────────────────────────────────────────────────────
 
         /// <summary>Chiều cao panel Daily Report phía dưới</summary>
-        public const int DAILY_REPORT_PANEL_HEIGHT = 220;
+        public const int DAILY_REPORT_PANEL_HEIGHT = 180;
 
         /// <summary>Chiều cao row TỔNG trong dgvInvoice</summary>
         public const int ROW_HEIGHT_TONG = 24;

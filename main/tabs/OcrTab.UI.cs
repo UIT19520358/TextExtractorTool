@@ -424,7 +424,19 @@ namespace TextInputter
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ Error initializing OCR Tab UI: {ex.Message}");
+                Debug.WriteLine($"❌ Error initializing OCR Tab UI: {ex.Message}\n{ex.StackTrace}");
+                // Show lỗi trên tab thay vì để trắng
+                var lblErr = new Label
+                {
+                    Text = $"❌ Lỗi khởi tạo tab OCR:\n{ex.Message}",
+                    Dock = DockStyle.Fill,
+                    ForeColor = Color.Red,
+                    Font = new Font("Arial", 10),
+                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                    Padding = new Padding(10),
+                };
+                tabOCR.Controls.Clear();
+                tabOCR.Controls.Add(lblErr);
             }
         }
 

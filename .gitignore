@@ -18,5 +18,4 @@ ocr_log.txt
 
 # Folders
 _tmp_reader
-data
-publish
+# data

@@ -4,29 +4,106 @@
 
 ---
 
-## Tính năng chính
+## ⚠️ BƯỚC QUAN TRỌNG: Setup Google Cloud Credentials
 
-### 🔍 Tab OCR — Xử lý hàng loạt
-- Chọn thư mục ảnh → quét toàn bộ bằng **Google Cloud Vision**
-- Tự động extract 12 fields: `SHOP`, `TÊN KH`, `MÃ`, `ĐỊA CHỈ`, `QUẬN`, `PHƯỜNG`, `TÊN ĐƯỜNG`, `TIỀN THU`, `TIỀN SHIP`, `NGÀY LẤY`, `NGƯỜI ĐI`, `GHI CHÚ`
-- **Gemini fallback tự động** khi regex thiếu field — thử tuần tự 5 model (2.5-flash-lite → 2.5-pro)
-- Tự động tra **phí ship 4 cấp** theo địa chỉ:
-  - Tier 3: theo phường cụ thể (Q8 chia đôi P.5–16)
-  - Tier 2.8: theo tên đường cụ thể (Yên Thế, Vinhome, Đặng Nguyên Cẩn...)
-  - Tier 2.5: phường → quận (qua bảng map)
-  - Tier 2: theo quận
-- Tự động điền **người đi** theo khu vực (c.hieu / c.cuong / a.quyen / An Tam dd-MM)
-- Hỗ trợ **manual override** người đi/người lấy
-- **Xuất Excel** → user chọn file đích qua dialog → ghi vào sheet `dd-MM`
-- **Tính tiền** riêng: tính TIỀN HÀNG + sinh bảng tổng per SHOP và per NGƯỜI ĐI
+Chương trình cần **Google Cloud service account credentials** để hoạt động.
+### 1️⃣ Tạo Google Cloud Project
 
-### 📋 Tab Invoice — Xem & tính báo cáo ngày
-- Mở file Excel bất kỳ, tự detect header
-- Tính tổng TIỀN THU / TIỀN SHIP / TIỀN HÀNG per SHOP
-- Lưu báo cáo ngày ra `DailyTotalReport.xlsx`
+1. Truy cập: https://console.cloud.google.com
+2. Tạo project mới (Project Name: `TextInputter` hoặc tùy ý)
+3. Bật **Vision API**:
+   - Menu → APIs & Services → Library
+   - Search: "Cloud Vision API"
+   - Click → Enable
+4. Bật **Billing** (Google cung cấp 1000 requests/tháng miễn phí):
+   - Menu → Billing
+   - Link tài khoản billing
 
-### ✍️ Tab Manual Input
-- Nhập tay thông tin đơn hàng (đang phát triển)
+### 2️⃣ Tạo Service Account Credentials
+
+1. Vào: APIs & Services → Credentials
+2. Click: Create Credentials → Service Account
+3. Điền thông tin:
+   - Service account name: `textinputter-ocr`
+   - Click: Create and Continue
+4. Tạo Key:
+   - Service Account → Keys tab
+   - Add Key → Create new key
+   - Format: **JSON**
+   - Download file JSON (ví dụ: `text-extractor-489011-ee19271357bd.json`)
+
+### 3️⃣ Copy vào project
+
+- Đặt file JSON vào **gốc project**:
+  ```
+  d:\Work\Freelance\TextInputter\[tên-file-credentials].json
+  ```
+
+- **HOẶC** rename thành tên mặc định:
+  ```
+  text-extractor-489011-ee19271357bd.json
+  ```
+
+### 4️⃣ ⚠️ Thêm vào .gitignore (ĐẬU BẮT BUỘC!)
+
+File credentials chứa **private key** → **KHÔNG được public lên GitHub**
+
+Kiểm tra `.gitignore` có dòng này không:
+```gitignore
+text-extractor-489011-ee19271357bd.json
+```
+
+Nếu chưa có, thêm vào `.gitignore`
+
+---
+
+## 🤖 (Tuỳ chọn) Setup Gemini AI Fallback
+
+Khi OCR parsing không đủ field (địa chỉ bị wrap dòng, quận không rõ...), app tự gửi ảnh lên **Gemini Vision** để đọc lại.
+
+### Lấy API key miễn phí:
+1. Truy cập: https://aistudio.google.com/apikey
+2. Tạo API key mới (không cần billing)
+3. Mở `main/AppConstants.cs`, điền key vào:
+   ```csharp
+   public const string GEMINI_API_KEY = "YOUR_KEY_HERE";
+   ```
+
+### Model fallback tự động (quota nhiều → ít):
+```
+gemini-2.5-flash-lite → gemini-2.0-flash-lite → gemini-2.0-flash → gemini-2.5-flash → gemini-2.5-pro
+```
+Hết quota model nào → tự động thử model tiếp theo.
+
+> ⚠️ Để trống `""` = tắt Gemini, chỉ dùng rule-based parser.  
+> ⚠️ Không commit API key lên git nếu repo public.
+
+---
+
+## 📝 File Sample Credentials
+
+Sử dụng template trong `textinputter-google-credential-sample.json` để guide người khác setup:
+
+```json
+{
+  "type": "service_account",
+  "project_id": "textinputter",
+  "private_key_id": "{private_key_id}",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----\n",
+  "client_email": "textinputter-ocr@textinputter.iam.gserviceaccount.com",
+  "client_id": "{client_id}",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/...",
+  "universe_domain": "googleapis.com"
+}
+```
+
+**Thay đổi các trường:**
+- `{private_key_id}` → Lấy từ file JSON download
+- `{private_key}` → Lấy từ file JSON download (toàn bộ private key)
+- `{client_id}` → Lấy từ file JSON download
 
 ---
 
@@ -94,35 +171,42 @@ Sửa bảng phí: `main/AppConstants.cs` → `SHIPPING_FEES_BY_QUAN` / `SHIPPIN
 ## Cấu trúc project
 
 ```
-main/
-├── AppConstants.cs          ← tất cả constants/hardcoded values
-├── MainForm.cs              ← shared fields + constructor
-├── tabs/
-│   ├── OcrTab.cs            ← OCR batch logic
-│   ├── InvoiceTab.cs        ← báo cáo ngày
-│   └── ManualInputTab.cs    ← nhập tay (WIP)
-└── Services/
-    ├── OCRTextParsingService.cs   ← parse OCR text → fields
-    ├── GeminiService.cs           ← Gemini fallback
-    ├── ExcelInvoiceService.cs     ← ghi/cập nhật Excel
-    ├── OCRInvoiceMapper.cs        ← tra ship fee, người đi
-    └── AddressParser.cs           ← tách địa chỉ VN
+d:\Work\Freelance\TextInputter\
+├── main/
+│   ├── AppConstants.cs          # Config tập trung: API keys, bảng phí ship, màu sắc...
+│   ├── MainForm.cs              # Shared fields + constructor
+│   ├── MainForm.Designer.cs     # Form skeleton
+│   ├── Program.cs               # Entry point
+│   ├── tabs/
+│   │   ├── OcrTab.cs            # OCR batch tab
+│   │   ├── InvoiceTab.cs        # Excel viewer + Daily Report
+│   │   ├── InvoiceTab.UI.cs     # Invoice UI controls
+│   │   └── ManualInputTab.cs    # Manual input tab
+│   ├── Services/
+│   │   ├── OCRTextParsingService.cs  # Parse OCR text → 12 fields + Gemini fallback
+│   │   ├── GeminiService.cs          # Gemini Vision AI (5 model fallback)
+│   │   ├── AddressParser.cs          # Parse địa chỉ VN
+│   │   ├── ExcelInvoiceService.cs    # Ghi Excel
+│   │   └── OCRInvoiceMapper.cs       # Model + ship fee lookup
+│   └── utils/
+│       ├── UIHelper.cs               # WinForms factory + search
+│       └── AddressParsingDialog.cs   # Dialog xác nhận địa chỉ
+├── resources/
+│   └── app.ico
+├── data/sample/                 # File mẫu để test
+├── ARCHITECTURE.md              # Chi tiết kiến trúc, flow, edge cases
+├── TextInputter.csproj          # Project file
+├── text-extractor-489011-ee19271357bd.json              # ⚠️ Credentials Google (KHÔNG push)
+└── textinputter-google-credential-sample.json  # Template sample
 ```
 
-Chi tiết kỹ thuật xem [`ARCHITECTURE.md`](ARCHITECTURE.md).
+> Xem `ARCHITECTURE.md` để biết chi tiết flow, services, edge cases và hướng dẫn thêm tính năng.
 
 ---
 
-## Workflow thực tế
+## 📄 License
 
-```
-1. Chụp ảnh hóa đơn → chép vào thư mục data/
-2. Tab OCR → Chọn Thư Mục → Bắt Đầu
-3. Kiểm tra log kết quả (txtProcessLog)
-4. Xuất Excel → chọn file Excel đích → OK
-5. Tính Tiền → sinh bảng tổng tự động
-6. Mở Excel kiểm tra kết quả
-```
+Miễn phí sử dụng - TextInputter OCR
 
 ---
 

@@ -138,26 +138,42 @@ namespace TextInputter
                 dgvTong.Dock = DockStyle.Fill;
 
                 int ri;
-                ri = dgvTong.Rows.Add("", "Tiền Thu", "Số đơn");
+                // Tính Tiền Hàng = TongThu - TongShip (trước khi trừ đơn âm)
+                decimal tienHangTong = r.TongTienThu + tongShipRaw; // tongShipRaw = -TongTienShip
+
+                ri = dgvTong.Rows.Add("", "Tiền", "Số đơn");
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightSteelBlue;
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
 
-                ri = dgvTong.Rows.Add("TỔNG ĐƠN", thuStr, soDonStr);
+                ri = dgvTong.Rows.Add("TỔNG ĐƠN NHẬN", thuStr, soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                ri = dgvTong.Rows.Add("tiền ship", tongShipRaw.ToString("N0"), "");
+                // tiền ship = -TongTienShip (số âm = khoản trừ)
+                ri = dgvTong.Rows.Add("tiền ship", tongShipRaw.ToString("N0"), soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
-                dgvTong.Rows[ri].Cells[1].Style.ForeColor =
-                    tongShipRaw < 0 ? Color.Red : Color.Black;
+                dgvTong.Rows[ri].Cells[1].Style.ForeColor = Color.Black;
 
-                ri = dgvTong.Rows.Add("đơn trả", "", "");
+                // Đơn trả & (placeholder đỏ — user tự điền)
+                ri = dgvTong.Rows.Add("Đơn trả &", "0", "0");
                 dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                ri = dgvTong.Rows.Add("đơn cũ ck", "", "");
-                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
-
-                ri = dgvTong.Rows.Add("", ketStr, soDonStr);
+                // Tiền Hàng = TongThu - TongShip
+                ri = dgvTong.Rows.Add("Tiền Hàng", tienHangTong.ToString("N0"), soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
+                dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
+                dgvTong.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
+
+                // đền đơn (placeholder đỏ — user tự điền)
+                ri = dgvTong.Rows.Add("đền đơn", "", "");
+                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                // nợ cũ (placeholder đỏ — user tự điền)
+                ri = dgvTong.Rows.Add("nợ cũ", "", "");
+                dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                // THANH TOÁN = Tiền Hàng (kết cuối sau khi trừ hết)
+                ri = dgvTong.Rows.Add("THANH TOÁN", tienHangTong.ToString("N0"), "ĐỦ 100%");
+                dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightGreen;
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
                 dgvTong.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
 
@@ -210,18 +226,19 @@ namespace TextInputter
 
                     // TỔNG ĐƠN NHẬN
                     ri = dgvNguoi.Rows.Add(
-                        "TỔNG ĐƠN",
+                        "TỔNG ĐƠN NHẬN",
                         tienThuNguoi.ToString("N0"),
                         soDonNguoi.ToString("N0")
                     );
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                    // tiền ship = -(tổng tiền ship của người đó)
-                    decimal khoanShipNguoi = -tienShipNguoi;
-                    ri = dgvNguoi.Rows.Add("tiền ship", khoanShipNguoi.ToString("N0"), "");
+                    // tiền ship — để trống, user tự điền
+                    ri = dgvNguoi.Rows.Add("tiền ship", "", "");
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
-                    dgvNguoi.Rows[ri].Cells[1].Style.ForeColor =
-                        khoanShipNguoi < 0 ? Color.Red : Color.Black;
+
+                    // tiền lấy — để trống, user tự điền
+                    ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
                     // đơn trả (placeholder đỏ, tự điền)
                     ri = dgvNguoi.Rows.Add("đơn trả", "", "");
@@ -231,9 +248,8 @@ namespace TextInputter
                     ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
                     dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                    // Dòng KẾT = TỔNG ĐƠN + tiền ship (đơn trả/cũ ck để trống → không cộng)
-                    decimal ketNguoi = tienThuNguoi + khoanShipNguoi;
-                    ri = dgvNguoi.Rows.Add("", ketNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
+                    // Dòng KẾT — chỉ hiện Số đơn, Tiền để trống (sẽ có SUBTOTAL trong Excel)
+                    ri = dgvNguoi.Rows.Add("", "", soDonNguoi.ToString("N0"));
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
                     dgvNguoi.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
                     dgvNguoi.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
@@ -263,12 +279,14 @@ namespace TextInputter
                 Dock = DockStyle.Top,
             };
 
-            // Với WinForms, Dock=Top phải nằm trong Controls collection SAU Dock=Bottom
-            // nhưng TRƯỚC Dock=Fill. Ta remove dgvInvoice, add pnlButtons, rồi add lại dgvInvoice
-            // để đảm bảo thứ tự: Bottom → Top (lblInvoiceTotal) → Top (pnlButtons) → Fill (dgvInvoice)
+            // Với WinForms, Dock=Top: control add SAU cùng sẽ chiếm vị trí trên cùng.
+            // Thứ tự mong muốn từ trên xuống: pnlButtons (toolbar) → lblInvoiceTotal (tổng) → dgvInvoice
+            // Vì vậy phải add: lblInvoiceTotal trước, pnlButtons sau → pnlButtons nằm trên lblInvoiceTotal.
             tabInvoice.Controls.Remove(dgvInvoice);
-            tabInvoice.Controls.Add(pnlButtons);
-            tabInvoice.Controls.Add(dgvInvoice);
+            tabInvoice.Controls.Remove(lblInvoiceTotal);
+            tabInvoice.Controls.Add(lblInvoiceTotal); // add trước → nằm dưới pnlButtons
+            tabInvoice.Controls.Add(pnlButtons); // add sau → nằm trên lblInvoiceTotal
+            tabInvoice.Controls.Add(dgvInvoice); // Fill → phần còn lại
 
             Button MakeBtn(string text, int x) =>
                 new Button
@@ -577,10 +595,10 @@ namespace TextInputter
 
                 var ws = workbook.Worksheets.Add(sheetName);
 
-                // Row 1: tiêu đề cột
+                // Row 2: tiêu đề cột (matching DATA_START_ROW = 3, header at row 2)
                 for (int c = 0; c < colHeaders.Count; c++)
                 {
-                    var cell = ws.Cell(1, c + 1);
+                    var cell = ws.Cell(2, c + 1);
                     cell.Value = colHeaders[c];
                     cell.Style.Font.Bold = true;
                     cell.Style.Fill.BackgroundColor = XLColor.LightGray;

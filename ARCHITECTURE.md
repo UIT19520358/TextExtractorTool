@@ -348,17 +348,23 @@ Tier 2   (quận):         SHIPPING_FEES_BY_QUAN[NormalizeKey(quan)]
 
 | # | Vị trí | Giá trị cứng | Vấn đề |
 |---|---|---|---|
-| 1 | `AppConstants.PHI_SHIP_MOI_DON` | `5m` (5đ/đơn) | Business rule, nên cho user input |
-| 2 | `AppConstants.COL_SODON_FALLBACK_IDX` | `17` | Phụ thuộc column index Excel cụ thể |
-| 3 | `AppConstants.HEADER_ROW_KEYWORDS` | `{"SHOP", "Tình trạng"}` | Phụ thuộc template Excel của khách |
-| 4 | `OcrTab.cs` header array | 19-column header | Client-specific Excel template |
-| 5 | `AppConstants.DATE_FORMAT_SHEET` | `"dd-MM-yyyy"` | Sheet naming convention cứng |
-| 6 | `OCRTextParsingService` | Tất cả regex keyword | Phụ thuộc format hóa đơn hiện tại |
-| 7 | `AddressParser` | `DistrictDict`, `WardDict` | Chỉ cover TP.HCM + một số quận Hà Nội |
-| 8 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | Tên file JSON cứng | Credential file phải đặt đúng tên cạnh .exe |
-| 9 | `AppConstants.SHIPPING_FEES_BY_QUAN` | Bảng phí ship | Phụ thuộc hợp đồng vận chuyển, chỉ cover TP.HCM |
-| 10 | `AppConstants.GEMINI_API_KEY` | API key nhúc thẳng | Không nên commit lên git public |
-| 11 | `AppConstants.SHOP_DEFAULT` | `"ĐOÀN NGÂN CHÂU"` | Client-specific, thay đổi khi đổi khách |
+| 1 | `ExcelInvoiceService.cs` constructor | `"CHÂU NGÂN- THÁNG 2.2026- ĐỐI SOÁT.xlsx"` | Tên file client-specific, đổi tháng là lỗi |
+| 2 | `AppConstants.PHI_SHIP_MOI_DON` | `5m` (5đ/đơn) | Business rule, nên cho user input |
+| 3 | `AppConstants.COL_SODON_FALLBACK_IDX` | `17` | Phụ thuộc column index Excel cụ thể |
+| 4 | `AppConstants.HEADER_ROW_KEYWORDS` | `{"SHOP", "Tình trạng"}` | Phụ thuộc template Excel của khách |
+| 5 | `OcrTab.ExportMappedDataToExcel()` | 20-column header array | Client-specific Excel template |
+| 6 | `AppConstants.DATE_FORMAT_SHEET` | `"dd-MM-yyyy"` | Sheet naming convention cứng |
+| 7 | `OCRTextParsingService` | Tất cả regex keyword | Phụ thuộc format hóa đơn hiện tại |
+| 8 | `AddressParser` | `DistrictDict`, `WardDict` | Chỉ cover TP.HCM |
+| 9 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | `"text-extractor-489011-ee19271357bd.json"` | Credential file cứng cạnh .exe |
+| 10 | `AppConstants.SHIPPING_FEES_BY_QUAN` | Bảng phí ship theo quận | Phụ thuộc hợp đồng vận chuyển hiện tại, chỉ cover TP.HCM |
+| 11 | `AppConstants.GEMINI_API_KEY` | API key Gemini nhúng thẳng | Không nên commit lên git public |
+
+**Hướng cải thiện đề xuất (discuss sau):**
+- Item 1: Dùng `OpenFileDialog` để user chọn file Excel đích khi start, hoặc đọc từ `appsettings.json`
+- Item 2, 3: Thêm "Settings" tab hoặc `config.json`
+- Item 4, 5: Tách thành template config riêng theo khách hàng
+- Item 9: Dùng environment variable hoặc `appsettings.json`
 
 ---
 
