@@ -152,7 +152,7 @@ namespace TextInputter
                     Width = 140,
                     Font = new Font("Arial", 9),
                     DropDownStyle = ComboBoxStyle.DropDown,
-                    Text = AppConstants.NGUOI_DI_DEFAULT,
+                    Text = AppConstants.NGUOI_DI_DEFAULT  + DateTime.Now.ToString(" dd-MM"),
                     Enabled = false,
                 };
                 txtNguoiDiOCR.Items.AddRange(AppConstants.NGUOI_LIST);

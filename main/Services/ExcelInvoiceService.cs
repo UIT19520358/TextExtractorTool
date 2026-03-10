@@ -780,7 +780,7 @@ namespace TextInputter.Services
             foreach (string nd in distinctNguoiDis)
             {
                 // An Tâm detection: prefix match ("AT " prefix)
-                bool isAnTam = nd.StartsWith(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase);
+                bool isAnTam = nd.StartsWith(AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString(" dd-MM"), StringComparison.OrdinalIgnoreCase);
 
                 // Tính đơn gộp + đơn trả từ data
                 int soDon = 0, soDonGop = 0, soDonTra = 0;

@@ -124,7 +124,7 @@ namespace TextInputter.Services
                 }
             }
 
-            return AppConstants.NGUOI_DI_DEFAULT;
+            return AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString(" dd-MM"); // fallback người đi mặc định + ngày hiện tại để dễ phân biệt trong báo cáo
         }
 
         // Bảng expand viết tắt → tên đầy đủ (áp dụng trước khi tra cứu).
