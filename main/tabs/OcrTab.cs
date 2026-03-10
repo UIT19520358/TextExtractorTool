@@ -767,6 +767,46 @@ namespace TextInputter
                     totalUpdated = 0;
                 var sheetSummaries = new List<string>();
 
+                // ── Auto-detect hàng tồn: scan existing sheets for duplicate MÃ ──
+                // Nếu MÃ đã tồn tại ở sheet ngày trước → đây là hàng tồn (carry-over)
+                int hangTonDetected = 0;
+                var targetSheetNames = new HashSet<string>(grouped.Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    using var wb = new ClosedXML.Excel.XLWorkbook(excelPath);
+                    // Collect all MÃ from sheets NOT in current export target
+                    var existingMaBySheet = new Dictionary<string, (string SheetName, string Ngay)>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var ws in wb.Worksheets)
+                    {
+                        if (targetSheetNames.Contains(ws.Name)) continue;
+                        var lastRow = ws.LastRowUsed();
+                        if (lastRow == null) continue;
+                        for (int r = 3; r <= lastRow.RowNumber(); r++)
+                        {
+                            string ma = ws.Cell(r, 4).GetString().Trim(); // COL_MA = 4
+                            string ngayVal = ws.Cell(r, 12).GetString().Trim(); // COL_NGAYLAY = 12
+                            if (!string.IsNullOrEmpty(ma) && !existingMaBySheet.ContainsKey(ma))
+                                existingMaBySheet[ma] = (ws.Name, ngayVal);
+                        }
+                    }
+
+                    // Mark matching orders as hàng tồn
+                    foreach (var d in deduped)
+                    {
+                        string ma = d.GetValueOrDefault("MÃ", "");
+                        if (!string.IsNullOrEmpty(ma) && existingMaBySheet.TryGetValue(ma, out var found))
+                        {
+                            d["HÀNG TỒN"] = "x";
+                            d["ỨNG TIỀN"] = "x";
+                            // Keep original NGÀY LẤY from the old sheet (don't override to today)
+                            if (!string.IsNullOrEmpty(found.Ngay))
+                                d["NGÀY LẤY"] = found.Ngay;
+                            hangTonDetected++;
+                        }
+                    }
+                }
+                catch { /* ignore errors scanning existing file */ }
+
                 foreach (var group in grouped)
                 {
                     string sheetName = group.Key;
@@ -782,8 +822,20 @@ namespace TextInputter
                     if (sheetDate.Year == 1)
                         sheetDate = sheetDate.AddYears(now.Year - 1);
 
+                    // Override NGÀY LẤY cho mỗi đơn = ngày của sheet (dd-MM-yyyy).
+                    // Lý do: OCR đọc ngày IN trên hóa đơn (07-03, 08-03…) — đó là ngày shop tạo đơn,
+                    // KHÔNG phải ngày lấy hàng/giao hàng. Ngày lấy hàng = ngày user chọn = sheet date.
+                    // NGOẠI TRỪ hàng tồn: giữ nguyên ngày gốc từ sheet cũ.
+                    string ngayLayOverride = sheetDate.ToString("dd-MM-yyyy");
+                    var groupList = group.ToList();
+                    foreach (var d in groupList)
+                    {
+                        if (d.GetValueOrDefault("HÀNG TỒN", "") != "x")
+                            d["NGÀY LẤY"] = ngayLayOverride;
+                    }
+
                     var (addedCount, updatedCount) = service.ExportBatch(
-                        group.ToList(),
+                        groupList,
                         sheetName,
                         sheetDate
                     );
@@ -799,13 +851,17 @@ namespace TextInputter
                     dupCount > 0
                         ? $"\n⚠️ Đã bỏ {dupCount} đơn trùng MÃ (giữ lần quét mới nhất)"
                         : "";
+                string hangTonNote =
+                    hangTonDetected > 0
+                        ? $"\n📦 Phát hiện {hangTonDetected} đơn hàng tồn (tự đánh dấu HÀNG TỒN=x)"
+                        : "";
 
                 this.Invoke(
                     (MethodInvoker)
                         delegate
                         {
                             MessageBox.Show(
-                                $"✅ Xuất thành công!\n\n{detailText}{dupNote}\n\n➕ Tổng thêm mới: {totalAdded}\n✏️ Tổng ghi đè: {totalUpdated}\n📂 File: {Path.GetFileName(excelPath)}",
+                                $"✅ Xuất thành công!\n\n{detailText}{dupNote}{hangTonNote}\n\n➕ Tổng thêm mới: {totalAdded}\n✏️ Tổng ghi đè: {totalUpdated}\n📂 File: {Path.GetFileName(excelPath)}",
                                 "✅ Thành công",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Information

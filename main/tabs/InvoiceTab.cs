@@ -47,6 +47,15 @@ namespace TextInputter
             public int TotalDonGop { get; set; }       // Tổng đơn gộp (toàn bộ)
             public int TotalDonTra { get; set; }       // Tổng đơn trả (toàn bộ)
 
+            // LEFT "Đơn trả": -SUMIFS(TIỀN HÀNG, FAIL="xx", ỨNG TIỀN="x") — matching Excel formula
+            public decimal TongTienHangDonTra { get; set; }
+            public int SoDonTraLeft { get; set; }      // COUNTIFS(FAIL="xx", ỨNG TIỀN="x")
+
+            // Hàng tồn (carry-over từ ngày trước, HÀNG TỒN=x) — loại khỏi LEFT summary
+            public decimal TongTienThuHangTon { get; set; }
+            public decimal TongTienShipHangTon { get; set; }
+            public int SoDonHangTon { get; set; }
+
             // Các row âm (đơn trả, đơn cũ ck...) lấy từ Excel
             public System.Collections.Generic.List<(string Label, decimal Amount)> NegativeRows { get; set; } = new();
 

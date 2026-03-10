@@ -149,6 +149,13 @@ namespace TextInputter
 
                 // LUÔN tính THU + SHIP từ từng row DATA (không dùng SUM row)
                 // Đảm bảo UI giống exported Excel (cũng dùng SUBTOTAL per-row).
+                // Track riêng hàng tồn (HÀNG TỒN=x) để loại khỏi LEFT summary.
+                decimal totalTienThuHangTon = 0, totalTienShipHangTon = 0;
+                int soDonHangTon = 0;
+                // LEFT "Đơn trả": TIỀN HÀNG of FAIL=xx AND ỨNG TIỀN=x (matching Excel formula)
+                decimal totalTienHangDonTra = 0;
+                int soDonTraLeft = 0;
+
                 int endDataIdx = sumRowIndex >= 0 ? sumRowIndex : sourceGridView.Rows.Count;
                 for (int i = 0; i < endDataIdx; i++)
                 {
@@ -161,7 +168,32 @@ namespace TextInputter
                     if (IsDateLabelRow(row, colShop, colMa))
                         continue;
 
+                    // Detect hàng tồn (carry-over ngày trước)
+                    bool isHangTon = false;
+                    if (colHangTon >= 0 && colHangTon < row.Cells.Count)
+                    {
+                        string tonVal = (row.Cells[colHangTon].Value?.ToString() ?? "").Trim().ToLower();
+                        isHangTon = tonVal == "x";
+                    }
+
+                    // Detect đơn trả cho LEFT summary: FAIL=xx AND ỨNG TIỀN=x → sum TIỀN HÀNG
+                    bool isTraLeft = false;
+                    if (colFail >= 0 && colFail < row.Cells.Count && colUngTien >= 0 && colUngTien < row.Cells.Count)
+                    {
+                        string failVal = (row.Cells[colFail].Value?.ToString() ?? "").Trim().ToLower();
+                        string ungVal = (row.Cells[colUngTien].Value?.ToString() ?? "").Trim().ToLower();
+                        isTraLeft = failVal.Contains("xx") && ungVal == "x";
+                    }
+                    if (isTraLeft && colTienHang >= 0 && colTienHang < row.Cells.Count)
+                    {
+                        if (decimal.TryParse(row.Cells[colTienHang].Value?.ToString() ?? "", out decimal hangVal))
+                            totalTienHangDonTra += hangVal;
+                        soDonTraLeft++;
+                    }
+
                     totalSoDon++;
+                    if (isHangTon)
+                        soDonHangTon++;
 
                     if (colTienThu >= 0 && colTienThu < row.Cells.Count)
                         if (
@@ -170,7 +202,11 @@ namespace TextInputter
                                 out decimal t
                             )
                         )
+                        {
                             totalTienThu += t;
+                            if (isHangTon)
+                                totalTienThuHangTon += t;
+                        }
 
                     if (colTienShip >= 0 && colTienShip < row.Cells.Count)
                         if (
@@ -179,7 +215,11 @@ namespace TextInputter
                                 out decimal s
                             )
                         )
+                        {
                             totalTienShip += s;
+                            if (isHangTon)
+                                totalTienShipHangTon += s;
+                        }
                 }
 
                 // Thu thập các row âm (đơn trả, đơn cũ ck):
@@ -301,7 +341,7 @@ namespace TextInputter
                         d.TienThu += tienThuRow;
                         d.TienShip += tienShipRow;
                         d.SoDon++;
-                        d.IsAnTam = nguoiRow.Equals(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase);
+                        d.IsAnTam = nguoiRow.StartsWith(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase);
                         if (isTra)
                             d.SoDonTra++;
 
@@ -493,6 +533,11 @@ namespace TextInputter
                     SoDon = totalSoDon,
                     TotalDonGop = totalDonGop,
                     TotalDonTra = totalDonTra,
+                    TongTienHangDonTra = totalTienHangDonTra,
+                    SoDonTraLeft = soDonTraLeft,
+                    TongTienThuHangTon = totalTienThuHangTon,
+                    TongTienShipHangTon = totalTienShipHangTon,
+                    SoDonHangTon = soDonHangTon,
                     DetailByNguoiDi = detailByNguoiDi,
                     NegativeRows = negativeRows
                         .Select(nr =>

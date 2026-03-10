@@ -83,7 +83,7 @@ namespace TextInputter
         /// <summary>
         /// Người đi fallback — dùng khi quận/phường không có trong AREA_TO_NGUOI_DI.
         /// </summary>
-        public const string NGUOI_DI_DEFAULT = "An Tam";
+        public const string NGUOI_DI_DEFAULT = "AT ";
 
         // ── Excel / OCR defaults ────────────────────────────────────────────────
 

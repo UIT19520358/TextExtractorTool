@@ -217,3 +217,34 @@ Miễn phí sử dụng - TextInputter OCR
 - **Duplicate MÃ**: nếu mã đơn đã tồn tại trong bất kỳ sheet nào → **cập nhật** thay vì thêm mới
 - **TIỀN THU** trong Excel = Tổng thanh toán OCR + TIỀN SHIP (để tính đúng doanh thu)
 - **TIỀN HÀNG** = TIỀN THU - TIỀN SHIP (tính sau khi bấm "Tính Tiền")
+
+
+## Workflow/Business
+                   ┌───────────────────────────────┐
+                   │  BƯỚC 1: NHẬP HÀNG LẤY        │
+                   │  (nhập tất cả đơn từ OCR/ảnh) │
+                   └──────────┬────────────────────┘
+                              │
+                   ┌──────────▼───────────────────┐
+                   │  BƯỚC 2: NHẬP NGƯỜI ĐI       │
+                   │  (gán shipper cho từng đơn)  │
+                   └──────────┬───────────────────┘
+                              │
+           ┌──────────────────▼──────────────────────┐
+           │  BƯỚC 3: NHẬP HÀNG TRẢ (2 loại)         │
+           │                                         │
+           │  Loại 1 — Trả TRONG NGÀY:               │
+           │    → ỨNG TIỀN = x, FAIL = xx            │
+           │    (VD: row 3, trinh, 840k)             │
+           │                                         │
+           │  Loại 2 — Trả NGÀY TRƯỚC (hàng tồn):    │
+           │    → Tìm trong bảng đối soát            │
+           │    → Copy vào sheet hiện tại            │
+           │    → ỨNG TIỀN = x, HÀNG TỒN = x,        │
+           │      FAIL = xx                          │
+           │    (VD: row 30, duyen my, 850k)         │
+           └──────────────────┬──────────────────────┘
+                              │
+                   ┌──────────▼───────────────────┐
+                   │  BƯỚC 4: TÍNH TIỀN           │
+                   └──────────────────────────────┘

@@ -132,7 +132,13 @@ namespace TextInputter
 
             btnImport.Click += (s, e) =>
             {
-                ImportFromDoiSoat(lblResult);
+                // Truyền danh sách MÃ HĐ đã nhập (nếu có) để auto-search trong đối soát
+                var maList = txtMa.Text
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(m => m.Trim())
+                    .Where(m => !string.IsNullOrEmpty(m))
+                    .ToList();
+                ImportFromDoiSoat(lblResult, maList);
             };
 
             dlg.Controls.AddRange(new Control[]
@@ -225,9 +231,11 @@ namespace TextInputter
 
         /// <summary>
         /// Import đơn từ file đối soát (Excel) vào source grid hiện tại.
-        /// Flow: mở file → hiển thị data → user chọn rows → copy vào source + đánh dấu.
+        /// Flow: mở file → quét TẤT CẢ sheets → auto-match MÃ HĐ → user confirm → copy + đánh dấu.
         /// </summary>
-        private void ImportFromDoiSoat(Label lblResult)
+        /// <param name="lblResult">Label hiển thị kết quả.</param>
+        /// <param name="searchMaList">Danh sách MÃ HĐ cần tìm (nếu rỗng → hiện toàn bộ).</param>
+        private void ImportFromDoiSoat(Label lblResult, List<string> searchMaList = null)
         {
             DataGridView sourceGrid = GetCurrentSourceGrid();
             if (sourceGrid == null)
@@ -252,71 +260,103 @@ namespace TextInputter
 
             try
             {
-                // Đọc file đối soát
-                List<Dictionary<string, string>> doiSoatRows;
-                List<string> doiSoatHeaders;
+                var allRows = new List<Dictionary<string, string>>();
+                List<string> doiSoatHeaders = null;
+
                 using (var workbook = new XLWorkbook(doiSoatPath))
                 {
-                    // Lấy sheet đầu tiên (hoặc sheet cuối — thường là ngày gần nhất)
-                    var ws = workbook.Worksheets.Last();
-                    var usedRange = ws.RangeUsed();
-                    if (usedRange == null)
+                    // Quét TẤT CẢ sheets (không chỉ sheet cuối)
+                    foreach (var ws in workbook.Worksheets)
                     {
-                        MessageBox.Show("File đối soát trống!", "Thông báo");
-                        return;
-                    }
+                        var usedRange = ws.RangeUsed();
+                        if (usedRange == null)
+                            continue;
 
-                    // Detect header row
-                    int headerRow = 1;
-                    int colCount = usedRange.ColumnCount();
-                    int rowCount = usedRange.RowCount();
-                    for (int r = 1; r <= Math.Min(5, rowCount); r++)
-                    {
-                        for (int c = 1; c <= Math.Min(colCount, 10); c++)
+                        // Detect header row
+                        int headerRow = 1;
+                        int colCount = usedRange.ColumnCount();
+                        int rowCount = usedRange.RowCount();
+                        for (int r = 1; r <= Math.Min(5, rowCount); r++)
                         {
-                            string v = ws.Cell(r, c).GetString().Trim();
-                            if (v.Contains("MÃ", StringComparison.OrdinalIgnoreCase)
-                                || v.Contains("SHOP", StringComparison.OrdinalIgnoreCase)
-                                || v.Contains("TÊN", StringComparison.OrdinalIgnoreCase))
+                            bool found = false;
+                            for (int c = 1; c <= Math.Min(colCount, 10); c++)
                             {
-                                headerRow = r;
-                                goto foundHeader;
+                                string v = ws.Cell(r, c).GetString().Trim();
+                                if (v.Contains("MÃ", StringComparison.OrdinalIgnoreCase)
+                                    || v.Contains("SHOP", StringComparison.OrdinalIgnoreCase)
+                                    || v.Contains("TÊN", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    headerRow = r;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found) break;
+                        }
+
+                        // Dùng headers từ sheet đầu tiên có data (tất cả sheets cùng format)
+                        if (doiSoatHeaders == null)
+                        {
+                            doiSoatHeaders = new List<string>();
+                            for (int c = 1; c <= colCount; c++)
+                                doiSoatHeaders.Add(ws.Cell(headerRow, c).GetString().Trim());
+                        }
+
+                        // Detect MÃ column index để filter
+                        int maColIdx = -1;
+                        for (int c = 1; c <= colCount; c++)
+                        {
+                            string h = ws.Cell(headerRow, c).GetString().Trim().ToUpper();
+                            if (h == "MÃ" || h == "MÃ HĐ" || h == "MA")
+                            {
+                                maColIdx = c;
+                                break;
                             }
                         }
-                    }
-                    foundHeader:
 
-                    // Read headers
-                    doiSoatHeaders = new List<string>();
-                    for (int c = 1; c <= colCount; c++)
-                        doiSoatHeaders.Add(ws.Cell(headerRow, c).GetString().Trim());
-
-                    // Read data
-                    doiSoatRows = new List<Dictionary<string, string>>();
-                    for (int r = headerRow + 1; r <= rowCount; r++)
-                    {
-                        var rowData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                        bool hasData = false;
-                        for (int c = 0; c < doiSoatHeaders.Count; c++)
+                        // Read data rows
+                        for (int r = headerRow + 1; r <= rowCount; r++)
                         {
-                            string val = ws.Cell(r, c + 1).GetString().Trim();
-                            if (!string.IsNullOrEmpty(val))
-                                hasData = true;
-                            rowData[doiSoatHeaders[c]] = val;
+                            var rowData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            bool hasData = false;
+                            for (int c = 0; c < doiSoatHeaders.Count; c++)
+                            {
+                                string val = ws.Cell(r, c + 1).GetString().Trim();
+                                if (!string.IsNullOrEmpty(val))
+                                    hasData = true;
+                                rowData[doiSoatHeaders[c]] = val;
+                            }
+
+                            if (!hasData)
+                                continue;
+
+                            // Bỏ qua summary rows (không có SHOP = không phải data row)
+                            string shopVal = "";
+                            foreach (var key in new[] { "SHOP", "Shop" })
+                                if (rowData.TryGetValue(key, out string sv) && !string.IsNullOrEmpty(sv))
+                                { shopVal = sv; break; }
+                            if (string.IsNullOrWhiteSpace(shopVal))
+                                continue;
+
+                            // Tag sheet name để user biết đơn từ ngày nào
+                            rowData["_SHEET"] = ws.Name;
+                            allRows.Add(rowData);
                         }
-                        if (hasData)
-                            doiSoatRows.Add(rowData);
                     }
                 }
 
-                if (doiSoatRows.Count == 0)
+                if (doiSoatHeaders == null || allRows.Count == 0)
                 {
                     MessageBox.Show("Không tìm thấy dữ liệu trong file đối soát.", "Thông báo");
                     return;
                 }
 
-                // Hiển thị dialog chọn đơn import
-                ShowDoiSoatSelectionDialog(doiSoatHeaders, doiSoatRows, sourceGrid, lblResult);
+                // Thêm cột _SHEET vào headers nếu chưa có
+                if (!doiSoatHeaders.Contains("_SHEET"))
+                    doiSoatHeaders.Add("_SHEET");
+
+                // Hiển thị dialog chọn đơn import (với auto-search nếu có MÃ)
+                ShowDoiSoatSelectionDialog(doiSoatHeaders, allRows, sourceGrid, lblResult, searchMaList);
             }
             catch (Exception ex)
             {
@@ -327,12 +367,14 @@ namespace TextInputter
 
         /// <summary>
         /// Dialog hiển thị dữ liệu đối soát để user chọn rows import.
+        /// Nếu searchMaList có dữ liệu → auto-check rows matching MÃ HĐ.
         /// </summary>
         private void ShowDoiSoatSelectionDialog(
             List<string> headers,
             List<Dictionary<string, string>> rows,
             DataGridView sourceGrid,
-            Label lblResult)
+            Label lblResult,
+            List<string> searchMaList = null)
         {
             using var dlg = new Form
             {
@@ -418,6 +460,69 @@ namespace TextInputter
                     }
                 }
             };
+
+            // ── Auto-search: nếu có danh sách MÃ → tự check rows matching ──
+            // Tìm cột MÃ trong grid
+            int maColGridIdx = -1;
+            for (int c = 1; c < dgv.Columns.Count; c++)
+            {
+                string h = dgv.Columns[c].HeaderText.ToUpper().Trim();
+                if (h == "MÃ" || h == "MÃ HĐ" || h == "MA")
+                {
+                    maColGridIdx = c;
+                    break;
+                }
+            }
+
+            int autoChecked = 0;
+            if (searchMaList != null && searchMaList.Count > 0 && maColGridIdx >= 0)
+            {
+                var searchSet = new HashSet<string>(searchMaList, StringComparer.OrdinalIgnoreCase);
+                foreach (DataGridViewRow r in dgv.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    string cellMa = (r.Cells[maColGridIdx].Value?.ToString() ?? "").Trim();
+                    if (searchSet.Contains(cellMa))
+                    {
+                        r.Cells[0].Value = true;
+                        r.DefaultCellStyle.BackColor = Color.FromArgb(200, 255, 200);
+                        autoChecked++;
+                    }
+                }
+
+                if (autoChecked > 0)
+                {
+                    // Scroll to first checked row
+                    foreach (DataGridViewRow r in dgv.Rows)
+                        if (r.Cells[0].Value is true)
+                        {
+                            dgv.FirstDisplayedScrollingRowIndex = r.Index;
+                            break;
+                        }
+                }
+
+                // Thông báo kết quả auto-search
+                var notFoundMa = searchMaList.Where(m =>
+                {
+                    foreach (DataGridViewRow r in dgv.Rows)
+                    {
+                        if (r.IsNewRow) continue;
+                        string cellMa = (r.Cells[maColGridIdx].Value?.ToString() ?? "").Trim();
+                        if (cellMa.Equals(m, StringComparison.OrdinalIgnoreCase))
+                            return false;
+                    }
+                    return true;
+                }).ToList();
+
+                string title = $"🔍 Tìm thấy {autoChecked}/{searchMaList.Count} đơn trong đối soát";
+                if (notFoundMa.Count > 0)
+                    title += $"  |  ❌ Không tìm: {string.Join(", ", notFoundMa)}";
+                dlg.Text = title;
+            }
+            else if (searchMaList != null && searchMaList.Count > 0 && maColGridIdx < 0)
+            {
+                dlg.Text = "📥 Chọn đơn từ đối soát (⚠ không tìm được cột MÃ để auto-search)";
+            }
 
             // Import button
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 45 };
