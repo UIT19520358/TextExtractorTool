@@ -1,5 +1,5 @@
 # Credentials (IMPORTANT - NEVER COMMIT TO GIT)
-textinputter-4a7bda4ef67a.json
+text-extractor-489011-ee19271357bd.json
 
 # Build artifacts
 bin/
@@ -19,3 +19,7 @@ ocr_log.txt
 # Folders
 _tmp_reader
 data
+publish
+tools
+publish
+tools

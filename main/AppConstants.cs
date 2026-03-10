@@ -447,6 +447,7 @@ namespace TextInputter
             { "truong tho", "thu duc" }, // Phường Trường Thọ — Thủ Đức cũ
             { "hiep binh phuoc", "thu duc" }, // Phường Hiệp Bình Phước — Thủ Đức cũ
             { "hiep binh chanh", "thu duc" }, // Phường Hiệp Bình Chánh — Thủ Đức cũ
+            { "hiep binh", "thu duc" }, // Phường Hiệp Bình — Thủ Đức cũ
             { "phu my hung", "7" }, // Khu đô thị Phú Mỹ Hưng — Q7
             { "nguyen van linh", "7" }, // Đại lộ Nguyễn Văn Linh — Q7 phổ biến
             // ── Quận 6 (ship 25k) ─────────────────────────────────────────────

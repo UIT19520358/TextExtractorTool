@@ -1,10 +1,45 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ClosedXML.Excel;
 
 namespace TextInputter.Services
 {
+    /// <summary>
+    /// DTO chứa số liệu tổng hợp per NGƯỜI ĐI đã tính trên UI.
+    /// Truyền vào ApplyFormulasAndSummary() để Excel ghi đúng y chang UI.
+    /// </summary>
+    public class NguoiDiSummary
+    {
+        public decimal TienThu { get; set; } // TỔNG ĐƠN NHẬN — Tiền Thu
+        public decimal SoDon { get; set; } // TỔNG ĐƠN NHẬN — Số đơn
+        public decimal TienShipTru { get; set; } // tiền ship (số âm hoặc 0)
+        public decimal SoDonGiao { get; set; } // số đơn giao thực tế (SoDon - SoDonGop)
+        public int SoDonGop { get; set; } // số đơn gộp
+        public decimal TienLay { get; set; } // tiền lấy (số âm hoặc 0)
+        public decimal DonLayThucTe { get; set; } // SoDon - SoDonTra - SoDonGop
+        public decimal TienDonTra { get; set; } // tổng tiền đơn trả (số âm)
+        public int SoDonTra { get; set; } // số đơn trả
+        public bool IsAnTam { get; set; } // true = An Tâm → skip ship/lấy/trả
+    }
+
+    /// <summary>
+    /// DTO chứa số liệu bảng TỔNG HỢP (bên trái) đã tính trên UI.
+    /// Truyền vào ApplyFormulasAndSummary() để Excel ghi y chang UI.
+    /// </summary>
+    public class TongHopSummary
+    {
+        public decimal TienHang { get; set; } // = TongTienThu (SUM cột TIỀN THU)
+        public decimal TruShip { get; set; } // = -TongTienShip (số âm)
+        public decimal SoDon { get; set; } // Tổng số đơn
+        public decimal TienDonTra { get; set; } // Tổng tiền đơn trả (số âm)
+        public int SoDonTra { get; set; } // Số đơn trả
+        public decimal TongNegative { get; set; } // Tổng row âm (đơn cũ ck)
+        public int SoRowNegative { get; set; } // Số dòng âm
+        public string NegativeLabel { get; set; } // Nhãn cho row âm (nếu chỉ 1 dòng)
+    }
+
     /// <summary>
     /// Service ghi dữ liệu invoice vào file Excel của khách.
     /// File path được truyền vào từ caller (qua OpenFileDialog) — không hardcode tên file.
@@ -205,7 +240,14 @@ namespace TextInputter.Services
         /// </summary>
         /// <param name="sheetName">Tên sheet cần xử lý.</param>
         /// <param name="sheetDate">Ngày của sheet (dùng khi không tìm được ngày trong data).</param>
-        public void ApplyFormulasAndSummary(string sheetName, DateTime sheetDate)
+        /// <param name="nguoiDiDetails">Số liệu per NGƯỜI ĐI đã tính trên UI — nếu null thì dùng formula thuần.</param>
+        /// <param name="tongHop">Số liệu bảng TỔNG HỢP đã tính trên UI — nếu null thì dùng formula thuần.</param>
+        public void ApplyFormulasAndSummary(
+            string sheetName,
+            DateTime sheetDate,
+            Dictionary<string, NguoiDiSummary> nguoiDiDetails = null,
+            TongHopSummary tongHop = null
+        )
         {
             using (var workbook = new XLWorkbook(_excelFilePath))
             {
@@ -436,6 +478,8 @@ namespace TextInputter.Services
                 string rNgay = $"{ngayColL}${DATA_START_ROW}:{ngayColL}${lastDataRow}";
                 string rNguoiDi = $"{nguoiDiColL}${DATA_START_ROW}:{nguoiDiColL}${lastDataRow}";
                 string rMa = $"{maColL}${DATA_START_ROW}:{maColL}${lastDataRow}";
+                string failColL = ColLetter(COL_FAIL);
+                string rFail = $"{failColL}${DATA_START_ROW}:{failColL}${lastDataRow}";
 
                 // ── BẢNG PHẢI: per NGƯỜI ĐI ───────────────────────────────────
                 BuildRightSummary(
@@ -446,7 +490,8 @@ namespace TextInputter.Services
                     rShip,
                     rNguoiDi,
                     rMa,
-                    rShop
+                    rShop,
+                    nguoiDiDetails
                 );
 
                 // ── BẢNG TRÁI: per SHOP × NGÀY ──────────────────────────────
@@ -460,7 +505,8 @@ namespace TextInputter.Services
                     rNgay,
                     rMa,
                     tenkhColL,
-                    diachiColL
+                    diachiColL,
+                    tongHop
                 );
 
                 // ── AutoFilter trên header row (giống file gốc) ──────────────
@@ -623,8 +669,8 @@ namespace TextInputter.Services
             worksheet.Cell(targetRow, COL_NGUOILAY).Value = data.GetValueOrDefault("NGƯỜI LẤY", "");
             // NGÀY LẤY: trim trailing dots/periods — Gemini đôi khi trả "27-02-2026." thay vì "27-02-2026"
             // Nếu không trim → SUMIFS/COUNTIFS sẽ không match được giữa "27-02-2026." và "27-02-2026"
-            worksheet.Cell(targetRow, COL_NGAYLAY).Value =
-                data.GetValueOrDefault("NGÀY LẤY", "").TrimEnd('.');
+            worksheet.Cell(targetRow, COL_NGAYLAY).Value = data.GetValueOrDefault("NGÀY LẤY", "")
+                .TrimEnd('.');
             worksheet.Cell(targetRow, COL_GHICHU).Value = ghichuVal;
             worksheet.Cell(targetRow, COL_UNGIEN).Value = data.GetValueOrDefault("ỨNG TIỀN", "");
             worksheet.Cell(targetRow, COL_HANGTON).Value = data.GetValueOrDefault("HÀNG TỒN", "");
@@ -660,7 +706,8 @@ namespace TextInputter.Services
             string rShip,
             string rNguoiDi,
             string rMa,
-            string rShop
+            string rShop,
+            Dictionary<string, NguoiDiSummary> nguoiDiDetails = null
         )
         {
             string nguoiLayColL = ColLetter(COL_NGUOILAY);
@@ -668,13 +715,21 @@ namespace TextInputter.Services
             string failColL = ColLetter(COL_FAIL);
 
             // Ranges for đơn gộp & đơn trả detection (TÊN KH + ĐỊA CHỈ + FAIL)
-            string rFail = $"{failColL}${DATA_START_ROW}:{failColL}${worksheet.LastRowUsed()?.RowNumber() ?? DATA_START_ROW}";
+            string rFail =
+                $"{failColL}${DATA_START_ROW}:{failColL}${worksheet.LastRowUsed()?.RowNumber() ?? DATA_START_ROW}";
 
             int curRow = startRow;
 
             foreach (string nd in distinctNguoiDis)
             {
-                bool isAnTam = nd.Equals(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase);
+                bool isAnTam = nd.Equals(
+                    AppConstants.NGUOI_DI_DEFAULT,
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+                // Lấy số liệu đã tính từ UI (nếu có)
+                NguoiDiSummary detail = null;
+                nguoiDiDetails?.TryGetValue(nd, out detail);
 
                 int b0 = curRow;
                 int b1 = curRow + 1;
@@ -689,44 +744,89 @@ namespace TextInputter.Services
                 SetBoldYellow(worksheet.Cell(b0, COL_NGUOILAY), "Tiền Thu", XLColor.LightSteelBlue);
                 SetBoldYellow(worksheet.Cell(b0, COL_NGAYLAY), "Số đơn", XLColor.LightSteelBlue);
 
-                // Data rows
+                // ── TỔNG ĐƠN NHẬN ────────────────────────────────────────────
                 worksheet.Cell(b1, COL_NGUOIDI).Value = "TỔNG ĐƠN NHẬN";
                 worksheet.Cell(b1, COL_NGUOILAY).FormulaA1 = $"SUMIFS({rThu},{rNguoiDi},\"{nd}\")";
-                // Số đơn = đếm TẤT CẢ rows theo NGƯỜI ĐI (bao gồm cả hàng sỉ / ship-only)
                 worksheet.Cell(b1, COL_NGAYLAY).FormulaA1 =
                     $"COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")";
 
                 if (!isAnTam)
                 {
-                    // tiền ship — auto formula: -(SUMIFS(Ship) - SoDon × 5k)
-                    // Tính bằng: -SUMIFS(Ship,NguoiDi,"nd") + COUNTIFS(Shop,"<>",NguoiDi,"nd") × PHI_SHIP
+                    // ── tiền ship ─────────────────────────────────────────────
+                    // UI: -(TienShip - SoDonGiao × 5k) trong đó SoDonGiao = SoDon - SoDonGop
+                    // Dùng giá trị từ UI khi có đơn gộp (formula thuần không detect được đơn gộp)
                     worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
-                    worksheet.Cell(b2, COL_NGUOILAY).FormulaA1 =
-                        $"-SUMIFS({rShip},{rNguoiDi},\"{nd}\")+COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")*{AppConstants.PHI_SHIP_MOI_DON}";
+                    if (detail != null && detail.SoDonGop > 0)
+                    {
+                        // Có đơn gộp → ghi giá trị đã tính từ UI
+                        worksheet.Cell(b2, COL_NGUOILAY).Value = (double)detail.TienShipTru;
+                        worksheet.Cell(b2, COL_NGAYLAY).Value = $"giao {detail.SoDonGiao:N0}";
+                    }
+                    else
+                    {
+                        // Không có đơn gộp → formula giống UI
+                        worksheet.Cell(b2, COL_NGUOILAY).FormulaA1 =
+                            $"-SUMIFS({rShip},{rNguoiDi},\"{nd}\")+COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")*{AppConstants.PHI_SHIP_MOI_DON}";
+                        if (detail != null)
+                            worksheet.Cell(b2, COL_NGAYLAY).Value = $"giao {detail.SoDonGiao:N0}";
+                    }
 
-                    // tiền lấy — auto formula: -(SoDon - SoDonTra) × 2k
-                    // SoDonTra = COUNTIFS(Shop,"<>",NguoiDi,"nd",Fail,"xx")
-                    // Simplified: -(SoDon × 2k) + (SoDonTra × 2k)
+                    // ── tiền lấy ──────────────────────────────────────────────
+                    // UI: -((SoDon - SoDonTra - SoDonGop) × 2k)
+                    // Formula thuần chỉ trừ SoDonTra, thiếu SoDonGop
                     worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
-                    worksheet.Cell(b3, COL_NGUOILAY).FormulaA1 =
-                        $"-(COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")-COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\",{rFail},\"xx\"))*{AppConstants.PHI_LAY_HANG_MOI_DON}";
+                    if (detail != null && detail.SoDonGop > 0)
+                    {
+                        // Có đơn gộp → ghi giá trị đã tính từ UI
+                        worksheet.Cell(b3, COL_NGUOILAY).Value = (double)detail.TienLay;
+                        decimal donLayThucTe = detail.DonLayThucTe;
+                        worksheet.Cell(b3, COL_NGAYLAY).Value = $"{donLayThucTe:N0} đơn";
+                    }
+                    else
+                    {
+                        // Không có đơn gộp → formula chính xác = -(SoDon - SoDonTra) × 2k
+                        worksheet.Cell(b3, COL_NGUOILAY).FormulaA1 =
+                            $"-(COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\")-COUNTIFS({rShop},\"<>\",{rNguoiDi},\"{nd}\",{rFail},\"xx\"))*{AppConstants.PHI_LAY_HANG_MOI_DON}";
+                        if (detail != null)
+                        {
+                            decimal donLayThucTe = detail.DonLayThucTe;
+                            worksheet.Cell(b3, COL_NGAYLAY).Value = $"{donLayThucTe:N0} đơn";
+                        }
+                    }
+
+                    // ── đơn trả ───────────────────────────────────────────────
+                    worksheet.Cell(b4, COL_NGUOIDI).Value = "đơn trả";
+                    worksheet.Cell(b4, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
+                    if (detail != null && detail.SoDonTra > 0)
+                    {
+                        worksheet.Cell(b4, COL_NGUOILAY).Value = (double)detail.TienDonTra;
+                        worksheet.Cell(b4, COL_NGAYLAY).Value = $"{detail.SoDonTra} đơn";
+                        worksheet.Cell(b4, COL_NGUOILAY).Style.Font.FontColor = XLColor.Red;
+                    }
+                    else
+                    {
+                        worksheet.Cell(b4, COL_NGUOILAY).Value = 0;
+                        worksheet.Cell(b4, COL_NGAYLAY).Value = 0;
+                    }
                 }
                 else
                 {
+                    // An Tâm — không trừ ship/lấy/trả
                     worksheet.Cell(b2, COL_NGUOIDI).Value = "tiền ship";
-                    // An Tâm — không trừ ship/lấy
+                    worksheet.Cell(b2, COL_NGUOILAY).Value = "—";
                     worksheet.Cell(b3, COL_NGUOIDI).Value = "tiền lấy";
+                    worksheet.Cell(b3, COL_NGUOILAY).Value = "—";
+                    worksheet.Cell(b4, COL_NGUOIDI).Value = "đơn trả";
+                    worksheet.Cell(b4, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
+                    worksheet.Cell(b4, COL_NGUOILAY).Value = "—";
                 }
-
-                worksheet.Cell(b4, COL_NGUOIDI).Value = "đơn trả";
-                worksheet.Cell(b4, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
 
                 worksheet.Cell(b5, COL_NGUOIDI).Value = "đơn cũ ck";
                 worksheet.Cell(b5, COL_NGUOIDI).Style.Font.FontColor = XLColor.Red;
 
-                // Tổng cuối block
+                // Tổng cuối block — luôn dùng SUM để gộp cả formula lẫn value
                 var cTotal = worksheet.Cell(b6, COL_NGUOILAY);
-                cTotal.FormulaA1 = $"SUBTOTAL(9,{nguoiLayColL}{b1}:{nguoiLayColL}{b5})";
+                cTotal.FormulaA1 = $"SUM({nguoiLayColL}{b1}:{nguoiLayColL}{b5})";
                 cTotal.Style.Font.Bold = true;
                 cTotal.Style.Fill.BackgroundColor = XLColor.LightBlue;
 
@@ -762,7 +862,8 @@ namespace TextInputter.Services
             string rNgay,
             string rMa,
             string tenkhColL,
-            string diachiColL
+            string diachiColL,
+            TongHopSummary tongHop = null
         )
         {
             // Tìm TIỀN HÀNG range cho SUMIFS
@@ -790,16 +891,16 @@ namespace TextInputter.Services
                 // ngay format: "28-02-2026." → "T7.28.2" (Thứ.Ngày.Tháng)
                 string headerLabel = FormatDoiSoatHeader(ngay);
 
-                int r0 = curRow;       // Header: T7.28.1 | Tiền | Số đơn
-                int r1 = curRow + 1;   // Tiền hàng | SUBTOTAL | count
-                int r2 = curRow + 2;   // Trừ Ship (placeholder 0, red)
-                int r3 = curRow + 3;   // Cước xử (placeholder 0, red)
-                int r4 = curRow + 4;   // Khách C (placeholder 0, red)
-                int r5 = curRow + 5;   // Giảm tiền (placeholder 0)
-                int r6 = curRow + 6;   // Hàng Boom Trả (formula from FAIL=xx)
-                int r7 = curRow + 7;   // Trừ đơn cũ đã ck (manual)
-                int r8 = curRow + 8;   // (blank separator)
-                int r9 = curRow + 9;   // Tổng | SUBTOTAL | count
+                int r0 = curRow; // Header: T7.28.1 | Tiền | Số đơn
+                int r1 = curRow + 1; // Tiền hàng | SUBTOTAL | count
+                int r2 = curRow + 2; // Trừ Ship (placeholder 0, red)
+                int r3 = curRow + 3; // Cước xử (placeholder 0, red)
+                int r4 = curRow + 4; // Khách C (placeholder 0, red)
+                int r5 = curRow + 5; // Giảm tiền (placeholder 0)
+                int r6 = curRow + 6; // Hàng Boom Trả (formula from FAIL=xx)
+                int r7 = curRow + 7; // Trừ đơn cũ đã ck (manual)
+                int r8 = curRow + 8; // (blank separator)
+                int r9 = curRow + 9; // Tổng | SUBTOTAL | count
 
                 string aShop = $"$A${r0}";
                 string aNgay = $"$A${r1}";
@@ -812,24 +913,29 @@ namespace TextInputter.Services
                 SetBold(worksheet.Cell(r0, COL_TENKH), "Tiền");
                 SetBold(worksheet.Cell(r0, COL_DIACHI), "Số đơn");
 
-                // ── R1: Tiền hàng (SUBTOTAL TIỀN HÀNG per shop × ngày) ───────
+                // ── R1: Tiền hàng (= TIỀN THU, giống UI TỔNG HỢP) ──────────
                 // Store shop + ngày values for SUMIFS reference
                 worksheet.Cell(r0, COL_SHOP).Value = shop; // hidden reference cho SUMIFS
                 worksheet.Cell(r1, COL_TINHTRANG).Value = ngay; // hidden reference
                 worksheet.Cell(r1, COL_SHOP).Value = "Tiền hàng";
                 worksheet.Cell(r1, COL_SHOP).Style.Fill.BackgroundColor = XLColor.LightYellow;
+                // UI: "Tiền hàng" = SUM(TIỀN THU) → dùng SUMIFS trên TIỀN THU (không phải TIỀN HÀNG)
                 worksheet.Cell(r1, COL_TENKH).FormulaA1 =
-                    $"SUMIFS({rHang},{rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
+                    $"SUMIFS({rThu},{rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
                 worksheet.Cell(r1, COL_TENKH).Style.Fill.BackgroundColor = XLColor.LightYellow;
                 worksheet.Cell(r1, COL_DIACHI).FormulaA1 =
                     $"COUNTIFS({rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
                 worksheet.Cell(r1, COL_DIACHI).Style.Fill.BackgroundColor = XLColor.LightYellow;
 
-                // ── R2: Trừ Ship (placeholder 0, tô đỏ) ──────────────────────
+                // ── R2: Trừ Ship (= -SUMIFS(TIỀN SHIP), giống UI) ────────────
                 worksheet.Cell(r2, COL_SHOP).Value = "Trừ Ship";
-                worksheet.Cell(r2, COL_TENKH).Value = 0;
+                // UI: "Trừ Ship" = -TongTienShip → dùng -SUMIFS trên TIỀN SHIP
+                worksheet.Cell(r2, COL_TENKH).FormulaA1 =
+                    $"-SUMIFS({rShip},{rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
                 worksheet.Cell(r2, COL_TENKH).Style.Font.FontColor = XLColor.Red;
                 worksheet.Cell(r2, COL_SHOP).Style.Font.FontColor = XLColor.Red;
+                worksheet.Cell(r2, COL_DIACHI).FormulaA1 =
+                    $"COUNTIFS({rShop},{ColLetter(COL_SHOP)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
 
                 // ── R3: Cước xử (placeholder 0, tô đỏ) ──────────────────────
                 worksheet.Cell(r3, COL_SHOP).Value = "Cước xử";
@@ -838,7 +944,7 @@ namespace TextInputter.Services
                 worksheet.Cell(r3, COL_SHOP).Style.Font.FontColor = XLColor.Red;
 
                 // ── R4: Khách C (placeholder 0, tô đỏ) ──────────────────────
-                worksheet.Cell(r4, COL_SHOP).Value = "Khách C";
+                worksheet.Cell(r4, COL_SHOP).Value = "Khách Chuyển Khoản";
                 worksheet.Cell(r4, COL_TENKH).Value = 0;
                 worksheet.Cell(r4, COL_TENKH).Style.Font.FontColor = XLColor.Red;
                 worksheet.Cell(r4, COL_SHOP).Style.Font.FontColor = XLColor.Red;
@@ -847,20 +953,46 @@ namespace TextInputter.Services
                 worksheet.Cell(r5, COL_SHOP).Value = "Giảm tiền";
                 worksheet.Cell(r5, COL_TENKH).Value = 0;
 
-                // ── R6: Hàng Boom Trả (auto-count from FAIL=xx) ─────────────
+                // ── R6: Hàng Boom Trả (auto-filled từ UI data) ──────────────
                 worksheet.Cell(r6, COL_SHOP).Value = "Hàng Boom Trả";
+                if (tongHop != null && tongHop.SoDonTra > 0)
+                {
+                    worksheet.Cell(r6, COL_TENKH).Value = (double)tongHop.TienDonTra;
+                    worksheet.Cell(r6, COL_DIACHI).Value = tongHop.SoDonTra;
+                    worksheet.Cell(r6, COL_TENKH).Style.Font.FontColor = XLColor.Red;
+                    worksheet.Cell(r6, COL_SHOP).Style.Font.FontColor = XLColor.Red;
+                }
 
-                // ── R7: Trừ đơn cũ đã ck (manual, tô cam) ──────────────────
-                worksheet.Cell(r7, COL_SHOP).Value = "Trừ đơn cũ đã ck";
-                worksheet.Cell(r7, COL_SHOP).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 200, 124);
+                // ── R7: Trừ đơn cũ đã ck (auto-filled từ UI data) ──────────
+                worksheet.Cell(r7, COL_SHOP).Value =
+                    tongHop != null
+                    && tongHop.SoRowNegative == 1
+                    && !string.IsNullOrEmpty(tongHop.NegativeLabel)
+                        ? tongHop.NegativeLabel
+                        : "Trừ đơn cũ đã ck";
+                worksheet.Cell(r7, COL_SHOP).Style.Fill.BackgroundColor = XLColor.FromArgb(
+                    255,
+                    200,
+                    124
+                );
+                if (tongHop != null && tongHop.SoRowNegative > 0)
+                {
+                    worksheet.Cell(r7, COL_TENKH).Value = (double)tongHop.TongNegative;
+                    worksheet.Cell(r7, COL_DIACHI).Value = $"{tongHop.SoRowNegative} dòng";
+                    worksheet.Cell(r7, COL_TENKH).Style.Font.FontColor = XLColor.FromArgb(
+                        200,
+                        100,
+                        0
+                    );
+                }
 
-                // ── R9: Tổng (formula = sum r1..r7) ─────────────────────────
+                // ── R9: Tổng (formula = sum r1..r7, giống UI) ────────────
                 var cTong = worksheet.Cell(r9, COL_SHOP);
                 cTong.Value = "Tổng";
                 cTong.Style.Font.Bold = true;
                 cTong.Style.Fill.BackgroundColor = XLColor.LightYellow;
                 var cTongVal = worksheet.Cell(r9, COL_TENKH);
-                cTongVal.FormulaA1 = $"SUBTOTAL(9,{tenkhColL}{r1}:{tenkhColL}{r7})";
+                cTongVal.FormulaA1 = $"SUM({tenkhColL}{r1}:{tenkhColL}{r7})";
                 cTongVal.Style.Font.Bold = true;
                 cTongVal.Style.Fill.BackgroundColor = XLColor.LightYellow;
                 var cTongDon = worksheet.Cell(r9, COL_DIACHI);
@@ -892,21 +1024,25 @@ namespace TextInputter.Services
         private static string FormatDoiSoatHeader(string ngayStr)
         {
             string cleaned = ngayStr.TrimEnd('.');
-            if (DateTime.TryParseExact(cleaned,
-                new[] { "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy", "dd-MM", "d-M" },
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None,
-                out DateTime dt))
+            if (
+                DateTime.TryParseExact(
+                    cleaned,
+                    new[] { "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy", "dd-MM", "d-M" },
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out DateTime dt
+                )
+            )
             {
                 string thu = dt.DayOfWeek switch
                 {
-                    DayOfWeek.Monday    => "T2",
-                    DayOfWeek.Tuesday   => "T3",
+                    DayOfWeek.Monday => "T2",
+                    DayOfWeek.Tuesday => "T3",
                     DayOfWeek.Wednesday => "T4",
-                    DayOfWeek.Thursday  => "T5",
-                    DayOfWeek.Friday    => "T6",
-                    DayOfWeek.Saturday  => "T7",
-                    DayOfWeek.Sunday    => "CN",
+                    DayOfWeek.Thursday => "T5",
+                    DayOfWeek.Friday => "T6",
+                    DayOfWeek.Saturday => "T7",
+                    DayOfWeek.Sunday => "CN",
                     _ => "T?",
                 };
                 return $"{thu}.{dt.Day}.{dt.Month}";
