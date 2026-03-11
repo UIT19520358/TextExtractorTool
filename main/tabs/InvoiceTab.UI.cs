@@ -24,7 +24,6 @@ namespace TextInputter
         // ─── Controls tham chiếu (ẩn, giữ để tránh lỗi wire Designer) ────────
         private Label lblInvoiceDate;
 
-
         // ─── State ────────────────────────────────────────────────────────────
         private string currentExcelFilePath;
 
@@ -45,7 +44,6 @@ namespace TextInputter
             dgvInvoice = new DataGridView();
             lblInvoiceTotal = new Label();
             lblInvoiceDate = new Label();
-
 
             // ── tabExcelViewer layout ─────────────────────────────────────────
 
@@ -162,9 +160,11 @@ namespace TextInputter
             lblInvoiceTotal.Padding = new Padding(10, 0, 0, 0);
             lblInvoiceTotal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
 
-            tabInvoice.Controls.Add(lblInvoiceTotal);
+            // WinForms Dock layout: controls processed in REVERSE z-order.
+            // Fill phải ở z-index THẤP nhất (add trước), Top/Bottom ở z-index CAO hơn (add sau).
+            // → dgvInvoice (Fill) add trước, lblInvoiceTotal (Top) add sau.
             tabInvoice.Controls.Add(dgvInvoice);
-
+            tabInvoice.Controls.Add(lblInvoiceTotal);
         }
     }
 }

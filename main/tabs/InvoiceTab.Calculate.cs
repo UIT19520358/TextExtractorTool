@@ -150,7 +150,8 @@ namespace TextInputter
                 // LUÔN tính THU + SHIP từ từng row DATA (không dùng SUM row)
                 // Đảm bảo UI giống exported Excel (cũng dùng SUBTOTAL per-row).
                 // Track riêng hàng tồn (HÀNG TỒN=x) để loại khỏi LEFT summary.
-                decimal totalTienThuHangTon = 0, totalTienShipHangTon = 0;
+                decimal totalTienThuHangTon = 0,
+                    totalTienShipHangTon = 0;
                 int soDonHangTon = 0;
                 // LEFT "Đơn trả": TIỀN HÀNG of FAIL=xx AND ỨNG TIỀN=x (matching Excel formula)
                 decimal totalTienHangDonTra = 0;
@@ -172,21 +173,37 @@ namespace TextInputter
                     bool isHangTon = false;
                     if (colHangTon >= 0 && colHangTon < row.Cells.Count)
                     {
-                        string tonVal = (row.Cells[colHangTon].Value?.ToString() ?? "").Trim().ToLower();
+                        string tonVal = (row.Cells[colHangTon].Value?.ToString() ?? "")
+                            .Trim()
+                            .ToLower();
                         isHangTon = tonVal == "x";
                     }
 
                     // Detect đơn trả cho LEFT summary: FAIL=xx AND ỨNG TIỀN=x → sum TIỀN HÀNG
                     bool isTraLeft = false;
-                    if (colFail >= 0 && colFail < row.Cells.Count && colUngTien >= 0 && colUngTien < row.Cells.Count)
+                    if (
+                        colFail >= 0
+                        && colFail < row.Cells.Count
+                        && colUngTien >= 0
+                        && colUngTien < row.Cells.Count
+                    )
                     {
-                        string failVal = (row.Cells[colFail].Value?.ToString() ?? "").Trim().ToLower();
-                        string ungVal = (row.Cells[colUngTien].Value?.ToString() ?? "").Trim().ToLower();
+                        string failVal = (row.Cells[colFail].Value?.ToString() ?? "")
+                            .Trim()
+                            .ToLower();
+                        string ungVal = (row.Cells[colUngTien].Value?.ToString() ?? "")
+                            .Trim()
+                            .ToLower();
                         isTraLeft = failVal.Contains("xx") && ungVal == "x";
                     }
                     if (isTraLeft && colTienHang >= 0 && colTienHang < row.Cells.Count)
                     {
-                        if (decimal.TryParse(row.Cells[colTienHang].Value?.ToString() ?? "", out decimal hangVal))
+                        if (
+                            decimal.TryParse(
+                                row.Cells[colTienHang].Value?.ToString() ?? "",
+                                out decimal hangVal
+                            )
+                        )
                             totalTienHangDonTra += hangVal;
                         soDonTraLeft++;
                     }
@@ -285,11 +302,25 @@ namespace TextInputter
                 decimal khoanTruShip = -(totalTienShip - phiShipThucTe);
 
                 // ── Tổng hợp theo NGƯỜI ĐI (+ detect đơn gộp, đơn trả) ────────
-                var detailByNguoiDi = new Dictionary<string, NguoiDiDetail>(StringComparer.OrdinalIgnoreCase);
-                int totalDonGop = 0, totalDonTra = 0;
+                var detailByNguoiDi = new Dictionary<string, NguoiDiDetail>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+                int totalDonGop = 0,
+                    totalDonTra = 0;
 
                 // Struct tạm collect row data per người đi (dùng cho gộp detection + đơn trả details)
-                var rowsPerNguoi = new Dictionary<string, List<(string TenKH, string DiaChi, string Quan, string Ma, decimal TienThu, decimal ShipFee, bool IsTra)>>(StringComparer.OrdinalIgnoreCase);
+                var rowsPerNguoi = new Dictionary<
+                    string,
+                    List<(
+                        string TenKH,
+                        string DiaChi,
+                        string Quan,
+                        string Ma,
+                        decimal TienThu,
+                        decimal ShipFee,
+                        bool IsTra
+                    )>
+                >(StringComparer.OrdinalIgnoreCase);
 
                 {
                     int endIdx = sumRowIndex >= 0 ? sumRowIndex : sourceGridView.Rows.Count;
@@ -304,33 +335,58 @@ namespace TextInputter
                         if (IsDateLabelRow(row, colShop, colMa))
                             continue;
 
-                        string nguoiRow = colNguoiDi >= 0 && colNguoiDi < row.Cells.Count
-                            ? (row.Cells[colNguoiDi].Value?.ToString() ?? "").Trim() : "";
+                        string nguoiRow =
+                            colNguoiDi >= 0 && colNguoiDi < row.Cells.Count
+                                ? (row.Cells[colNguoiDi].Value?.ToString() ?? "").Trim()
+                                : "";
                         if (string.IsNullOrEmpty(nguoiRow))
                             nguoiRow = "(không rõ)";
 
+                        // Không phải shipper thật (vd: "lưu trả") → skip khỏi per-shipper summary
+                        if (
+                            AppConstants.NOT_SHIPPER_VALUES.Any(v =>
+                                nguoiRow.Contains(v, StringComparison.OrdinalIgnoreCase)
+                            )
+                        )
+                            continue;
                         decimal tienThuRow = 0;
                         if (colTienThu >= 0 && colTienThu < row.Cells.Count)
-                            decimal.TryParse(row.Cells[colTienThu].Value?.ToString() ?? "", out tienThuRow);
+                            decimal.TryParse(
+                                row.Cells[colTienThu].Value?.ToString() ?? "",
+                                out tienThuRow
+                            );
 
                         decimal tienShipRow = 0;
                         if (colTienShip >= 0 && colTienShip < row.Cells.Count)
-                            decimal.TryParse(row.Cells[colTienShip].Value?.ToString() ?? "", out tienShipRow);
+                            decimal.TryParse(
+                                row.Cells[colTienShip].Value?.ToString() ?? "",
+                                out tienShipRow
+                            );
 
-                        string tenKH = colTenKH >= 0 && colTenKH < row.Cells.Count
-                            ? (row.Cells[colTenKH].Value?.ToString() ?? "").Trim() : "";
-                        string diaChi = colDiaChi >= 0 && colDiaChi < row.Cells.Count
-                            ? (row.Cells[colDiaChi].Value?.ToString() ?? "").Trim() : "";
-                        string quan = colQuan >= 0 && colQuan < row.Cells.Count
-                            ? (row.Cells[colQuan].Value?.ToString() ?? "").Trim() : "";
-                        string ma = colMa >= 0 && colMa < row.Cells.Count
-                            ? (row.Cells[colMa].Value?.ToString() ?? "").Trim() : "";
+                        string tenKH =
+                            colTenKH >= 0 && colTenKH < row.Cells.Count
+                                ? (row.Cells[colTenKH].Value?.ToString() ?? "").Trim()
+                                : "";
+                        string diaChi =
+                            colDiaChi >= 0 && colDiaChi < row.Cells.Count
+                                ? (row.Cells[colDiaChi].Value?.ToString() ?? "").Trim()
+                                : "";
+                        string quan =
+                            colQuan >= 0 && colQuan < row.Cells.Count
+                                ? (row.Cells[colQuan].Value?.ToString() ?? "").Trim()
+                                : "";
+                        string ma =
+                            colMa >= 0 && colMa < row.Cells.Count
+                                ? (row.Cells[colMa].Value?.ToString() ?? "").Trim()
+                                : "";
 
                         // Detect đơn trả: FAIL = "xx"
                         bool isTra = false;
                         if (colFail >= 0 && colFail < row.Cells.Count)
                         {
-                            string failVal = (row.Cells[colFail].Value?.ToString() ?? "").Trim().ToLower();
+                            string failVal = (row.Cells[colFail].Value?.ToString() ?? "")
+                                .Trim()
+                                .ToLower();
                             isTra = failVal.Contains("xx");
                         }
 
@@ -341,14 +397,27 @@ namespace TextInputter
                         d.TienThu += tienThuRow;
                         d.TienShip += tienShipRow;
                         d.SoDon++;
-                        d.IsAnTam = nguoiRow.StartsWith(AppConstants.NGUOI_DI_DEFAULT  + DateTime.Now.ToString(" dd-MM"), StringComparison.OrdinalIgnoreCase);
+                        d.IsAnTam = nguoiRow.StartsWith(
+                            AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString(" dd-MM"),
+                            StringComparison.OrdinalIgnoreCase
+                        );
                         if (isTra)
                             d.SoDonTra++;
 
                         // Collect row data cho gộp detection + đơn trả details
                         if (!rowsPerNguoi.ContainsKey(nguoiRow))
-                            rowsPerNguoi[nguoiRow] = new List<(string, string, string, string, decimal, decimal, bool)>();
-                        rowsPerNguoi[nguoiRow].Add((tenKH, diaChi, quan, ma, tienThuRow, tienShipRow, isTra));
+                            rowsPerNguoi[nguoiRow] =
+                                new List<(
+                                    string,
+                                    string,
+                                    string,
+                                    string,
+                                    decimal,
+                                    decimal,
+                                    bool
+                                )>();
+                        rowsPerNguoi[nguoiRow]
+                            .Add((tenKH, diaChi, quan, ma, tienThuRow, tienShipRow, isTra));
                     }
                 }
 
@@ -362,8 +431,9 @@ namespace TextInputter
                     var rows = rowsPerNguoi[nguoi];
 
                     // Đơn gộp: cùng TÊN KH + ĐỊA CHỈ → giao 1 lần, nhóm >1 = gộp
-                    var groups = rows
-                        .Where(r => !string.IsNullOrEmpty(r.TenKH) && !string.IsNullOrEmpty(r.DiaChi))
+                    var groups = rows.Where(r =>
+                            !string.IsNullOrEmpty(r.TenKH) && !string.IsNullOrEmpty(r.DiaChi)
+                        )
                         .GroupBy(r => (r.TenKH.ToLower(), r.DiaChi.ToLower()));
                     foreach (var g in groups)
                         if (g.Count() > 1)
@@ -371,26 +441,25 @@ namespace TextInputter
                     totalDonGop += d.SoDonGop;
                     totalDonTra += d.SoDonTra;
 
-                    // Tính deductions (skip An Tâm — không trừ ship/lấy/trả)
-                    if (!d.IsAnTam)
+                    // Tính deductions (tất cả người đi, kể cả An Tâm)
+                    // Tiền ship trừ: -(TongShip - SoDonGiao × 5k)
+                    d.TienShipTru = -(d.TienShip - d.SoDonGiao * AppConstants.PHI_SHIP_MOI_DON);
+
+                    // Tiền lấy: -((SoDon - SoDonTra - SoDonGop) × 2k)
+                    decimal donLayThucTe = d.SoDon - d.SoDonTra - d.SoDonGop;
+                    if (donLayThucTe < 0)
+                        donLayThucTe = 0;
+                    d.TienLay = -(donLayThucTe * AppConstants.PHI_LAY_HANG_MOI_DON);
+
+                    // Đơn trả: -(tienThu - shipFee + 5k) per return
+                    foreach (var r in rows.Where(r => r.IsTra))
                     {
-                        // Tiền ship trừ: -(TongShip - SoDonGiao × 5k)
-                        d.TienShipTru = -(d.TienShip - d.SoDonGiao * AppConstants.PHI_SHIP_MOI_DON);
-
-                        // Tiền lấy: -((SoDon - SoDonTra - SoDonGop) × 2k)
-                        decimal donLayThucTe = d.SoDon - d.SoDonTra - d.SoDonGop;
-                        if (donLayThucTe < 0)
-                            donLayThucTe = 0;
-                        d.TienLay = -(donLayThucTe * AppConstants.PHI_LAY_HANG_MOI_DON);
-
-                        // Đơn trả: -(tienThu - shipFee + 5k) per return
-                        foreach (var r in rows.Where(r => r.IsTra))
-                        {
-                            decimal shipFeeLookup = LookupShipFeeByQuan(r.Quan);
-                            decimal deduction = -(r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA);
-                            d.TienDonTra += deduction;
-                            d.DonTraDetails.Add((r.Ma, r.TienThu, shipFeeLookup, deduction));
-                        }
+                        decimal shipFeeLookup = LookupShipFeeByQuan(r.Quan);
+                        decimal deduction = -(
+                            r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA
+                        );
+                        d.TienDonTra += deduction;
+                        d.DonTraDetails.Add((r.Ma, r.TienThu, shipFeeLookup, deduction));
                     }
                 }
 
@@ -626,7 +695,10 @@ namespace TextInputter
             string norm = RemoveDiacriticsSimple(quan).ToLowerInvariant().Trim();
             // Bỏ prefix "quận ", "quan ", "huyện ", "tp ", "thành phố "
             norm = System.Text.RegularExpressions.Regex.Replace(
-                norm, @"^(quan|huyen|tp|thanh pho)\s+", "");
+                norm,
+                @"^(quan|huyen|tp|thanh pho)\s+",
+                ""
+            );
 
             if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(norm, out decimal fee2))
                 return fee2;
@@ -635,7 +707,9 @@ namespace TextInputter
             var numMatch = System.Text.RegularExpressions.Regex.Match(norm, @"\d+");
             if (numMatch.Success)
             {
-                if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(numMatch.Value, out decimal fee3))
+                if (
+                    AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(numMatch.Value, out decimal fee3)
+                )
                     return fee3;
             }
 
@@ -651,8 +725,10 @@ namespace TextInputter
             var norm = s.Normalize(System.Text.NormalizationForm.FormD);
             var sb = new System.Text.StringBuilder();
             foreach (char c in norm)
-                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
-                    != System.Globalization.UnicodeCategory.NonSpacingMark)
+                if (
+                    System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                    != System.Globalization.UnicodeCategory.NonSpacingMark
+                )
                     sb.Append(c);
             return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
         }

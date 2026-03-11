@@ -405,6 +405,5 @@ dotnet publish -c Release -r win-x64 --self-contained true `
 
 ### Rename ảnh để dễ track
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\rename-images.ps1" `
-  -FolderPath "data\Mar\images" -AutoConfirm
+powershell -ExecutionPolicy Bypass -File ".\rename-images.ps1" -FolderPath "data\Mar\images" -AutoConfirm
 ```

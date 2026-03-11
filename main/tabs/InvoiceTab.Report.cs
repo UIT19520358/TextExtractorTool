@@ -23,7 +23,6 @@ namespace TextInputter
             if (pnlTop == null)
             {
                 // First time: tạo layout từ đầu
-                // WinForms Dock layout rule: Bottom/Top add TRƯỚC Fill.
 
                 // Bottom panel: report panels (AutoScroll để kéo ngang)
                 pnlBottom = new Panel
@@ -35,7 +34,16 @@ namespace TextInputter
                     BorderStyle = BorderStyle.FixedSingle,
                     AutoScroll = true,
                 };
-                tabInvoice.Controls.Add(pnlBottom);
+
+                // Rebuild layout: cùng pattern với InitializeInvoiceTabUI —
+                // Fill add TRƯỚC, Top/Bottom add SAU.
+                // Đảm bảo dgvInvoice lấy phần còn lại sau khi Bottom/Top đã dock.
+                tabInvoice.Controls.Remove(dgvInvoice);
+                tabInvoice.Controls.Remove(lblInvoiceTotal);
+                // Add lại theo thứ tự chuẩn
+                tabInvoice.Controls.Add(dgvInvoice); // Fill — add trước
+                tabInvoice.Controls.Add(lblInvoiceTotal); // Top  — add sau
+                tabInvoice.Controls.Add(pnlBottom); // Bottom — add sau
 
                 // pnlTop dùng để check "đã khởi tạo" — tạo dummy để các lần sau skip
                 pnlTop = new Panel
@@ -156,7 +164,11 @@ namespace TextInputter
                 // Đơn trả & c.khoản — matching Excel: -SUMIFS(TIỀN HÀNG, FAIL="xx", ỨNG TIỀN="x")
                 if (r.SoDonTraLeft > 0)
                 {
-                    ri = dgvTong.Rows.Add("Đơn trả & c.khoản", tienHangDonTra.ToString("N0"), r.SoDonTraLeft.ToString());
+                    ri = dgvTong.Rows.Add(
+                        "Đơn trả & c.khoản",
+                        tienHangDonTra.ToString("N0"),
+                        r.SoDonTraLeft.ToString()
+                    );
                     dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
                 }
                 else
@@ -179,10 +191,12 @@ namespace TextInputter
                 decimal totalNegative = r.NegativeRows?.Sum(nr => nr.Amount) ?? 0;
                 if (r.NegativeRows != null && r.NegativeRows.Count > 0)
                 {
-                    string negLabel = r.NegativeRows.Count == 1
-                        ? r.NegativeRows[0].Label
-                        : "nợ cũ";
-                    ri = dgvTong.Rows.Add(negLabel, totalNegative.ToString("N0"), $"{r.NegativeRows.Count} dòng");
+                    string negLabel = r.NegativeRows.Count == 1 ? r.NegativeRows[0].Label : "nợ cũ";
+                    ri = dgvTong.Rows.Add(
+                        negLabel,
+                        totalNegative.ToString("N0"),
+                        $"{r.NegativeRows.Count} dòng"
+                    );
                     dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.FromArgb(200, 100, 0); // cam
                 }
                 else
@@ -254,54 +268,47 @@ namespace TextInputter
                     );
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                    if (!nd.IsAnTam)
-                    {
-                        // tiền ship — auto-filled: -(TongShip - SoDonGiao × 5k)
-                        string shipInfo = nd.SoDonGop > 0
+                    // tiền ship — auto-filled: -(TongShip - SoDonGiao × 5k)
+                    string shipInfo =
+                        nd.SoDonGop > 0
                             ? $"giao {nd.SoDonGiao:N0} ({nd.SoDonGop} gộp)"
                             : $"giao {nd.SoDonGiao:N0}";
-                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
-                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
-                        if (nd.TienShipTru < 0)
-                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
+                    ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    if (nd.TienShipTru < 0)
+                        dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
 
-                        // tiền lấy — label only (matching template)
-                        ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
-                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    // tiền lấy — label only (matching template)
+                    ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                        // đơn trả — auto-filled nếu có, đỏ nếu chưa có
-                        if (nd.SoDonTra > 0)
-                        {
-                            ri = dgvNguoi.Rows.Add("đơn trả", nd.TienDonTra.ToString("N0"), $"{nd.SoDonTra} đơn");
-                            dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
-                        }
-                        else
-                        {
-                            ri = dgvNguoi.Rows.Add("đơn trả", "0", "0");
-                            dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                        }
-
-                        // đơn cũ ck (placeholder đỏ, vẫn cần user tự điền)
-                        ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
+                    // đơn trả — auto-filled nếu có, đỏ nếu chưa có
+                    if (nd.SoDonTra > 0)
+                    {
+                        ri = dgvNguoi.Rows.Add(
+                            "đơn trả",
+                            nd.TienDonTra.ToString("N0"),
+                            $"{nd.SoDonTra} đơn"
+                        );
                         dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
-
-                        // Dòng KẾT — tính tự động: thu + ship + trả (no tiền lấy)
-                        decimal ketNguoi = tienThuNguoi + nd.TienShipTru + nd.TienDonTra;
-                        ri = dgvNguoi.Rows.Add("KẾT", ketNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
                     }
                     else
                     {
-                        // An Tâm: không tính ship/lấy/trả
-                        ri = dgvNguoi.Rows.Add("tiền ship", "—", "");
+                        ri = dgvNguoi.Rows.Add("đơn trả", "0", "0");
                         dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                        ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
-                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                        ri = dgvNguoi.Rows.Add("đơn trả", "—", "");
-                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                        ri = dgvNguoi.Rows.Add("đơn cũ ck", "—", "");
-                        dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                        ri = dgvNguoi.Rows.Add("KẾT", tienThuNguoi.ToString("N0"), soDonNguoi.ToString("N0"));
                     }
+
+                    // đơn cũ ck (placeholder đỏ, vẫn cần user tự điền)
+                    ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
+                    dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
+
+                    // Dòng KẾT — tính tự động: thu + ship + trả (no tiền lấy)
+                    decimal ketNguoi = tienThuNguoi + nd.TienShipTru + nd.TienDonTra;
+                    ri = dgvNguoi.Rows.Add(
+                        "KẾT",
+                        ketNguoi.ToString("N0"),
+                        soDonNguoi.ToString("N0")
+                    );
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = AppConstants.COLOR_REPORT_KET;
                     dgvNguoi.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 11, FontStyle.Bold);
                     dgvNguoi.Rows[ri].Height = AppConstants.ROW_HEIGHT_REPORT_KET;
@@ -331,14 +338,21 @@ namespace TextInputter
                 Dock = DockStyle.Top,
             };
 
-            // Với WinForms, Dock=Top: control add SAU cùng sẽ chiếm vị trí trên cùng.
-            // Thứ tự mong muốn từ trên xuống: pnlButtons (toolbar) → lblInvoiceTotal (tổng) → dgvInvoice
-            // Vì vậy phải add: lblInvoiceTotal trước, pnlButtons sau → pnlButtons nằm trên lblInvoiceTotal.
+            // WinForms Dock z-order rule:
+            //   Docking xử lý từ control add SAU (z-front) đến control add TRƯỚC (z-back).
+            //   → Fill phải add TRƯỚC (z-back), Top/Bottom add SAU (z-front).
+            // Thứ tự visual mong muốn: pnlButtons (Top) → lblInvoiceTotal (Top) → dgvInvoice (Fill) → pnlBottom (Bottom)
             tabInvoice.Controls.Remove(dgvInvoice);
             tabInvoice.Controls.Remove(lblInvoiceTotal);
-            tabInvoice.Controls.Add(lblInvoiceTotal); // add trước → nằm dưới pnlButtons
-            tabInvoice.Controls.Add(pnlButtons); // add sau → nằm trên lblInvoiceTotal
-            tabInvoice.Controls.Add(dgvInvoice); // Fill → phần còn lại
+            Panel existingBottom = tabInvoice.Controls["pnlDailyReportBottom"] as Panel;
+            if (existingBottom != null)
+                tabInvoice.Controls.Remove(existingBottom);
+
+            tabInvoice.Controls.Add(dgvInvoice); // Fill — add trước (z-back)
+            if (existingBottom != null)
+                tabInvoice.Controls.Add(existingBottom); // Bottom — add sau
+            tabInvoice.Controls.Add(lblInvoiceTotal); // Top  — add sau
+            tabInvoice.Controls.Add(pnlButtons); // Top  — add cuối (z-front → dock trên cùng)
 
             Button MakeBtn(string text, int x) =>
                 new Button
@@ -684,6 +698,5 @@ namespace TextInputter
                 workbook.SaveAs(excelPath);
             }
         }
-
     }
 }

@@ -126,6 +126,14 @@ namespace TextInputter
         public const string NGUOI_LAY_DEFAULT = "c.cuong";
 
         /// <summary>
+        /// Danh sách giá trị NGƯỜI ĐI không phải shipper thật — chỉ là ghi chú.
+        /// Khi cột NGƯỜI ĐI chứa (contains, case-insensitive) bất kỳ giá trị nào
+        /// trong list này → skip khỏi per-shipper summary.
+        /// ⚠️ Thêm vào đây khi có thêm loại ghi chú mới (vd: "chuyển kho", "hủy đơn"...).
+        /// </summary>
+        public static readonly string[] NOT_SHIPPER_VALUES = new[] { "lưu trả", "luu tra" };
+
+        /// <summary>
         /// Danh sách tất cả nhân viên — dùng cho dropdown ComboBox "Người Đi" / "Người Lấy".
         /// Thêm/xóa tên ở đây khi nhân sự thay đổi.
         /// </summary>
@@ -229,6 +237,42 @@ namespace TextInputter
         };
 
         /// <summary>
+        /// Map tên đường đặc trưng → quận. Dùng làm fallback khi AddressParser không tìm ra quận
+        /// từ phường (phường số trùng nhiều quận) hoặc thiếu hẳn chỉ dẫn quận trong địa chỉ.
+        ///
+        /// Key  : tên đường không dấu, viết thường (NormalizeKey chuẩn hoá khi tra).
+        /// Value: quận (format giống SHIPPING_FEES_BY_QUAN key — số hoặc tên không dấu).
+        ///
+        /// ⚠️ Chỉ thêm đường THỰC SỰ ĐẶC TRƯNG cho 1 quận duy nhất.
+        ///    Đường chạy qua nhiều quận (VD: Cách Mạng Tháng 8, 3/2) → KHÔNG thêm.
+        /// </summary>
+        public static readonly Dictionary<string, string> STREET_TO_DISTRICT_MAP = new Dictionary<
+            string,
+            string
+        >(System.StringComparer.OrdinalIgnoreCase)
+        {
+            // ── Quận 10 ───────────────────────────────────────────────────────
+            { "su van hanh", "10" }, // Sư Vạn Hạnh — Q10 (đoạn chính)
+            { "thanh thai", "10" }, // Thành Thái — Q10
+            { "to hien thanh", "10" }, // Tô Hiến Thành — Q10
+            // ── Quận 5 ────────────────────────────────────────────────────────
+            { "tran hung dao", "5" }, // Trần Hưng Đạo — Q5 (đoạn chính)
+            { "an duong vuong", "5" }, // An Dương Vương — Q5
+            // ── Quận 6 ────────────────────────────────────────────────────────
+            { "hau giang", "6" }, // Hậu Giang — Q6
+            // ── Quận 11 ───────────────────────────────────────────────────────
+            { "lac long quan q11", "11" }, // Lạc Long Quân — Q11 (đoạn Q11)
+            // ── Bình Thạnh ────────────────────────────────────────────────────
+            { "nguyen huu canh", "binh thanh" }, // Nguyễn Hữu Cảnh — Bình Thạnh
+            { "xo viet nghe tinh", "binh thanh" }, // Xô Viết Nghệ Tĩnh — Bình Thạnh
+            // ── Gò Vấp ───────────────────────────────────────────────────────
+            { "phan van tri", "go vap" }, // Phan Văn Trị — Gò Vấp (đoạn chính)
+            { "nguyen oanh", "go vap" }, // Nguyễn Oanh — Gò Vấp
+            { "phan huy ich", "go vap" }, // Phan Huy Ích — Gò Vấp (đoạn chính)
+            { "quang trung", "go vap" }, // Quang Trung — Gò Vấp (đoạn chính)
+        };
+
+        /// <summary>
         /// Bảng phí ship theo tên đường (Tier-2.8) — override SHIPPING_FEES_BY_QUAN khi cùng quận
         /// nhưng đường cụ thể có phí ship khác.
         ///
@@ -275,27 +319,27 @@ namespace TextInputter
             { "3", 25m }, // Q3
             { "4", 25m }, // Q4
             { "5", 25m }, // Q5
-            { "6", 25m }, // Q6
-            { "7", 30m }, // Q7
-            { "8", 25m }, // Q8 base 25k — các phường xa override lên 30k qua SHIPPING_FEES_BY_WARD
-            { "9", 30m }, // Q9
-            { "10", 25m }, // Q10
-            { "11", 25m }, // Q11
-            { "12", 30m }, // Q12
+            { "6", 17m }, // Q6  — An Tâm
+            { "7", 17m }, // Q7  — An Tâm
+            { "8", 17m }, // Q8  — An Tâm (phường xa override qua SHIPPING_FEES_BY_WARD)
+            { "9", 25m }, // Q9  — An Tâm
+            { "10", 25m }, // Q10 — c.hiếu
+            { "11", 17m }, // Q11 — An Tâm
+            { "12", 25m }, // Q12 — An Tâm
             // ── TP. HCM — quận/huyện tên ──────────────────────────────────────
             // (key lowercase không dấu, khớp output của AddressParser)
-            { "binh thanh", 20m }, // Bình Thạnh
+            { "binh thanh", 20m }, // Bình Thạnh — c.cường
             // (alias "bh thanh", "b.thanh"... tự expand trong OCRInvoiceMapper._abbrevMap)
-            { "phu nhuan", 20m }, // Phú Nhuận
-            { "go vap", 25m }, // Gò Vấp
-            { "tan binh", 25m }, // Tân Bình
-            { "tan phu", 25m }, // Tân Phú
-            { "binh tan", 30m }, // Bình Tân
-            { "thu duc", 30m }, // Thủ Đức (TP.Thủ Đức cũ = Q2+Q9+Thủ Đức cũ, dùng 30k chung)
+            { "phu nhuan", 20m }, // Phú Nhuận — c.hiếu
+            { "go vap", 25m }, // Gò Vấp   — c.cường
+            { "tan binh", 17m }, // Tân Bình  — An Tâm
+            { "tan phu", 17m }, // Tân Phú   — An Tâm
+            { "binh tan", 25m }, // Bình Tân  — An Tâm
+            { "thu duc", 30m }, // Thủ Đức (TP.Thủ Đức cũ = Q2+Q9+Thủ Đức cũ)
             // ── TP. HCM — huyện ngoại thành ───────────────────────────────────
-            { "binh chanh", 35m }, // Bình Chánh
-            { "hoc mon", 35m }, // Hóc Môn
-            { "nha be", 35m }, // Nhà Bè
+            { "binh chanh", 30m }, // Bình Chánh — An Tâm
+            { "hoc mon", 30m }, // Hóc Môn   — An Tâm
+            { "nha be", 30m }, // Nhà Bè    — An Tâm
             { "cu chi", 40m }, // Củ Chi
             { "can gio", 50m }, // Cần Giờ
         };
@@ -546,7 +590,7 @@ namespace TextInputter
         // ── UI dimensions ──────────────────────────────────────────────────────
 
         /// <summary>Chiều cao panel Daily Report phía dưới</summary>
-        public const int DAILY_REPORT_PANEL_HEIGHT = 180;
+        public const int DAILY_REPORT_PANEL_HEIGHT = 320;
 
         /// <summary>Chiều cao row TỔNG trong dgvInvoice</summary>
         public const int ROW_HEIGHT_TONG = 24;

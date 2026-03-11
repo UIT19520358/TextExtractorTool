@@ -60,7 +60,7 @@ namespace TextInputter.Services
             { "pnhuan", "phu nhuan" },
             { "btan", "binh tan" },
             { "tp thu duc", "thu duc" }, // "TP Thủ Đức" trong địa chỉ → thu duc
-            { "tpthu duc", "thu duc" },  // không dấu compact
+            { "tpthu duc", "thu duc" }, // không dấu compact
         };
 
         private static readonly Dictionary<string, string> WardNameDict = new Dictionary<
@@ -121,6 +121,27 @@ namespace TextInputter.Services
                         _wardNormalizedDict[normKey] = kv.Value;
                 }
                 return _wardNormalizedDict;
+            }
+        }
+
+        // Street → District map đã normalize key (xóa dấu + space) để tra nhanh
+        private static Dictionary<string, string> _streetNormalizedDict;
+        private static Dictionary<string, string> StreetNormalizedDict
+        {
+            get
+            {
+                if (_streetNormalizedDict != null)
+                    return _streetNormalizedDict;
+                _streetNormalizedDict = new Dictionary<string, string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+                foreach (var kv in AppConstants.STREET_TO_DISTRICT_MAP)
+                {
+                    var normKey = NormalizeKey(kv.Key);
+                    if (!_streetNormalizedDict.ContainsKey(normKey))
+                        _streetNormalizedDict[normKey] = kv.Value;
+                }
+                return _streetNormalizedDict;
             }
         }
 
@@ -312,6 +333,40 @@ namespace TextInputter.Services
                 var phuongNorm = NormalizeKey(result.Phuong);
                 if (WardNormalizedDict.TryGetValue(phuongNorm, out var distFromWard))
                     result.Quan = distFromWard;
+            }
+
+            // Nếu vẫn chưa tìm được quận nhưng có tên đường → thử tra bảng đường→quận
+            // VD: "sư vạn hạnh" → Q10, "nguyễn oanh" → Gò Vấp
+            if (string.IsNullOrEmpty(result.Quan) && !string.IsNullOrEmpty(result.TenDuong))
+            {
+                var streetNorm = NormalizeKey(result.TenDuong);
+                if (StreetNormalizedDict.TryGetValue(streetNorm, out var distFromStreet))
+                    result.Quan = distFromStreet;
+                else
+                {
+                    // Thử từng sub-phrase (2-word, 3-word) trong tên đường
+                    var streetWords = result.TenDuong.Split(
+                        new[] { ' ' },
+                        StringSplitOptions.RemoveEmptyEntries
+                    );
+                    for (
+                        int i = 0;
+                        i < streetWords.Length && string.IsNullOrEmpty(result.Quan);
+                        i++
+                    )
+                    {
+                        // Thử từ vị trí i đến cuối, rút ngắn dần
+                        for (int len = streetWords.Length - i; len >= 2; len--)
+                        {
+                            var sub = string.Join(" ", streetWords, i, len);
+                            if (StreetNormalizedDict.TryGetValue(NormalizeKey(sub), out var dSub))
+                            {
+                                result.Quan = dSub;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             return result;
@@ -639,6 +694,5 @@ namespace TextInputter.Services
             text = text.TrimEnd(',', '.', ' ');
             return text;
         }
-
     }
 }
