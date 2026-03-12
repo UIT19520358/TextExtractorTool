@@ -319,27 +319,27 @@ namespace TextInputter
             { "3", 25m }, // Q3
             { "4", 25m }, // Q4
             { "5", 25m }, // Q5
-            { "6", 17m }, // Q6  — An Tâm
-            { "7", 17m }, // Q7  — An Tâm
-            { "8", 17m }, // Q8  — An Tâm (phường xa override qua SHIPPING_FEES_BY_WARD)
-            { "9", 25m }, // Q9  — An Tâm
-            { "10", 25m }, // Q10 — c.hiếu
-            { "11", 17m }, // Q11 — An Tâm
-            { "12", 25m }, // Q12 — An Tâm
+            { "6", 25m }, // Q6
+            { "7", 30m }, // Q7
+            { "8", 25m }, // Q8 base 25k — các phường xa override lên 30k qua SHIPPING_FEES_BY_WARD
+            { "9", 30m }, // Q9
+            { "10", 25m }, // Q10
+            { "11", 25m }, // Q11
+            { "12", 30m }, // Q12
             // ── TP. HCM — quận/huyện tên ──────────────────────────────────────
             // (key lowercase không dấu, khớp output của AddressParser)
-            { "binh thanh", 20m }, // Bình Thạnh — c.cường
+            { "binh thanh", 20m }, // Bình Thạnh
             // (alias "bh thanh", "b.thanh"... tự expand trong OCRInvoiceMapper._abbrevMap)
-            { "phu nhuan", 20m }, // Phú Nhuận — c.hiếu
-            { "go vap", 25m }, // Gò Vấp   — c.cường
-            { "tan binh", 17m }, // Tân Bình  — An Tâm
-            { "tan phu", 17m }, // Tân Phú   — An Tâm
-            { "binh tan", 25m }, // Bình Tân  — An Tâm
-            { "thu duc", 30m }, // Thủ Đức (TP.Thủ Đức cũ = Q2+Q9+Thủ Đức cũ)
+            { "phu nhuan", 20m }, // Phú Nhuận
+            { "go vap", 25m }, // Gò Vấp
+            { "tan binh", 25m }, // Tân Bình
+            { "tan phu", 25m }, // Tân Phú
+            { "binh tan", 30m }, // Bình Tân
+            { "thu duc", 30m }, // Thủ Đức (TP.Thủ Đức cũ = Q2+Q9+Thủ Đức cũ, dùng 30k chung)
             // ── TP. HCM — huyện ngoại thành ───────────────────────────────────
-            { "binh chanh", 30m }, // Bình Chánh — An Tâm
-            { "hoc mon", 30m }, // Hóc Môn   — An Tâm
-            { "nha be", 30m }, // Nhà Bè    — An Tâm
+            { "binh chanh", 35m }, // Bình Chánh
+            { "hoc mon", 35m }, // Hóc Môn
+            { "nha be", 35m }, // Nhà Bè
             { "cu chi", 40m }, // Củ Chi
             { "can gio", 50m }, // Cần Giờ
         };

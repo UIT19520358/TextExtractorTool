@@ -18,8 +18,11 @@ ocr_log.txt
 
 # Folders
 _tmp_reader
-data
 publish
 tools
-publish
-tools
+
+# images
+*.png
+*.jpg
+*.jpeg
+*.gif
