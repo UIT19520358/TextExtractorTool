@@ -62,10 +62,11 @@ namespace TextInputter
             // LEFT summary: loại hàng tồn (carry-over ngày trước, HÀNG TỒN=x)
             decimal thuLeft = r.TongTienThu - r.TongTienThuHangTon;
             decimal shipLeft = r.TongTienShip - r.TongTienShipHangTon;
+            decimal hangLeft = thuLeft - shipLeft; // TIỀN HÀNG = TIỀN THU - TIỀN SHIP (loại hàng tồn)
             decimal soDonLeft = r.SoDon - r.SoDonHangTon;
             string soDonStr = soDonLeft.ToString("N0");
-            string thuStr = thuLeft.ToString("N0");
-            decimal tongShipRaw = -shipLeft; // -SUMIFS TIỀN SHIP (loại hàng tồn)
+            string hangStr = hangLeft.ToString("N0");
+            decimal tongShipRaw = 0m; // Ship đã trừ sẵn trong TIỀN HÀNG
             // KẾT = dùng TongKetCuoi đã tính ở BtnCalculateExcelData_Click (bao gồm cả đơn âm)
             decimal ketTong = r.TongKetCuoi;
             string ketStr = ketTong.ToString("N0");
@@ -153,12 +154,12 @@ namespace TextInputter
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.LightSteelBlue;
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
 
-                // Tiền thu (= tổng TIỀN THU từ khách — matching manual "cod")
-                ri = dgvTong.Rows.Add("Tiền thu", thuStr, soDonStr);
+                // Tiền hàng (= tổng TIỀN HÀNG từ khách — matching template "cod")
+                ri = dgvTong.Rows.Add("Tiền hàng", hangStr, soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                // Trừ Tiền Ship (tổng tiền ship dương → hiển thị ngược dấu = âm)
-                ri = dgvTong.Rows.Add("Trừ Tiền Ship", tongShipRaw.ToString("N0"), soDonStr);
+                // Trừ Ship (placeholder = 0, ship đã trừ sẵn trong Tiền hàng)
+                ri = dgvTong.Rows.Add("Trừ Ship", tongShipRaw.ToString("N0"), "");
                 dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
                 // Đơn trả & c.khoản — matching Excel: -SUMIFS(TIỀN HÀNG, FAIL="xx", ỨNG TIỀN="x")

@@ -953,25 +953,22 @@ namespace TextInputter.Services
                 SetBold(worksheet.Cell(r0, COL_TENKH), "Tiền");
                 SetBold(worksheet.Cell(r0, COL_DIACHI), "Số đơn");
 
-                // ── R1: Tiền thu / cod (SUMIFS TIỀN THU per shop × ngày) ─────
+                // ── R1: Tiền hàng / cod (SUMIFS TIỀN HÀNG per shop × ngày) ────
                 worksheet.Cell(r1, COL_TINHTRANG).Value = ngay; // hidden reference
                 worksheet.Cell(r1, COL_SHOP).Value = "cod";
                 worksheet.Cell(r1, COL_SHOP).Style.Fill.BackgroundColor = XLColor.LightYellow;
                 worksheet.Cell(r1, COL_TENKH).FormulaA1 =
-                    $"SUMIFS({rThu},{rShop},{ColLetter(COL_TINHTRANG)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
+                    $"SUMIFS({rHang},{rShop},{ColLetter(COL_TINHTRANG)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
                 worksheet.Cell(r1, COL_TENKH).Style.Fill.BackgroundColor = XLColor.LightYellow;
                 worksheet.Cell(r1, COL_DIACHI).FormulaA1 =
                     $"SUMIFS({rCol1},{rShop},{ColLetter(COL_TINHTRANG)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
                 worksheet.Cell(r1, COL_DIACHI).Style.Fill.BackgroundColor = XLColor.LightYellow;
 
-                // ── R2: Trừ Tiền Ship (-SUMIFS TIỀN SHIP per shop × ngày) ────
-                worksheet.Cell(r2, COL_SHOP).Value = "Trừ Tiền Ship  ";
+                // ── R2: Trừ Ship (placeholder = 0, ship đã trừ sẵn trong TIỀN HÀNG) ─
+                worksheet.Cell(r2, COL_SHOP).Value = "Trừ Ship";
                 worksheet.Cell(r2, COL_SHOP).Style.Font.FontColor = XLColor.Red;
-                worksheet.Cell(r2, COL_TENKH).FormulaA1 =
-                    $"-SUMIFS({rShip},{rShop},{ColLetter(COL_TINHTRANG)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
+                worksheet.Cell(r2, COL_TENKH).Value = 0;
                 worksheet.Cell(r2, COL_TENKH).Style.Font.FontColor = XLColor.Red;
-                worksheet.Cell(r2, COL_DIACHI).FormulaA1 =
-                    $"SUMIFS({rCol1},{rShop},{ColLetter(COL_TINHTRANG)}${r0},{rNgay},{ColLetter(COL_TINHTRANG)}${r1})";
 
                 // ── R3: Đơn trả & c.khoản — uses TIỀN HÀNG (not THU), FAIL="xx" + ỨNG TIỀN="x"
                 worksheet.Cell(r3, COL_SHOP).Value = "Đơn trả & c.khoản";

@@ -1,0 +1,2049 @@
+﻿=== OCR RUN: 2026-03-14 00:48:37 ===
+📁 Folder: D:\Work\TextExtractorTool\data\Mar\13-03-2026
+👤 Người Đi: AT 13-03 | Người Lấy: c.cuong
+📷 Tổng ảnh: 39
+
+════════════════════════════════════════════════════════════
+📄 [1/39] 1.jpg  (confidence: 92.2%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1-10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Khách lẻ
+SĐT:
+Địa chỉ: -
+HÓA ĐƠN BÁN HÀNG
+So HD: HD000921
+Ngày 11 tháng 03 năm 2026
+Bảo Trân 0909 798 0
+270/11 Phan Pink Phuing can
+Đơn giá tiêu
+ĐẦM REN LÁ TD-M
+920,000
+ĐẦM REN XÒE TAY PHỒNG - HỒNG M
+890,000
+SET ĐẦM PHỐI - M
+790,000
+Tổng SI: 3 cái
+T.Tiên
+920,000
+890,000
+790,000
+Tổng tiền hàng:
+2,600,000
+Chiết khấu :
+Tổng thanh toán
+2,600,000
+Cle
+Shop chỉ nhận đổi size sản phẩm (không đối màu hoặc màu
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sat
+13:00, quý khách quay lại video khi khui hàng để có sự có shop kiểm tra và y
+lý cho quý khách nhanh nhất ạ.
+khác) trong
+
+[GEMINI]
+[2026-03-14 00:48:38] [Gemini] TRIGGERED for: 1.jpg | THIẾU: QUẬN, ĐỊA CHỈ
+[2026-03-14 00:48:42] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:48:42] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=phu nhuan | TÊN KH=Bảo Trần | MÃ=HD000921 | THU=2600 | SHIP= | NGÀY=11/03/2026 | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Khách lẻ
+  ✓ MÃ: HD000921
+  ✓ QUẬN: phu nhuan
+  ✓ ĐỊA CHỈ: 270/11 Phan Đình Phùng
+  ✓ TIỀN THU: 2600
+  ✓ TIỀN SHIP: 20
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 11-03-2026
+  ✓ PHƯỜNG: phuong 10
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 2620
+
+════════════════════════════════════════════════════════════
+📄 [2/39] 2.jpg  (confidence: 87.6%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+el A
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10085 "hích Quảng Đức, P5, Phú Nhuận.
+CN2*324 HUỲNH Văn Bánh, P10,Phu Nhuận
+Điện thoại: 093209723 (HOTLINE)
+0306442142 (CHUYỂN SĨ)
+Khách hàng: Bé Cam
+SĐT: 0969799960-Bé Cam
+HÓA ĐƠN BÁN HÀNG
+So HD: HD00:374
+Ngày 13 tháng 03 năm 2026.
+Địa chỉ: Số 2 đường 31 bình trị đông B tình Tân --
+Đơn giá
+ĐÂM NHÚN XẾP ĐẠN LƯNG - ĐEN S
+750,000
+SL
+T.Tiên
+750,000
+Tổng 51: 1 cái
+Tầng tiên hàng
+750,000
+Chiếc khẩu :
+Tổng thanh toán
+750,000
+Sop chỉ nhiều đổi size sản chiến (không đội mẫu hoặc màu khác) trong 3 ngày kể từ
+thời điểm tiểu hóa đơn đi kèm chưa qua sử dụng giết ủ và sau 13:00, quý khách chạy
+lại video khi khui hàng, đã có sự cố shi kiếm trò và xử lý cho quý khách nhanh nhất a
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Bé Cam
+  ✓ MÃ: HD00
+  ✓ QUẬN: tinh
+  ✓ ĐỊA CHỈ: Số 2 đường 31 bình trị đông B tình Tân
+  ✓ TIỀN THU: 750
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 750
+
+════════════════════════════════════════════════════════════
+📄 [3/39] 3.jpg  (confidence: 90.4%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+Anb
+Konb
+ου
+бәрі о
+биду
+- 0qy cous bupu ջա զան
+ΤΗΣ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1-100a5 Thích Quảng Đức, P5 Phú Nhuận
+CN2*324 Huỳnh Văn Bánh P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001429
+Ngày 13 tháng 03 năm 2026
+Khách hàng: Nguyen Anh Thư
+SĐT: 0365053719
+Địa chỉ: 453/16 đường Tô Ngọc Vân, p Tam Bình, tp Thủ Đức - -
+Đơn giá
+SL
+T.Tiên
+ĐẦM NGẮN DÂY VIỀN - ĐỎ
+580,000
+580,000
+Tổng SI: 1 cái
+Tổng tiên hàng:
+580,000
+Chiết khấu :
+Tổng thanh toán:
+580,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi về
+sau 13:00,quý khách quay lại video khi khui hàng, để có sự có shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Nguyen Anh Thư
+  ✓ MÃ: HD001429
+  ✓ QUẬN: thu duc
+  ✓ ĐỊA CHỈ: 453/16 đường Tô Ngọc Vân, p Tam Bình, tp
+  ✓ TIỀN THU: 580
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 610
+
+════════════════════════════════════════════════════════════
+📄 [4/39] 4.jpg  (confidence: 96.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Hạnh Hạnh
+SĐT: 0938698399
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001011
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 334 tôn hiến thành p14 quận 10 Chung cư kingdom101 block a - -
+Đơn giá
+SL
+T.Tiên
+ĐÂM VOAN DÀI XOẮN NGỰC - S
+760,000
+760,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng,để có sự có shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+QUÝ KHÁCH VUI LÒNG
+HI MỞ HÀNG
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Hạnh Hạnh
+  ✓ MÃ: HD001011
+  ✓ QUẬN: 10
+  ✓ ĐỊA CHỈ: 334 tôn hiến thành p14 Chung cư kingdom101 block a
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 785
+
+════════════════════════════════════════════════════════════
+📄 [5/39] 5.jpg  (confidence: 92.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 10005 Thích Quảng Đức,P5,Phú Nhuận
+CNz 324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện hoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Thanh Tâm
+SĐT: 0907182719
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001428
+I gày 13 tháng 03 năm 2026
+Địa chỉ: 19/5 trận trọng kí âm, phường long binh thủ đức --
+Đơn giả
+ĐÂM LỤA 20- HỒNG S
+720,000
+Tổng 51: 1 cái
+SL
+Tin
+720,000
+Tổng tiền hàng:
+720,000
+Chiết khấu :
+Tổng thanh toán:
+720,000
+Shop chỉ nhận đổi size sài phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trí chúa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại ideo khi khui hàng, để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh niất a.
+
+[GEMINI]
+[2026-03-14 00:48:44] [Gemini] TRIGGERED for: 5.jpg | THIẾU: QUẬN, NGÀY LẤY
+[2026-03-14 00:48:48] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:48:48] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=thu đuc | TÊN KH=Thanh Tâm | MÃ=HD001428 | THU= | SHIP= | NGÀY=13/03/2026 | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Thanh Tâm
+  ✓ MÃ: HD001428
+  ✓ QUẬN: thu đuc
+  ✓ ĐỊA CHỈ: 19/5 trận trọng kí âm
+  ✓ TIỀN THU: 720
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13/03/2026
+  ✓ PHƯỜNG: phuong long binh thu đuc
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 720
+
+════════════════════════════════════════════════════════════
+📄 [6/39] 6.jpg  (confidence: 97.7%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+
+[GEMINI]
+[2026-03-14 00:48:48] [Gemini] TRIGGERED for: 6.jpg | THIẾU: SHOP, QUẬN, ĐỊA CHỈ, TIỀN THU, TÊN KH, MÃ, NGÀY LẤY
+[2026-03-14 00:48:51] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:48:51] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=binh thanh | TÊN KH=HOÀNG ANH | MÃ=HD01062020 | THU=1500 | SHIP= | NGÀY=16/10/2020 | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: HOÀNG ANH
+  ✓ MÃ: HD01062020
+  ✓ QUẬN: binh thanh
+  ✓ ĐỊA CHỈ: Số 75 đường 15A, Phường 6
+  ✓ TIỀN THU: 1500
+  ✓ TIỀN SHIP: 20
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 16/10/2020
+  ✓ PHƯỜNG: phuong 6
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 1520
+
+════════════════════════════════════════════════════════════
+📄 [7/39] 7.jpg  (confidence: 93.4%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN110045 Thích Quảng Đức 15 Phú Nhuận
+CN2 324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện Thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001427
+1 gày 13 tháng 03 năm 2026.
+Khách hàng: Trung Hậu Trung Hậu,
+SĐT: 0333453994
+Địa chỉ: sky 89 hoàng quí. việt phường phú thuận quận 7 tphcm -
+Đơn giả
+SL
+T.Tiền
+ĐÂM VOAN DÀI XOẮN NGỰC - M
+760,000
+760,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sài phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trẻ hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại deo khi khui hàng, để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:48:51] [Gemini] TRIGGERED for: 7.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:48:55] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:48:55] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=7 | TÊN KH=Trung Hậu | MÃ=HD001427 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Trung Hậu Trung Hậu,
+  ✓ MÃ: HD001427
+  ✓ QUẬN: 7
+  ✓ ĐỊA CHỈ: sky 89 hoàng quí. việt
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: viet
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 790
+
+════════════════════════════════════════════════════════════
+📄 [8/39] 8.jpg  (confidence: 90.8%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2 324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện hoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001402
+Khách hàng: Le hà my fo
+SĐT: 0906969231
+gày 13 tháng 03 năm 2026
+tang Lê
+Địa chỉ: 4034 nguyễn duy sinh, phường bình trưng đông, quận 2 - -
+Đơn giả
+SL
+T.Tiền
+ĐÂM VOAN DÀI XOẮN NGỰC - S
+760,000
+760,000
+Tổng 51: 1 cái
+Tổng tiền hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại ideo khi khui hàng, để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất a.
+
+[GEMINI]
+[2026-03-14 00:48:55] [Gemini] TRIGGERED for: 8.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:48:58] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:48:58] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=2 | TÊN KH=Le hà my fb | MÃ=HD001402 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Le hà my fo
+  ✓ MÃ: HD001402
+  ✓ QUẬN: 2
+  ✓ ĐỊA CHỈ: 4034 nguyễn duy sinh, phường bình trưng đông
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: binh trung đong
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 790
+
+════════════════════════════════════════════════════════════
+📄 [9/39] 9.jpg  (confidence: 95.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001192
+Ngày 12 tháng 03 năm 2026
+Khách hàng: Phương mai
+SĐT: 0938366198 page
+Địa chỉ: 3/16 đường 25A . F tân quy . Q7 - -
+Đơn giá
+SL
+T.Tiền
+ÁO TAG NƠ HỒNG - ĐEN
+360,000
+360,000
+Tổng Sl: 1 cái
+Tổng tiền hàng:
+360,000
+Chiết khấu :
+Tổng thanh toán:
+360,000
+Shop chỉ nhận đổi size sản phẩm (không đội mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:48:59] [Gemini] TRIGGERED for: 9.jpg | THIẾU: QUẬN
+[2026-03-14 00:49:05] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:05] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN= | TÊN KH=Phuong mai | MÃ=HD001192 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ⚠️ THIẾU 1 fields: QUẬN — đã lưu, cần check thủ công
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Phương mai
+  ✓ MÃ: HD001192
+  ⚠️ QUẬN: (trống)
+  ✓ ĐỊA CHỈ: 3/16 đường 25A
+  ✓ TIỀN THU: 360
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 360
+
+════════════════════════════════════════════════════════════
+📄 [10/39] 10.jpg  (confidence: 92.8%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+IC
+elegant
+CN
+ĐOÀN NGÀN CHÂU
+Địa Chỉ:CN110085 "hích Quảng Đức,P5, Phú Nhuận
+CN2: 324 Huỳnh Văn Binh,P10,Phú Nhuận
+Điện thoại: 0932039725 (HOTLINE )
+0306462692 (CHUYỆN SĨ,
+Khách hàng: Minh Khôi
+SĐT: 0862413757
+HÒA ĐƠN BÁN HÀNG
+So HDD: HD001284
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 1/15 hẻm 1 Huỳnh Lan Khanh, phường 2, quận Tân Bình,HCM - -
+Đơn giá
+SET ĐẦM PHỐI - 5
+790,000
+Tổng 51: 1 cái
+SL
+T.Tiên
+790,000
+Tổng tiền hàng:
+790,000
+Chiết khấu :
+Tổng thanh toán:
+7/90,000
+Shop chi nhiệu đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong 3 ngày kể từ
+thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau 13:00, quý khách quay
+lại video khi khui hàng, để có sự có shop kiểm tra và xử lý cho quý khách nhanh nhất a
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÀN CHÂU
+  ✓ TÊN KH: Minh Khôi
+  ✓ MÃ: HD001284
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: 1/15 hẻm 1 Huỳnh Lan Khanh, phường 2
+  ✓ TIỀN THU: 90
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 115
+
+════════════════════════════════════════════════════════════
+📄 [11/39] 11.jpg  (confidence: 91.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10005 Thích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+ngay
+Khách hàng: Muội Muội
+SĐT: 0972515222
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001327
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 74/4 trần thái tong p 15 tân bình -
+Đơn giá
+ĐẦM LỤA 2D - VÀNG S
+720,000
+Tổng SI: 1 cái
+Thu 15104
+ship
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10085 Thích Quảng Đức,P5, Phú Nhuận
+CN2-324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001328
+Ngày 12 tháng 03 năm 2025
+Khách hàng: Muội Muội
+SĐT: 0972515222
+Địa chỉ: 74/4 trần thái tong p 15 tân bình -
+SI.
+Tổ Tiên
+SIL
+Tổ Tiên
+Đơn giả
+720,000
+ĐẦM HOA NGŨ SẮC - 5
+790,000
+790,000
+Tổng SI: 1 cái
+Tổng tiên hàng:
+7.20,000
+Chiết khấu :
+Tổng thanh toán:
+7:20,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+Tổng tiên hàng:
+Chiết khấu :
+Tổng thanh toán:
+790,000
+790,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sẽ
+13:00,quý khách quay lại video khi khui hàng, để có sự cổ shop kiểm tra và x
+lý cho quý khách nhanh nhất a.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Muội Muội
+  ✓ MÃ: HD001327
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: 74/4 trần thái tong p 15
+  ✓ TIỀN THU: 15104
+  ✓ _THU_FROM_LABEL: 1
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 15129
+
+════════════════════════════════════════════════════════════
+📄 [12/39] 12.jpg  (confidence: 94.4%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+inople yet elegant
+Địa Chỉ:CN1
+CN
+ĐOÀN NGÂN CHÂU
+100a5 Thích Quảng Đức,P5, Phú Nhuận
+CN 324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện hoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Mai Nhung
+SĐT: 0937626277
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001115
+i gày 12 tháng 03 năm 2026
+Địa chỉ: 346 bến vân đồn. P1 quận 4 - -
+Đơn giá
+SL
+T.Tiên
+ĐẢM NHÚN XẾP ĐẠN LƯU 5- ĐỎ M
+750,000
+750,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+750,000
+Chiết khấu :
+Tổng thanh toán:
+750,000
+Shep chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trẻ hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại deo khi khui hàng để có sự có shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:49:06] [Gemini] TRIGGERED for: 12.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:49:10] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:10] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=4 | TÊN KH=Mai Nhung | MÃ=HD001115 | THU=750 | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Mai Nhung
+  ✓ MÃ: HD001115
+  ✓ QUẬN: 4
+  ✓ ĐỊA CHỈ: 346 bến vân đồn
+  ✓ TIỀN THU: 750
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuong 4
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 775
+
+════════════════════════════════════════════════════════════
+📄 [13/39] 13.jpg  (confidence: 94.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Khả Hân
+SĐT: 0934003773
+HÓA ĐƠN BÁN HÀNG
+S8 HD: HD001309
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: chung cư Flora Kikyo Phú Hữu Thử Đức - -
+Đơn giả
+ĐẦM LỤA 2D - VÀNG S
+720,000
+Tổng SI: 1 cái
+SIL
+T.Tiền
+720,000
+Tổng tiền hàng:
+7:20,000
+Chiết khấu :
+Tổng thanh toán:
+7:20,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00, quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Khả Hân
+  ✓ MÃ: HD001309
+  ✓ QUẬN: 9
+  ✓ ĐỊA CHỈ: chung cư Flora Kikyo Phú Hữu Thử Đức
+  ✓ TIỀN THU: 20
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: a.quyen
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 50
+
+════════════════════════════════════════════════════════════
+📄 [14/39] 14.jpg  (confidence: 91.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+1816
+a b c d e as to be a w
+. 9կ, 6uoux doqs equ buoq ջա զս
+бири ош бәрі до биду
+ONE ON THE P
+ΑΝΤΙΛΗΨΗΣ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 10025 Thích Quảng Đức P5,Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001411
+Ngày 13 tháng 03 năm 2026
+Khách hàng: Lê Ngọc Diễm
+SĐT: 0345219453
+Địa chỉ: Chung cư tara. Phường 6 quận 8. Block B2 toà khải hoàn - -
+Đơn giá
+SL
+ÁO HI IT'S ME - TRẮNG
+370,000
+T.Tiên
+370,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+370,000
+Chiết khấu :
+Tổng thanh toán:
+370,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Lê Ngọc Diễm
+  ✓ MÃ: HD001411
+  ✓ QUẬN: 8
+  ✓ ĐỊA CHỈ: Chung cư tara. Phường 6
+  ✓ TIỀN THU: 370
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 395
+
+════════════════════════════════════════════════════════════
+📄 [15/39] 15.jpg  (confidence: 93.4%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+simple ye
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 *100a5 Thích Quảng Đức, P5, Phú Nhuận
+CN2 324 Huỳnh Văn Bánh P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Khánh Thuận
+SĐT: 0354395608
+HÓA ĐƠN BÁN HÀNG
+So HD: HD000628
+Ngày 11 tháng 03 năm 2026
+"Ship Long
+Địa chỉ: 30 tùng thiện vương phường Phú định Q8 -
+Đơn giá
+ĐẦM REN LƯỚI DÂY XOẮN - M
+SL
+Agay
+T.Tiền
+960,000
+Tổng SI: 1 cái
+960,000
+Tổng tiền hàng:
+960,000
+Chiết khấu :
+Tổng thanh toán:
+960,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất an
+
+[GEMINI]
+[2026-03-14 00:49:11] [Gemini] TRIGGERED for: 15.jpg | THIẾU: QUẬN
+[2026-03-14 00:49:15] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:15] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=8 | TÊN KH=Khánh Thuận | MÃ=HD000628 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Khánh Thuận
+  ✓ MÃ: HD000628
+  ✓ QUẬN: 8
+  ✓ ĐỊA CHỈ: 30 tùng thiện vương
+  ✓ TIỀN THU: 960
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 11-03-2026
+  ✓ PHƯỜNG: phuong phu
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 985
+
+════════════════════════════════════════════════════════════
+📄 [16/39] 16.jpg  (confidence: 93.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10045 Thích Quảng Đức, P5, Phú Nhuận
+CN2-324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001314
+Ngày 12 tháng 03 năm 2026
+Khách hàng: Phạm Minh Nguyệt
+SĐT: 0898241542
+Địa chỉ: 88/5g nguyễn khoái - P. Vĩnh hội, q4 --
+Đơn giá
+SIL
+T.Tiên
+ĐẦM NGẮN DÂY VIÊN - HỒNG
+580,000
+580,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+530,000
+Chiết khấu :
+Tổng thanh toán:
+5:30,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:49:15] [Gemini] TRIGGERED for: 16.jpg | THIẾU: QUẬN
+[2026-03-14 00:49:19] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:19] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=4 | TÊN KH=Phạm Minh Nguyệt | MÃ=HD001314 | THU=580 | SHIP= | NGÀY=12/03/2026 | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Phạm Minh Nguyệt
+  ✓ MÃ: HD001314
+  ✓ QUẬN: 4
+  ✓ ĐỊA CHỈ: 88/5g nguyễn khoái
+  ✓ TIỀN THU: 30
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ PHƯỜNG: vinh hoi
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 55
+
+════════════════════════════════════════════════════════════
+📄 [17/39] 17.jpg  (confidence: 90.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Khách lẻ
+SĐT:
+Dia chi:
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001261
+Ngày 12 tháng 03 năm 2026
+hạm Như 0932007567
+01 Hō Hor Lam, P16, Q2
+Đơn giá
+SL
+T.Tiền
+ĐẦM LƯỚI HOA-S
+850,000
+850,000
+SET ÁO REN BÈO QUẦN SHORT - 5
+750,000
+750,000
+ĐẦM NGẮN DÂY VIÊN - HỒNG
+580,000
+ĐẦM SN XÒE - KEM S
+790,000
+Tổng SL: 4 cái
+Den
+580,000
+790,000
+Lor 200k
+Tổng tiên hàng:
+Chiết khấu :
+Tổng thanh toán:
+thu
+2,770,000
+freeship
+2,970,000
+2,970,000
+Shop chi nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong 3 ngày
+khách quay lại video khi khui hàng, để có sự có shop kiểm tra và xử lý cho quỹ
+khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:49:19] [Gemini] TRIGGERED for: 17.jpg | THIẾU: QUẬN, ĐỊA CHỈ
+[2026-03-14 00:49:31] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:31] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=8 | TÊN KH=Phạm Nhi | MÃ=HD001261 | THU=2770 | SHIP= | NGÀY=12/03/2026 | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Khách lẻ
+  ✓ MÃ: HD001261
+  ✓ QUẬN: 8
+  ✓ ĐỊA CHỈ: Số 12, Đg 01 Hồ Học Lâm
+  ✓ TIỀN THU: 2770000
+  ✓ _THU_FROM_LABEL: 1
+  ✓ TIỀN SHIP: 2970
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ PHƯỜNG: phuong 16
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 2772970
+
+════════════════════════════════════════════════════════════
+📄 [18/39] 18.jpg  (confidence: 93.9%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1 100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2 324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện hoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD000911
+1 gày 11 tháng 03 năm 2026
+Khách hàng: My Trần_Trầ
+my
+SĐT: 0907037237
+Địa chỉ: 47 le duan.P ben ghe quan 1 - -
+Đơn giá
+SL
+T.Tiên
+ĐÂM VOAN DÀI XOẮN NGỰC - S
+760,000
+760,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sài phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại ideo khi khui hàng, để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+QUAY VIDEO KAI MO
+ΠΑΝG
+
+[GEMINI]
+[2026-03-14 00:49:32] [Gemini] TRIGGERED for: 18.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:49:35] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:35] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=1 | TÊN KH=My Trân_Trà my | MÃ=HD000911 | THU=760 | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: My Trần_Trầ
+  ✓ MÃ: HD000911
+  ✓ QUẬN: 1
+  ✓ ĐỊA CHỈ: 47 le duan.P ben ghe
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuong nghe
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 785
+
+════════════════════════════════════════════════════════════
+📄 [19/39] 19.jpg  (confidence: 88.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+yet elegant
+Dr
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10085 Trích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+Giao trọng
+ngay
+Khách hàng: Quỳnh Lê
+SĐT: 0899111017
+HÓA ĐƠN BÁN HÀNG
+S8 HD: HD001312
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 7/16 nguyễn trãi phương bến thành gì - -
+Dan glá
+ĐẦM VOAN DÀI XUÂN NGỰC - M
+SL
+Tổ Tiên
+760,000
+760.000
+Tong Sl: 1 cal
+Tổng tiền hàng:
+7:50,000
+Chiết khấu :
+Tổng thanh toán:
+750,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng, để có sự cổ shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Quỳnh Lê
+  ✓ MÃ: HD001312
+  ✓ QUẬN: 1
+  ✓ ĐỊA CHỈ: 7/16 nguyễn trãi phương bến thành gì
+  ✓ TIỀN THU: 750
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 775
+
+════════════════════════════════════════════════════════════
+📄 [20/39] 20.jpg  (confidence: 94.4%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 10025 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Mẫn
+SĐT: 0867579845
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001191
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 55 đường 39 kdc Vạn Phúc hiệp bình thủ đức hcm - -
+Đơn giá
+DAM LUA 2D - KEM S
+720,000
+Tổng SI: 1 cái
+SL
+Thiên
+720,000
+Tổng tiên hàng:
+7:20,000
+Chiết khấu :
+Tổng thanh toán:
+720,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng, để có sự cổ shop kiếm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Mẫn
+  ✓ MÃ: HD001191
+  ✓ QUẬN: thu duc
+  ✓ ĐỊA CHỈ: 55 đường 39 kdc Vạn Phúc hiệp bình
+  ✓ TIỀN THU: 720
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 750
+
+════════════════════════════════════════════════════════════
+📄 [21/39] 21.jpg  (confidence: 96.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+simple yet
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2: 324 Huỳnh Văn Bánh P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001165
+Ngày 12 tháng 03 năm 2026
+Khách hàng: người nhận Tâm mini
+SĐT: 0911739116 - người nhận Tâm mini
+Địa chỉ: 202B, HOÀNG VĂN THỤ PHƯỜNG 9 QUẬN PHÚ NHUẬN, TP.HCM -
+Đơn giả
+SL
+T.Tiên
+CHÂN VÁY NƠ REN LƯỚI TRẮNG M
+750,000
+750,000
+ÁO 2 DÂY DHT - HỒNG
+290,000
+Tổng SI: 2 cái
+290,000
+Tổng tiền hàng:
+1,040,000
+Chiết khấu :
+Tổng thanh toán:
+1,040,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng, để có sự cổ shop kiểm tra và x
+lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: người nhận Tâm mini
+  ✓ MÃ: HD001165
+  ✓ QUẬN: phu nhuan
+  ✓ ĐỊA CHỈ: 202B, HOÀNG VĂN THỤ PHƯỜNG 9
+  ✓ TIỀN THU: 1040
+  ✓ TIỀN SHIP: 20
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 1060
+
+════════════════════════════════════════════════════════════
+📄 [22/39] 22.jpg  (confidence: 97.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Diệu Linh
+SĐT: 0364690054
+HÓA ĐƠN BÁN HÀNG
+Số HĐ: HD001151
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 600 Nguyễn lương bằng, P phú mỹ quận 7 hcm - -
+Đơn giả
+SL
+T.Tiên
+ĐẦM PHA LƯỚI NƠ HOA - M
+840,000
+840,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+840,000
+Chiết khấu :
+Tổng thanh toán:
+840,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất a.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Diệu Linh
+  ✓ MÃ: HD001151
+  ✓ QUẬN: 7
+  ✓ ĐỊA CHỈ: 600 Nguyễn lương bằng, P phú mỹ
+  ✓ TIỀN THU: 840
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 870
+
+════════════════════════════════════════════════════════════
+📄 [23/39] 23.jpg  (confidence: 95.8%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE ),
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001213
+Ngày 12 tháng 03 năm 2026
+Khách hàng: Quyền Trần - fb Trang Nguyễn
+SĐT: 0909264593
+Địa chỉ: 184 trần văn kiểu p10 q6 - -
+Đơn giá
+SL
+T.Tiền
+ĐÂM VOAN DÀI XOẮN NGỰC - M
+760,000
+760,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm tra và )
+lý cho quý khách nhanh nhất ạ.
+e yet elega
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Quyền Trần - fb Trang Nguyễn
+  ✓ MÃ: HD001213
+  ✓ QUẬN: 6
+  ✓ ĐỊA CHỈ: 184 trần văn kiểu p10
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 785
+
+════════════════════════════════════════════════════════════
+📄 [24/39] 24.jpg  (confidence: 89.8%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+ΞΙΛ ΥΠΟ
+ONQ1 ПЛ НЭУНЯ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+Khách hàng: thái an an
+SĐT: 0932192453
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001222
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: 21 đường số 7 p4 q4 -
+Đơn giá
+SL
+T.Tiền
+ĐẦM NGẮN DÂY VIỀN - HỒNG
+580,000
+580,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+580,000
+Chiết khấu :
+Tổng thanh toán:
+580,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+Ther
+Thứ 9 giao
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: thái an an
+  ✓ MÃ: HD001222
+  ✓ QUẬN: 4
+  ✓ ĐỊA CHỈ: 21 đường số 7 p4
+  ✓ TIỀN THU: 580
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 605
+
+════════════════════════════════════════════════════════════
+📄 [25/39] 25.jpg  (confidence: 94.6%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+ble
+20
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 100a5 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001224
+Ngày 12 tháng 03 năm 2026
+Khách hàng: Thụy An Dao
+SĐT: 0933465352
+Địa chỉ: Sảnh B2 chung cư Emerald phường Sơn Kỳ quận Tân Phú HCM
+Đơn giá
+ĐẦM REN LƯỚI CỔ VUÔNG - 5
+990,000
+Tổng 51: 1 cái
+SL
+T.Tiền
+990,000
+Tổng tiền hàng:
+990,000
+Chiết khấu :
+Tổng thanh toán:
+990,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng, để có sự cổ shop kiếm
+tra và xử lý cho quý khách nhanh nhất an
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Thụy An Dao
+  ✓ MÃ: HD001224
+  ✓ QUẬN: tan phu
+  ✓ ĐỊA CHỈ: Sảnh B2 chung cư Emerald
+  ✓ TIỀN THU: 990
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 1015
+
+════════════════════════════════════════════════════════════
+📄 [26/39] 26.jpg  (confidence: 96.0%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1 100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2 324 Huỳnh Văn Bánh,P10, Phú Nhuận
+Điện hoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001211
+1 gày 12 tháng 03 năm 2026
+Khách hàng: Bánh The
+SĐT: 0799151891
+Địa chỉ: 109/11/4 đường : ý 4 p15 quận gv - -
+Đơn giả
+SL
+T.Tiên
+SET LỤA NÚT BỌC - M
+740,000
+740,000
+SET LỤA NÚT BỌC - S
+740,000
+740,000
+Tổng SI: 2 cái
+Tổng tiền hàng:
+1,480,000
+Chiết khấu :
+Tổng thanh toán:
+1,480,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trê hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+13:00,quý khách quay lại ideo khi khui hàng,để có sự cô shop kiểm tra và xử
+lý cho quý khách nhanh nhất ạ.
+
+[GEMINI]
+[2026-03-14 00:49:38] [Gemini] TRIGGERED for: 26.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:49:41] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:41] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=go vap | TÊN KH=Bánh The | MÃ=HD001211 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Bánh The
+  ✓ MÃ: HD001211
+  ✓ QUẬN: gv
+  ✓ ĐỊA CHỈ: 109/11/4 đường : ý 4 p15 quận gv
+  ✓ TIỀN THU: 1480
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuong 16
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 1480
+
+════════════════════════════════════════════════════════════
+📄 [27/39] 27.jpg  (confidence: 88.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+ONOT INA
+ΠΛΗΡΗΣ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001417
+Ngày 13 tháng 03 năm 2026
+Khách hàng: Hoàng Anh Thư
+SĐT: 0909250431 - fb Hoàng Anh Thư
+Dia chi: -
+709 Ben Van
+P9 04
+T.Tiên
+SL
+Đơn giá
+ÁO 2 DÂY DHT - HỒNG
+290,000
+290,000
+ÁO SN IN 1668 - TRẮNG
+340,000
+340,000
+Tổng 51: 2 cái
+Tổng tiên hàng:
+630,000
+Chiết khấu :
+Tổng thanh toán:
+630,000
+Shop chỉ nhận đổi size sản phẩm (không đó mẫu hoặc màu khác) trong
+GÀY KỂ TỪ THời điểm trên hóa đơn di sản chưa qua sử dụng giặt ủi và
+35 ĐỘ, QUY Khách quay lại video khi khui hàng để có sự cả shop kiếm
+obach phat a
+
+[GEMINI]
+[2026-03-14 00:49:42] [Gemini] TRIGGERED for: 27.jpg | THIẾU: QUẬN, ĐỊA CHỈ
+[2026-03-14 00:49:45] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:45] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=4 | TÊN KH=Hoàng Anh Thư | MÃ=HD001417 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Hoàng Anh Thư
+  ✓ MÃ: HD001417
+  ✓ QUẬN: 4
+  ✓ ĐỊA CHỈ: 109 Bến Vân Đồn P9
+  ✓ TIỀN THU: 630
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ PHƯỜNG: phuong 9
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 655
+
+════════════════════════════════════════════════════════════
+📄 [28/39] 28.jpg  (confidence: 94.6%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+vet
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức, P5,Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Số HĐ: HD001416
+Ngày 13 tháng 03 năm 2026
+Khách hàng: Trần Phương Thảo
+SĐT: 0942694567
+Ship
+Địa chỉ: 41/14 đường tam bình, tam phú thủ đức -
+Đơn giá
+SET TAP TA NHŨ ĐÍNH HOA - KEM S
+SL
+trong ngày
+T.Tiên
+770,000
+770,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+770,000
+Chiết khấu :
+Tổng thanh toán:
+770,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Trần Phương Thảo
+  ✓ MÃ: HD001416
+  ✓ QUẬN: thu duc
+  ✓ ĐỊA CHỈ: 41/14 đường tam bình, tam phú
+  ✓ TIỀN THU: 770
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 800
+
+════════════════════════════════════════════════════════════
+📄 [29/39] 29.jpg  (confidence: 96.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Hong Yang
+SĐT: 0945880991
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001414
+Ngày 13 tháng 03 năm 2026
+Địa chỉ: Scenic valley 2 - Block B Tôn dật tiên - p tân phú quận 7 - -
+Đơn giá
+SL
+T.Tiên
+ĐẦM LỤA 2D - VÀNG M
+720,000
+720,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+720,000
+Chiết khấu :
+Tổng thanh toán:
+720,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quy khách quay lại video khi khui hàng, để có sự cô shop kiểm
+tra và xử lý cho quý khách nhanh nhất an
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Hong Yang
+  ✓ MÃ: HD001414
+  ✓ QUẬN: 7
+  ✓ ĐỊA CHỈ: Scenic valley 2 - Block B Tôn dật tiên - p
+  ✓ TIỀN THU: 720
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 750
+
+════════════════════════════════════════════════════════════
+📄 [30/39] 30.jpg  (confidence: 90.6%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+бири ош бәрі до биду
+a b c d buy a ca
+ob opp og i due to boog op G
+ON THE MAIN CO
+ΠΛΗΡΗΣ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1*10005 hích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE)
+0306462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001278
+Ngày 12 tháng 03 năm 2026
+Khách hàng: chị trang (fb Selena Phạm)
+SĐT: 0899199009
+Địa chỉ: 139/2 nguyễn văn lượn, f gò vấp, quận gò vấp - -
+Đơn giá
+SL
+T.Tiên
+ĐẦM LƯỚI HOA M
+850,000
+850,000
+Tổng SI: 1 cái
+Tổng tiền hàng:
+850,000
+Chiết khấu :
+Tổng thanh toán:
+850,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng, để có sự cố shop kiểm
+tra và xử lý cho quý khách nhau 7 nhất a.
+Dai hary lay hang in the 604
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: chị trang (fb Selena Phạm)
+  ✓ MÃ: HD001278
+  ✓ QUẬN: go vap
+  ✓ ĐỊA CHỈ: 139/2 nguyễn văn lượn, f
+  ✓ TIỀN THU: 850
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: c.cuong
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 875
+
+════════════════════════════════════════════════════════════
+📄 [31/39] 31.jpg  (confidence: 96.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*100a5 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYỂN SĨ)
+Khách hàng: Sun Na
+SĐT: 0968260203
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001256
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: Chung cư cardinal court toà B q7 - -
+Đơn giá
+SL
+T.Tiền
+ÁO SN IN 1668 - ĐEN
+340,000
+340,000
+ÁO SN IN 1668 - TRẮNG
+340,000
+340,000
+Tổng SL: 2 cái
+Tổng tiền hàng:
+680,000
+Chiết khấu :
+Tổng thanh toán:
+680,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cố shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+ÁCH VUI LÒNG
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Sun Na
+  ✓ MÃ: HD001256
+  ✓ QUẬN: 7
+  ✓ ĐỊA CHỈ: Chung cư cardinal court toà B
+  ✓ TIỀN THU: 680
+  ✓ TIỀN SHIP: 30
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 710
+
+════════════════════════════════════════════════════════════
+📄 [32/39] 32.jpg  (confidence: 96.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1*10005 Thích Quảng Đức,P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Hoàng Kim
+SĐT: 0937111633
+HÓA ĐƠN BÁN HÀNG
+SỐ HĐ: HD001423
+Ngày 13 tháng 03 năm 2026
+Địa chỉ: Dream Home Palace (1436 Trịnh Quang Nghị, P7) - -
+Đơn giá
+ĐÂM VOAN DÀI XOẮN NGỰC M
+SL
+T.Tiền
+760,000
+760,000
+Tổng SI: 1 cái
+Tổng tiên hàng:
+760,000
+Chiết khấu :
+Tổng thanh toán:
+760,000
+Shop chỉ nhận đổi size sản phẩm (không đổi mẫu hoặc màu khác) trong
+3 ngày kế từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00,quý khách quay lại video khi khui hàng,để có sự cổ shop kiểm
+tra và xử lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Hoàng Kim
+  ✓ MÃ: HD001423
+  ✓ QUẬN: g nghi
+  ✓ ĐỊA CHỈ: Dream Home Palace (1436 Trịnh Quang Nghị, P7)
+  ✓ TIỀN THU: 760
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 760
+
+════════════════════════════════════════════════════════════
+📄 [33/39] 33.jpg  (confidence: 93.1%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+ΤΗΣ ΑΠΟ
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chỉ:CN1 100a5 Thích Quảng Đức,P5,Phú Nhuận
+CN2 324 Huỳnh Văn Bánh,P10,Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng; Mai Mều
+SĐT: 0902801538
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001321
+I gày 12 tháng 03 năm 2026
+Địa chỉ: 168/8/1 Trần Văn Quang P10 Tân Bình -
+Đơn giá
+SL
+T,Tiền
+ĐẦM NGẮN DÂY VIỀN - E )
+580,000
+580,000
+Tống S1: 1 cái
+Tổng tiền hàng:
+580,000
+Chiết khấu :
+Tổng thanh toán:
+580,000
+phẩm (không đổi mẫu hoặc màu khác) trong
+hóa đơn đi kèm chưa qua sử dụng giặt ủi và sau
+deo khi khui hàng,để có sự cổ shop kiếm tra và xử
+Shop chỉ nhận đổi size sải
+3 ngày kể từ thời điểm trẻ
+13:00,quý khách quay lại
+lý cho quý khách nhanh nhất an
+
+[GEMINI]
+[2026-03-14 00:49:47] [Gemini] TRIGGERED for: 33.jpg | THIẾU: NGÀY LẤY
+[2026-03-14 00:49:51] [Gemini] INVOICE_TYPE override → COD (OCR was: COD)
+[2026-03-14 00:49:51] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN= | TÊN KH=Mai Mễu | MÃ=HD001321 | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Mai Mều
+  ✓ MÃ: HD001321
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: 168/8/1 Trần Văn Quang P10
+  ✓ TIỀN THU: 580
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 605
+
+════════════════════════════════════════════════════════════
+📄 [34/39] 34.jpg  (confidence: 95.0%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+you ele
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1-100a5 Thích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10, Phú Nhuận
+Điện thoại: 0932099729 (HOTLINE )
+0906462692 (CHUYÊN SỈ)
+HÓA ĐƠN BÁN HÀNG
+Sõ HD: HD001413
+Ngày 13 tháng 03 năm 2026
+Khách hàng: Ngọc - fb Duong Jade
+SĐT: 0936511291
+Địa chỉ: Ship và 55 Hiệp Nhất, Tân Bình, Hcm - -
+Đơn giá
+ĐÂM LỤA 2D - VÀNG S
+720,000
+Tổng SI: 1 cái
+SL
+T.Tiên
+720,000
+Tổng tiền hàng:
+720,000
+Chiết khấu :
+Tổng thanh toán:
+720,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và
+sau 13:00, quý khách quay lại video khi khui hàng để có sự có shop kiểm
+tra và xử lý cho quý khách nhanh nhất an
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Ngọc - fb Duong Jade
+  ✓ MÃ: HD001413
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: Ship và 55 Hiệp Nhất
+  ✓ TIỀN THU: 720
+  ✓ TIỀN SHIP: 55
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 13-03-2026
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 775
+
+════════════════════════════════════════════════════════════
+📄 [35/39] 35.jpg  (confidence: 93.1%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+CN
+ĐOÀN NGÂN CHÂU
+Địa Chi:CN1° 1045 Trích Quảng Đức, P5, Phú Nhuận
+CN2*324 Huỳnh Văn Bánh, P10,Phú Nhuận
+Điện thoại 0932099723 (FOILINE )
+0906462692 (CHUYÊN SỈ)
+Khách hàng: Thao San
+SĐT: 0964668932
+HÓA ĐƠN BÁN HÀNG
+So HD: HD001209
+Ngày 12 tháng 03 năm 2026
+Địa chỉ: Hòm thư 35,10 zone B park 1 vinhomes tân cảng phường 22 quận t
+nh thạnh - -
+Đơn giá
+ÁO HI IT'S ME - TRẮNG
+SL
+T.Tien
+370,000
+Tong Sl: 1 ca
+370,000
+Tổng tiền hàng:
+370,000
+Chiết khấu :
+Tổng thanh toán:
+370,000
+Shop chỉ nhận đổi size sản phẩm (không đối mẫu hoặc màu khác) trong
+3 ngày kể từ thời điểm trên hóa đơn đi kèm chưa qua sử dụng giặt ủi và sự
+13:00, quý khách quay lại video khi khui hàng, để có sự có shop kiểm tra và ..
+lý cho quý khách nhanh nhất ạ.
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG — đủ fields
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Thao San
+  ✓ MÃ: HD001209
+  ✓ QUẬN: tnh thanh
+  ✓ ĐỊA CHỈ: Hòm thư 35,10 zone B park 1 vinhomes tân cảng phường 22 quận tnh thạnh
+  ✓ TIỀN THU: 370
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: COD
+  ✓ NGÀY LẤY: 12-03-2026
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 370
+
+════════════════════════════════════════════════════════════
+📄 [36/39] 36.jpg  (confidence: 92.5%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+Để đảm bảo quyền lợi cho mình, bạn nhớ quay lại video quá
+trình mở hàng thế. Shop không thể giải quyết khiếu nại nếu
+không có video mở hàng,
+trif
+không
+Luck Luck
+DOAN NGAN CHAU
+HOTLINE
+32.099.729-0983.7777.17
+0932.099.729
+phường phước long, tp
+Số nhà 97A, đường 22,
+hcm
+THU SHIP
+0766274311 linh
+QUÝ KHÁCH VUI LÒNG
+QUAY VIDEO KHI MỞ HÀNG
+Để đảm bảo quyền lợi cho mình, bạn nhớ quay lại vi
+trình mở hàng nhé. Shop không thể giải quyết khiếu
+không có video mở hàng.
+no
+
+[GEMINI]
+[2026-03-14 00:49:52] [Gemini] TRIGGERED for: 36.jpg | THIẾU: SHOP, QUẬN, ĐỊA CHỈ, MÃ, NGÀY LẤY
+[2026-03-14 00:49:56] [Gemini] OK | SHOP=DOAN NGAN CHAU | QUẬN=tp | TÊN KH=linh | MÃ= | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ⚠️ THIẾU 1 fields: MÃ — đã lưu, cần check thủ công
+  ✓ SHOP: DOAN NGAN CHAU
+  ✓ TÊN KH: linh
+  ⚠️ MÃ: (trống)
+  ✓ QUẬN: tp
+  ✓ ĐỊA CHỈ: Số nhà 97A, đường 22
+  ✓ TIỀN THU: 0
+  ✓ TIỀN SHIP: 
+  ✓ INVOICE_TYPE: SHIP_ONLY_PAID
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuoc long
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 0
+
+════════════════════════════════════════════════════════════
+📄 [37/39] 37.jpg  (confidence: 93.3%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+Ị DIỄM CHI
+Khách hàng : BELLA
+TRAN
+số điện thoại : 0914749933
+66đường 17 p10 quận 6
+THU SHIP
+QUÝ KHÁCH VUI LÒNG
+QUAY VIDEO KHI MỞ HÀNG
+259
+Để đảm bảo quyền lợi cho mình, bạn nhớ quay lại video quá
+trình mở hàng nhé. Shop không thể giải quyết khiếu nại nếu
+không có video mở hàng.
+0932.099.729
+2099.729-0983.7777.17
+DOAN NGAN CHAU
+
+[GEMINI]
+[2026-03-14 00:49:57] [Gemini] TRIGGERED for: 37.jpg | THIẾU: SHOP, QUẬN, ĐỊA CHỈ, MÃ, NGÀY LẤY
+[2026-03-14 00:50:02] [Gemini] OK | SHOP=ĐOÀN NGÂN CHÂU | QUẬN=6 | TÊN KH=BELLA TRẦN | MÃ= | THU= | SHIP= | NGÀY= | TYPE=COD
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ⚠️ THIẾU 1 fields: MÃ — đã lưu, cần check thủ công
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: BELLA
+  ⚠️ MÃ: (trống)
+  ✓ QUẬN: 6
+  ✓ ĐỊA CHỈ: 66 đường 17 p10
+  ✓ TIỀN THU: 0
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: SHIP_ONLY_PAID
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuong 10
+  ✓ NGƯỜI ĐI: AT  14-03
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 25
+
+════════════════════════════════════════════════════════════
+📄 [38/39] 38.jpg  (confidence: 82.8%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+Tân
+QUÝ KHÁCH VUI LÒNG
+QUAY VIDEO KHI MỞ HÀNG
+Để đảm bảo quyền lợi cho mình, bạn nhớ quay lại video quả
+trình mở hàng nhé. Shop không thể giải quyết khiếu nại nêu
+không có video mở hàng.
+Kinkhan in truc
+Don
+117
+0901203770
+Sdt nhận hàng:
+2, Tân Bình, TPHCM
+29/7 Yên Thế, Phường
+Tên Hong Nho+ NGUYỄN THỊ DIỄM CHI
+Luck luck
+THU SHIP
+
+[GEMINI]
+[2026-03-14 00:50:03] [Gemini] TRIGGERED for: 38.jpg | THIẾU: SHOP, QUẬN, ĐỊA CHỈ, MÃ, NGÀY LẤY
+[2026-03-14 00:50:08] [Gemini] INVOICE_TYPE override → SHIP_ONLY_PAID (OCR was: SHIP_ONLY_PAID)
+[2026-03-14 00:50:08] [Gemini] OK | SHOP= | QUẬN=tan binh | TÊN KH=NGUYỄN THỊ DIỄM CHI | MÃ= | THU= | SHIP= | NGÀY= | TYPE=SHIP_ONLY_PAID
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ⚠️ THIẾU 1 fields: MÃ — đã lưu, cần check thủ công
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Sdt nhận hàng:
+  ⚠️ MÃ: (trống)
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: 29/7 Yên Thế
+  ✓ TIỀN THU: 0
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: SHIP_ONLY_PAID
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ PHƯỜNG: phuong 2
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 25
+
+════════════════════════════════════════════════════════════
+📄 [39/39] 39.jpg  (confidence: 92.0%)
+────────────────────────────────────────────────────────────
+[RAW OCR]
+NGAN CHAU
+0932.099.729
+9-0983.7777.17
+Quá
+nếu
+Để đảm bà
+trình mở hạ
+không có vì
+Mr Thế
+0908063280
+(Zalo: Minh Tuệ)
+27/5 Quách Văn Tuấn, F12, Tân
+Bình, Hcm
+THU SHIP
+0901203770
+Sdt nhận hàng:
+2, Tân Bình, TPHCM
+29/7 Yên Thế, Phường
+Tên Hong Nho+ NGUYỄN THỊ DIỄ
+Luck luck
+THU SHIP
+"Ý KHÁCH VUI LÒNG
+VIDEO KHI MỞ HÀNG
+bo
+' mình, bạn nhớ quay lại vì sợ
+trình mở hàng nhé. Shop không thể giải quyết khiều nơi,
+không có vị lạ, mở hàng
+
+[GEMINI]
+[2026-03-14 00:50:08] [Gemini] TRIGGERED for: 39.jpg | THIẾU: SHOP, QUẬN, ĐỊA CHỈ, MÃ, NGÀY LẤY
+[2026-03-14 00:50:11] [Gemini] INVOICE_TYPE override → SHIP_ONLY_PAID (OCR was: SHIP_ONLY_PAID)
+[2026-03-14 00:50:11] [Gemini] OK | SHOP= | QUẬN=tan binh | TÊN KH=NGUYỄN THỊ DIE | MÃ= | THU= | SHIP= | NGÀY= | TYPE=SHIP_ONLY_PAID
+
+[MAPPING]
+📊 KẾT QUẢ MAP: ⚠️ THIẾU 1 fields: MÃ — đã lưu, cần check thủ công
+  ✓ SHOP: ĐOÀN NGÂN CHÂU
+  ✓ TÊN KH: Sdt nhận hàng:
+  ⚠️ MÃ: (trống)
+  ✓ QUẬN: tan binh
+  ✓ ĐỊA CHỈ: 29/7 Yên Thế, Phường 2
+  ✓ TIỀN THU: 0
+  ✓ TIỀN SHIP: 25
+  ✓ INVOICE_TYPE: SHIP_ONLY_PAID
+  ✓ NGÀY LẤY: 14-03-2026.
+  ✓ NGƯỜI ĐI: c.hieu
+  ✓ NGƯỜI LẤY: c.cuong
+  ✓ TIỀN HÀNG: 25
+
+════════════════════════════════════════════════════════════
+✅ Đủ fields: 34/39
+⚠️ Thiếu field: 5/39

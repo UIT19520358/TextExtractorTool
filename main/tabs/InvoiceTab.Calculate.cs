@@ -398,7 +398,7 @@ namespace TextInputter
                         d.TienShip += tienShipRow;
                         d.SoDon++;
                         d.IsAnTam = nguoiRow.StartsWith(
-                            AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString(" dd-MM"),
+                            AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM"),
                             StringComparison.OrdinalIgnoreCase
                         );
                         if (isTra)

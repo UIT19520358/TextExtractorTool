@@ -471,6 +471,7 @@ namespace TextInputter
             { "long phuoc", "9" }, // Phường Long Phước — Q9 cũ
             { "phuoc long a", "9" }, // Phường Phước Long A — Q9 cũ
             { "phuoc long b", "9" }, // Phường Phước Long B — Q9 cũ
+            { "phuoc long", "9" }, // Phường Phước Long — Q9 cũ
             { "tang nhon phu a", "9" }, // Phường Tăng Nhơn Phú A — Q9 cũ
             { "tang nhon phu b", "9" }, // Phường Tăng Nhơn Phú B — Q9 cũ
             { "truong thanh", "9" }, // Phường Trường Thạnh — Q9 cũ
