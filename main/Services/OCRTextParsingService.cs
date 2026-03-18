@@ -85,6 +85,11 @@ namespace TextInputter.Services
             }
             if (string.IsNullOrEmpty(fields["SHOP"]))
                 missingFields.Add("SHOP");
+            else
+            {
+                // Normalize: OCR hay sai chính tả (Đoàn NGĂn châu, DOÀN NGÂN CHÂU...) → hardcode SHOP_DEFAULT
+                fields["SHOP"] = AppConstants.SHOP_DEFAULT;
+            }
 
             // 2. TÊN KH — "Khách hàng: ..." / "Khách hàng. ..." / "Khách hàng; ..." (OCR hay đọc ":" thành "."/";")
             var khMatch = Regex.Match(
@@ -336,9 +341,9 @@ namespace TextInputter.Services
                     .GetResult();
                 if (g != null)
                 {
-                    // SHOP — Gemini đọc được tên shop từ header hóa đơn
+                    // SHOP — Gemini đọc được tên shop từ header hóa đơn → hardcode SHOP_DEFAULT
                     if (string.IsNullOrEmpty(fields["SHOP"]) && !string.IsNullOrEmpty(g.TenShop))
-                        fields["SHOP"] = g.TenShop;
+                        fields["SHOP"] = AppConstants.SHOP_DEFAULT;
                     // Địa chỉ
                     if (string.IsNullOrEmpty(fields["QUẬN"]) && !string.IsNullOrEmpty(g.Quan))
                     {

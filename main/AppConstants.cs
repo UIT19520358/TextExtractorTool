@@ -186,6 +186,44 @@ namespace TextInputter
         };
 
         /// <summary>
+        /// Bảng phí ship riêng cho AT (An Tâm) — tính theo zone, khác với bảng phí chung.
+        /// Dùng để tính tiền ship trong report nhỏ từng người cho AT.
+        /// Zone 1 (17k): Q1,3,4,5,6,7,8,10,11, Tân Bình, Phú Nhuận, Tân Phú, Gò Vấp
+        /// Zone 2 (25k): Q12, Bình Tân, TP.Thủ Đức (Q2,9,Thủ Đức)
+        /// Zone 3 (30k): Nhà Bè, Bình Chánh, Hóc Môn
+        /// </summary>
+        public static readonly Dictionary<string, decimal> AT_SHIPPING_FEES = new Dictionary<
+            string,
+            decimal
+        >(System.StringComparer.OrdinalIgnoreCase)
+        {
+            // Zone 1: 17k — Giao trong ngày
+            { "1", 17m },
+            { "3", 17m },
+            { "4", 17m },
+            { "5", 17m },
+            { "6", 17m },
+            { "7", 17m },
+            { "8", 17m },
+            { "10", 17m },
+            { "11", 17m },
+            { "tan binh", 17m },
+            { "phu nhuan", 17m },
+            { "tan phu", 17m },
+            { "go vap", 17m },
+            // Zone 2: 25k — Giao trong ngày hoặc qua ngày
+            { "12", 25m },
+            { "binh tan", 25m },
+            { "2", 25m },
+            { "9", 25m },
+            { "thu duc", 25m },
+            // Zone 3: 30k
+            { "nha be", 30m },
+            { "binh chanh", 30m },
+            { "hoc mon", 30m },
+        };
+
+        /// <summary>
         /// Bảng phí ship theo PHƯỜNG cụ thể — override bảng phí theo quận.
         /// Dùng khi cùng một quận nhưng các phường có phí ship khác nhau.
         ///

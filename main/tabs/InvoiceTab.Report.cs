@@ -269,19 +269,54 @@ namespace TextInputter
                     );
                     dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
 
-                    // tiền ship — auto-filled: -(TongShip - SoDonGiao × 5k)
-                    string shipInfo =
-                        nd.SoDonGop > 0
-                            ? $"giao {nd.SoDonGiao:N0} ({nd.SoDonGop} gộp)"
-                            : $"giao {nd.SoDonGiao:N0}";
-                    ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
-                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
-                    if (nd.TienShipTru < 0)
-                        dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
+                    if (nd.IsAnTam && nd.AtZoneBreakdown.Count > 0)
+                    {
+                        // AT: hiển thị zone breakdown trước tiền ship tổng
+                        foreach (var zone in nd.AtZoneBreakdown.OrderBy(z => z.Key))
+                        {
+                            decimal zoneTotal = -(zone.Key * zone.Value);
+                            ri = dgvNguoi.Rows.Add(
+                                $"  {zone.Value} × {zone.Key:N0}k",
+                                zoneTotal.ToString("N0"),
+                                ""
+                            );
+                            dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
+                            dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
+                        }
+                        // tiền ship tổng cho AT
+                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), $"{soDonNguoi:N0} đơn");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        if (nd.TienShipTru < 0)
+                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
+                    }
+                    else
+                    {
+                        // Shipper khác: công thức cũ -(TongShip - SoDonGiao × 5k)
+                        string shipInfo =
+                            nd.SoDonGop > 0
+                                ? $"giao {nd.SoDonGiao:N0} ({nd.SoDonGop} gộp)"
+                                : $"giao {nd.SoDonGiao:N0}";
+                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        if (nd.TienShipTru < 0)
+                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
+                    }
 
-                    // tiền lấy — label only (matching template)
-                    ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
-                    dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    // tiền lấy — chỉ hiện giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
+                    bool isNguoiLay = tenNguoi.Equals(AppConstants.NGUOI_LAY_DEFAULT, StringComparison.OrdinalIgnoreCase);
+                    if (isNguoiLay && nd.TienLay != 0)
+                    {
+                        decimal donLayCount = r.SoDon - r.TotalDonGop;
+                        ri = dgvNguoi.Rows.Add("tiền lấy", nd.TienLay.ToString("N0"), $"{donLayCount:N0}");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                        if (nd.TienLay < 0)
+                            dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
+                    }
+                    else
+                    {
+                        ri = dgvNguoi.Rows.Add("tiền lấy", "", "");
+                        dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
+                    }
 
                     // đơn trả — auto-filled nếu có, đỏ nếu chưa có
                     if (nd.SoDonTra > 0)
@@ -303,8 +338,8 @@ namespace TextInputter
                     ri = dgvNguoi.Rows.Add("đơn cũ ck", "", "");
                     dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Red;
 
-                    // Dòng KẾT — tính tự động: thu + ship + trả (no tiền lấy)
-                    decimal ketNguoi = tienThuNguoi + nd.TienShipTru + nd.TienDonTra;
+                    // Dòng KẾT — tính tự động: thu + ship + lấy + trả
+                    decimal ketNguoi = tienThuNguoi + nd.TienShipTru + nd.TienLay + nd.TienDonTra;
                     ri = dgvNguoi.Rows.Add(
                         "KẾT",
                         ketNguoi.ToString("N0"),

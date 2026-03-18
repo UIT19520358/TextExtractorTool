@@ -24,10 +24,13 @@ namespace TextInputter
             public decimal TienShipTru { get; set; }   // -(TongShip - SoDonGiao × 5k), số âm
             public decimal TienLay { get; set; }       // -((SoDon - SoDonTra - SoDonGop) × 2k), số âm
             public decimal TienDonTra { get; set; }    // Tổng tiền trừ đơn trả, số âm
-            public bool IsAnTam { get; set; }          // true = An Tâm → skip ship/lấy/trả calculation
+            public bool IsAnTam { get; set; }          // true = An Tâm → dùng bảng phí AT_SHIPPING_FEES
 
             /// <summary>Số đơn giao thực tế = SoDon − SoDonGop</summary>
             public decimal SoDonGiao => SoDon - SoDonGop;
+
+            /// <summary>Breakdown phí ship AT theo zone (zone_fee → order_count). Chỉ dùng khi IsAnTam=true.</summary>
+            public System.Collections.Generic.Dictionary<decimal, int> AtZoneBreakdown { get; set; } = new();
 
             /// <summary>Chi tiết từng đơn trả: (MÃ HĐ, TiềnThu, ShipFee theo quận, Tiền trừ)</summary>
             public System.Collections.Generic.List<(string Ma, decimal TienThu, decimal ShipFee, decimal Deduction)>
@@ -58,6 +61,9 @@ namespace TextInputter
 
             // Các row âm (đơn trả, đơn cũ ck...) lấy từ Excel
             public System.Collections.Generic.List<(string Label, decimal Amount)> NegativeRows { get; set; } = new();
+
+            /// <summary>Tiền lấy tổng (cho NGUỜI LẤY) = -(totalOrders - totalDonGop) × PHI_LAY_HANG_MOI_DON</summary>
+            public decimal TienLayTong { get; set; }
 
             // Report chi tiết theo từng người đi (thay thế tuple cũ)
             public System.Collections.Generic.Dictionary<string, NguoiDiDetail> DetailByNguoiDi { get; set; } =

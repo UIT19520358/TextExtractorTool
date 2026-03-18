@@ -465,11 +465,50 @@ namespace TextInputter.Services
                 // ── Auto-detect đơn gộp → ghi GHI CHÚ = "gộp" ──────────────
                 AutoMarkDonGop(worksheet, lastDataRow);
 
+                // ── AT zone breakdown rows (cột H, giữa subtotal và summary) ──
+                // Tính số đơn AT theo zone phí ship, ghi =-count*fee vào cột H
+                string atNguoiDi = distinctNguoiDis.FirstOrDefault(n =>
+                    n.StartsWith(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase));
+                int atZoneStartRow = -1, atZoneEndRow = -1;
+                if (!string.IsNullOrEmpty(atNguoiDi))
+                {
+                    var atZoneCounts = new Dictionary<decimal, int>();
+                    for (int r = DATA_START_ROW; r <= lastDataRow; r++)
+                    {
+                        string shopVal = worksheet.Cell(r, COL_SHOP).GetString().Trim();
+                        if (string.IsNullOrWhiteSpace(shopVal)) continue;
+                        string nguoi = worksheet.Cell(r, COL_NGUOIDI).GetString().Trim();
+                        if (!nguoi.Equals(atNguoiDi, StringComparison.OrdinalIgnoreCase)) continue;
+                        string quan = worksheet.Cell(r, COL_QUAN).GetString().Trim();
+                        decimal atFee = LookupShipFeeByDict(quan, AppConstants.AT_SHIPPING_FEES);
+                        if (atFee == 0m) continue;
+                        if (!atZoneCounts.ContainsKey(atFee))
+                            atZoneCounts[atFee] = 0;
+                        atZoneCounts[atFee]++;
+                    }
+                    if (atZoneCounts.Count > 0)
+                    {
+                        int zoneRow = subtotalRow + 1;
+                        atZoneStartRow = zoneRow;
+                        foreach (var zone in atZoneCounts.OrderBy(z => z.Key))
+                        {
+                            worksheet.Cell(zoneRow, COL_TIENSHIP).FormulaA1 =
+                                $"-{zone.Value}*{zone.Key:0}";
+                            zoneRow++;
+                        }
+                        atZoneEndRow = zoneRow - 1;
+                    }
+                }
+
                 // ── BẢNG PHẢI: per NGƯỜI ĐI ───────────────────────────────────
                 int rightEndRow = BuildRightSummary(
                     worksheet,
                     distinctNguoiDis,
                     summaryRow,
+                    subtotalRow,
+                    lastDataRow,
+                    atZoneStartRow,
+                    atZoneEndRow,
                     rThu,
                     rShip,
                     rNguoiDi,
@@ -746,6 +785,10 @@ namespace TextInputter.Services
             IXLWorksheet worksheet,
             List<string> distinctNguoiDis,
             int startRow,
+            int subtotalRow,
+            int lastDataRow,
+            int atZoneStartRow,
+            int atZoneEndRow,
             string rThu,
             string rShip,
             string rNguoiDi,
@@ -759,9 +802,11 @@ namespace TextInputter.Services
             string valColL = ColLetter(COL_NGAYLAY); // L — values (Tiền Thu)
             string cntColL = ColLetter(COL_GHICHU); // M — counts (Số đơn)
             string nameColL = ColLetter(COL_NGUOILAY); // K — labels/names
+            string shipHColL = ColLetter(COL_TIENSHIP); // H — ship fee / zone calcs
+            string col1ColL = ColLetter(COL_COL1); // Q — order count column
 
             // ── Thu thập data rows per NGƯỜI ĐI để tính đơn gộp + đơn trả ──
-            int lastDataRow = DATA_START_ROW - 1;
+            int computedLastDataRow = DATA_START_ROW - 1;
             foreach (var row in worksheet.RowsUsed())
             {
                 int rn = row.RowNumber();
@@ -769,7 +814,7 @@ namespace TextInputter.Services
                     continue;
                 string shopVal = row.Cell(COL_SHOP).GetString().Trim();
                 if (!string.IsNullOrWhiteSpace(shopVal))
-                    lastDataRow = Math.Max(lastDataRow, rn);
+                    computedLastDataRow = Math.Max(computedLastDataRow, rn);
             }
 
             // Collect per-person row data
@@ -784,7 +829,7 @@ namespace TextInputter.Services
                     bool IsTra
                 )>
             >(StringComparer.OrdinalIgnoreCase);
-            for (int r = DATA_START_ROW; r <= lastDataRow; r++)
+            for (int r = DATA_START_ROW; r <= computedLastDataRow; r++)
             {
                 string shopVal = worksheet.Cell(r, COL_SHOP).GetString().Trim();
                 if (string.IsNullOrWhiteSpace(shopVal))
@@ -838,6 +883,15 @@ namespace TextInputter.Services
                 }
                 int soDonGiao = soDon - soDonGop;
 
+                bool isAnTam = nd.StartsWith(
+                    AppConstants.NGUOI_DI_DEFAULT,
+                    StringComparison.OrdinalIgnoreCase
+                );
+                bool isNguoiLay = nd.Equals(
+                    AppConstants.NGUOI_LAY_DEFAULT,
+                    StringComparison.OrdinalIgnoreCase
+                );
+
                 int b0 = curRow;
                 int b1 = curRow + 1;
                 int b2 = curRow + 2;
@@ -859,18 +913,38 @@ namespace TextInputter.Services
                 worksheet.Cell(b1, COL_NGAYLAY).FormulaA1 = $"SUMIFS({rThu},{rNguoiDi},{nameRef})";
                 worksheet.Cell(b1, COL_GHICHU).FormulaA1 = $"SUMIFS({rCol1},{rNguoiDi},{nameRef})";
 
-                // tiền ship: -(SUMIFS(Ship) - SoDonGiao × 5k)
-                // soDonGiao = tổng đơn - đơn gộp (all via Excel formulas)
-                // M_b2 = SUMIFS(COL1, NguoiDi, tên) - COUNTIFS(NguoiDi, tên, GhiChu, "*gộp*")
-                //       = tổng đơn - số đơn gộp = số đơn giao thực tế
+                // tiền ship
                 worksheet.Cell(b2, COL_NGUOILAY).Value = "tiền ship";
-                worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
-                    $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")";
-                worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
-                    $"-SUMIFS({rShip},{rNguoiDi},{nameRef})+{cntColL}{b2}*{AppConstants.PHI_SHIP_MOI_DON}";
+                if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
+                {
+                    // AT: tiền ship = SUM of zone breakdown rows in column H
+                    worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
+                        $"SUM({shipHColL}{atZoneStartRow}:{shipHColL}{atZoneEndRow})";
+                    // Số đơn cho AT: tổng đơn (không trừ gộp, vì zone tính per-order)
+                    worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
+                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})";
+                }
+                else
+                {
+                    // Shipper khác: -(SUMIFS(Ship) - SoDonGiao × 5k)
+                    worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
+                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")";
+                    worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
+                        $"-SUMIFS({rShip},{rNguoiDi},{nameRef})+{cntColL}{b2}*{AppConstants.PHI_SHIP_MOI_DON}";
+                }
 
-                // tiền lấy — label only (template has no computed value)
+                // tiền lấy — chỉ có giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
                 worksheet.Cell(b3, COL_NGUOILAY).Value = "tiền lấy";
+                if (isNguoiLay)
+                {
+                    // M = totalOrders - COUNTIFS("*gộp*")/2
+                    string rGhiChuFull =
+                        $"{ColLetter(COL_GHICHU)}${DATA_START_ROW}:{ColLetter(COL_GHICHU)}${lastDataRow}";
+                    worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
+                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)";
+                    worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
+                        $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
+                }
 
                 // đơn trả — auto-filled from FAIL=xx data
                 worksheet.Cell(b4, COL_NGUOILAY).Value = "đơn trả";
@@ -1167,9 +1241,18 @@ namespace TextInputter.Services
         /// </summary>
         private static decimal LookupShipFeeByQuan(string quan)
         {
+            return LookupShipFeeByDict(quan, AppConstants.SHIPPING_FEES_BY_QUAN);
+        }
+
+        /// <summary>
+        /// Tra cứu phí ship từ dictionary tùy ý (dùng cho cả bảng chung và bảng AT).
+        /// Tự bỏ dấu + normalize quận trước khi tra. Trả về 0 nếu không tìm thấy.
+        /// </summary>
+        private static decimal LookupShipFeeByDict(string quan, Dictionary<string, decimal> feeDict)
+        {
             if (string.IsNullOrWhiteSpace(quan))
                 return 0m;
-            if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(quan.Trim(), out decimal fee1))
+            if (feeDict.TryGetValue(quan.Trim(), out decimal fee1))
                 return fee1;
             string norm = RemoveDiacriticsSimple(quan).ToLowerInvariant().Trim();
             norm = System.Text.RegularExpressions.Regex.Replace(
@@ -1177,12 +1260,12 @@ namespace TextInputter.Services
                 @"^(quan|huyen|tp|thanh pho)\s+",
                 ""
             );
-            if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(norm, out decimal fee2))
+            if (feeDict.TryGetValue(norm, out decimal fee2))
                 return fee2;
             var numMatch = System.Text.RegularExpressions.Regex.Match(norm, @"\d+");
             if (
                 numMatch.Success
-                && AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(numMatch.Value, out decimal fee3)
+                && feeDict.TryGetValue(numMatch.Value, out decimal fee3)
             )
                 return fee3;
             return 0m;

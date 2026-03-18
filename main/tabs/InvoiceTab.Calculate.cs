@@ -441,15 +441,31 @@ namespace TextInputter
                     totalDonGop += d.SoDonGop;
                     totalDonTra += d.SoDonTra;
 
-                    // Tính deductions (tất cả người đi, kể cả An Tâm)
-                    // Tiền ship trừ: -(TongShip - SoDonGiao × 5k)
-                    d.TienShipTru = -(d.TienShip - d.SoDonGiao * AppConstants.PHI_SHIP_MOI_DON);
+                    if (d.IsAnTam)
+                    {
+                        // AT: tính ship theo bảng phí AT zone (per ORDER, không trừ gộp)
+                        var zoneBreakdown = new Dictionary<decimal, int>();
+                        foreach (var r in rows)
+                        {
+                            decimal atFee = LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES);
+                            if (atFee == 0m) continue; // quận không có trong bảng AT
+                            if (!zoneBreakdown.ContainsKey(atFee))
+                                zoneBreakdown[atFee] = 0;
+                            zoneBreakdown[atFee]++;
+                        }
+                        d.AtZoneBreakdown = zoneBreakdown;
+                        d.TienShipTru = 0;
+                        foreach (var z in zoneBreakdown)
+                            d.TienShipTru -= z.Key * z.Value;
+                    }
+                    else
+                    {
+                        // Shipper khác: công thức cũ -(TongShip - SoDonGiao × 5k)
+                        d.TienShipTru = -(d.TienShip - d.SoDonGiao * AppConstants.PHI_SHIP_MOI_DON);
+                    }
 
-                    // Tiền lấy: -((SoDon - SoDonTra - SoDonGop) × 2k)
-                    decimal donLayThucTe = d.SoDon - d.SoDonTra - d.SoDonGop;
-                    if (donLayThucTe < 0)
-                        donLayThucTe = 0;
-                    d.TienLay = -(donLayThucTe * AppConstants.PHI_LAY_HANG_MOI_DON);
+                    // Tiền lấy: không tính per-person, tính global cho NGUOI_LAY_DEFAULT
+                    d.TienLay = 0;
 
                     // Đơn trả: -(tienThu - shipFee + 5k) per return
                     foreach (var r in rows.Where(r => r.IsTra))
@@ -460,6 +476,22 @@ namespace TextInputter
                         );
                         d.TienDonTra += deduction;
                         d.DonTraDetails.Add((r.Ma, r.TienThu, shipFeeLookup, deduction));
+                    }
+                }
+
+                // Tính tiền lấy global cho NGUOI_LAY_DEFAULT (c.cuong)
+                // = -(totalOrders - totalDonGop) × PHI_LAY_HANG_MOI_DON
+                decimal donLayGlobal = totalSoDon - totalDonGop;
+                if (donLayGlobal < 0) donLayGlobal = 0;
+                decimal tienLayTong = -(donLayGlobal * AppConstants.PHI_LAY_HANG_MOI_DON);
+
+                // Gán tiền lấy vào đúng người lấy (c.cuong) nếu có trong detailByNguoiDi
+                foreach (var kvp in detailByNguoiDi)
+                {
+                    if (kvp.Key.Equals(AppConstants.NGUOI_LAY_DEFAULT, StringComparison.OrdinalIgnoreCase))
+                    {
+                        kvp.Value.TienLay = tienLayTong;
+                        break;
                     }
                 }
 
@@ -607,6 +639,7 @@ namespace TextInputter
                     TongTienThuHangTon = totalTienThuHangTon,
                     TongTienShipHangTon = totalTienShipHangTon,
                     SoDonHangTon = soDonHangTon,
+                    TienLayTong = tienLayTong,
                     DetailByNguoiDi = detailByNguoiDi,
                     NegativeRows = negativeRows
                         .Select(nr =>
@@ -684,11 +717,20 @@ namespace TextInputter
         /// </summary>
         private static decimal LookupShipFeeByQuan(string quan)
         {
+            return LookupShipFeeByDict(quan, AppConstants.SHIPPING_FEES_BY_QUAN);
+        }
+
+        /// <summary>
+        /// Tra cứu phí ship từ dictionary tùy ý (dùng cho cả bảng chung và bảng AT).
+        /// Tự bỏ dấu + normalize quận trước khi tra. Trả về 0 nếu không tìm thấy.
+        /// </summary>
+        private static decimal LookupShipFeeByDict(string quan, Dictionary<string, decimal> feeDict)
+        {
             if (string.IsNullOrWhiteSpace(quan))
                 return 0m;
 
             // 1. Thử exact match (case-insensitive đã có trong dictionary)
-            if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(quan.Trim(), out decimal fee1))
+            if (feeDict.TryGetValue(quan.Trim(), out decimal fee1))
                 return fee1;
 
             // 2. Normalize: strip diacritics + lowercase
@@ -700,7 +742,7 @@ namespace TextInputter
                 ""
             );
 
-            if (AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(norm, out decimal fee2))
+            if (feeDict.TryGetValue(norm, out decimal fee2))
                 return fee2;
 
             // 3. Thử chỉ lấy số (nếu quận số: "Quận 1" → "1")
@@ -708,7 +750,7 @@ namespace TextInputter
             if (numMatch.Success)
             {
                 if (
-                    AppConstants.SHIPPING_FEES_BY_QUAN.TryGetValue(numMatch.Value, out decimal fee3)
+                    feeDict.TryGetValue(numMatch.Value, out decimal fee3)
                 )
                     return fee3;
             }
