@@ -1,5 +1,5 @@
 # Credentials (IMPORTANT - NEVER COMMIT TO GIT)
-text-extractor-489011-ee19271357bd.json
+*.json
 
 # Build artifacts
 bin/
