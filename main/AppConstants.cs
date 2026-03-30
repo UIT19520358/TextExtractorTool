@@ -503,6 +503,7 @@ namespace TextInputter
             { "an khanh", "2" }, // Phường An Khánh — Q2 cũ
             { "binh trung dong", "2" }, // Phường Bình Trưng Đông — Q2 cũ
             { "binh trung tay", "2" }, // Phường Bình Trưng Tây — Q2 cũ
+            { "an loi dong", "2" }, // Phường An Lợi Đông — Q2 cũ
             { "binh trung", "2" }, // Dự phòng nếu OCR không phân biệt Đông/Tây
             { "long binh", "9" }, // Phường Long Bình — Q9 cũ → 30k
             { "long thanh my", "9" }, // Phường Long Thạnh Mỹ — Q9 cũ
