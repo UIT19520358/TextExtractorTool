@@ -102,6 +102,38 @@ namespace TextInputter.Services
             khRaw = Regex.Replace(khRaw, @"^[\s;.,\-–—:]+", "").Trim();
             // Nếu có "VIP" ở đầu (như "VIP- TÊN KH") thì bỏ
             khRaw = Regex.Replace(khRaw, @"^VIP[\s\-–—]*", "", RegexOptions.IgnoreCase).Trim();
+
+            // Hàng sỉ — Loại E: "NGƯỜI NHẬN : Tên KH" / "Người nhận: Tên KH"
+            if (string.IsNullOrEmpty(khRaw))
+            {
+                var nguoiNhanMatch = Regex.Match(
+                    text,
+                    @"(?:NGƯỜI\s*NHẬN|Ng[ưừ][oờ]i\s*nh[aậ]n)\s*[:=.;]?\s*([^\n\r(]+)",
+                    RegexOptions.IgnoreCase
+                );
+                if (nguoiNhanMatch.Success)
+                {
+                    var candidate = nguoiNhanMatch.Groups[1].Value.Trim();
+                    // Strip SĐT cuối nếu có: "Kim Liên (0868..." → "Kim Liên"
+                    candidate = Regex.Replace(candidate, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "").Trim();
+                    if (candidate.Length >= 2)
+                        khRaw = candidate;
+                }
+            }
+
+            // Hàng sỉ — Loại F: "SỈ <tên>" ở đầu label (VD: "SỈ BÉ")
+            // → tên KH = phần sau "SỈ"
+            if (string.IsNullOrEmpty(khRaw))
+            {
+                var siMatch = Regex.Match(
+                    text,
+                    @"(?:^|\n)\s*[Ss][Ỉỉ]\s+([A-ZĐÀÁẢÃẠĂẮẶẰẲẴÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴa-záàảãạăắặằẳẵâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ][^\n\r]{0,30})",
+                    RegexOptions.Multiline
+                );
+                if (siMatch.Success)
+                    khRaw = siMatch.Groups[1].Value.Trim();
+            }
+
             // Loại C — nhãn viết tay: không có "Khách hàng:" nhưng có SĐT kèm tên khách
             // VD: "0906590639 THƯƠNG 1994" → lấy phần tên sau SĐT
             if (string.IsNullOrEmpty(khRaw))
@@ -113,6 +145,55 @@ namespace TextInputter.Services
                 );
                 if (soPhoiTenMatch.Success)
                     khRaw = soPhoiTenMatch.Groups[2].Value.Trim();
+            }
+
+            // Hàng sỉ — Loại G: tên khách là dòng ĐẦU TIÊN có nghĩa (viết tay)
+            // Điều kiện: dòng đầu không chứa keyword hệ thống (QUY KHACH, QUAY VIDEO...),
+            // không phải SĐT thuần, có ≥ 2 ký tự chữ, không phải SHOP
+            if (string.IsNullOrEmpty(khRaw))
+            {
+                var allLines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var rawLine in allLines)
+                {
+                    var lineTrimmed = rawLine.Trim();
+                    if (lineTrimmed.Length < 2)
+                        continue;
+                    // Bỏ qua nếu là dòng header hệ thống / shop
+                    if (Regex.IsMatch(lineTrimmed, @"QUY\s*KH[AÁ]CH|QUAY\s*VIDEO|M[ỞƠ]\s*H[AÀ]NG|ĐO[AÀ]N|HOTLINE|CN\d|chi\s*nh[aá]nh|SHOP|CHUY[EÊ]N\s*S[IỈ]",
+                        RegexOptions.IgnoreCase))
+                        continue;
+                    // Bỏ qua nếu là SĐT thuần
+                    if (Regex.IsMatch(lineTrimmed, @"^0\d{8,10}$"))
+                        continue;
+                    // Bỏ qua nếu là dòng số thuần (giá tiền)
+                    if (Regex.IsMatch(lineTrimmed, @"^[\d.,\s]+$"))
+                        continue;
+                    // Bỏ qua nếu là dòng "NGƯỜI GỬI" (đây là người gửi, ko phải khách)
+                    if (Regex.IsMatch(lineTrimmed, @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*G[ỬƯƯỪ]I", RegexOptions.IgnoreCase))
+                        continue;
+                    // Bỏ qua nếu chứa keyword địa chỉ (đường/phường/quận)
+                    if (Regex.IsMatch(lineTrimmed, @"\b(?:đường|ph[ưướừửữ][oôờở]ng|qu[aâậ]n|p\d|q\d|Q\.|P\.)\b", RegexOptions.IgnoreCase))
+                        continue;
+                    // Bỏ qua nếu là dòng "KHÔNG THU" / "THU SHIP" / keyword ship
+                    if (Regex.IsMatch(lineTrimmed, @"\b(?:THU\s*SHIP|KH[OÔ]NG\s*THU|KO\s*THU)\b", RegexOptions.IgnoreCase))
+                        continue;
+                    // Bỏ qua nếu là "NGƯỜI NHẬN" / "NGƯỜI GỬI" label chính
+                    if (Regex.IsMatch(lineTrimmed, @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*(NH[AẬ]N|G[ỬƯỪ]I)", RegexOptions.IgnoreCase))
+                        continue;
+                    // Ứng viên hợp lệ: có ít nhất 2 ký tự chữ
+                    if (Regex.IsMatch(lineTrimmed, @"[A-Za-zÀ-ỹĐđ].*[A-Za-zÀ-ỹĐđ]"))
+                    {
+                        // Strip SĐT ở cuối nếu có
+                        var cleaned = Regex.Replace(lineTrimmed, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "").Trim();
+                        // Strip ghi chú trong ngoặc: "(e nói đồ ...)"
+                        cleaned = Regex.Replace(cleaned, @"\s*\([^)]*\)\s*", " ").Trim();
+                        if (cleaned.Length >= 2)
+                        {
+                            khRaw = cleaned;
+                            break;
+                        }
+                    }
+                }
             }
             fields["TÊN KH"] = khRaw;
             if (string.IsNullOrEmpty(fields["TÊN KH"]))
@@ -662,6 +743,54 @@ namespace TextInputter.Services
 
             // Strip trailing garbage: dấu "-", "ạ", "…", khoảng trắng thừa
             found = Regex.Replace(found, @"[\s\-–—ạ\.…]+$", "").Trim();
+
+            // ── Hàng sỉ fallback: nếu không tìm thấy dòng "Địa chỉ:" ──────────
+            // Nhãn sỉ (NGƯỜI NHẬN/NGƯỜI GỬI, viết tay) thường không có label "Địa chỉ:".
+            // Tìm dòng có pattern địa chỉ: số nhà + đường/phường/quận (VD: "25/17/11 Cửu Long Phường 2 Quận Tân Bình")
+            // hoặc: "Số 5 Nhất Chi Mai phường 13 Tân bình"
+            // hoặc: "261/26c chu văn an p12 bthanh"
+            if (string.IsNullOrEmpty(found))
+            {
+                for (int idx = 0; idx < lines.Length; idx++)
+                {
+                    var line = lines[idx].Trim();
+                    if (line.Length < 5)
+                        continue;
+
+                    // Phải có ít nhất 1 số (số nhà / phường số) VÀ keyword phường/quận/viết tắt
+                    bool hasNumber = Regex.IsMatch(line, @"\d");
+                    bool hasAddrKeyword = Regex.IsMatch(
+                        line,
+                        @"\b(?:ph[uướừửữ][oôờở]ng|qu[aâậ]n|p\.?\d|q\.?\d|Q\.|P\.|[Ff]\d{1,2})\b" +
+                        @"|(?:bthanh|btan|tbinh|tphu|gvap|pnhuan|tduc|t[aâ]n\s*b[iì]nh|" +
+                        @"b[iì]nh\s*th[aạ]nh|g[oò]\s*v[aấ]p|t[aâ]n\s*ph[uú]|ph[uú]\s*nhu[aậ]n|" +
+                        @"th[uủ]\s*[đd][uứ]c|nh[aà]\s*b[eè]|b[iì]nh\s*ch[aá]nh|h[oó]c\s*m[oô]n|" +
+                        @"b[iì]nh\s*t[aâ]n)\b",
+                        RegexOptions.IgnoreCase
+                    );
+                    if (!hasNumber || !hasAddrKeyword)
+                        continue;
+
+                    // Bỏ qua nếu là dòng SĐT thuần hoặc giá tiền
+                    if (Regex.IsMatch(line, @"^0\d{8,10}$"))
+                        continue;
+                    // Bỏ qua nếu chứa keyword hệ thống (THU/SHIP/HOTLINE)
+                    if (Regex.IsMatch(line, @"\b(?:THU|SHIP|HOTLINE|CN\d)\b", RegexOptions.IgnoreCase))
+                        continue;
+
+                    // Strip SĐT cuối nếu có: "phường 13 Tân bình 0937.773.299" → "phường 13 Tân bình"
+                    var cleaned = Regex.Replace(line, @"\s+0\d{2,3}[\s.-]?\d{3,4}[\s.-]?\d{3,4}\s*$", "").Trim();
+                    // Strip "HCM" cuối
+                    cleaned = Regex.Replace(cleaned, @",?\s*HCM\s*$", "", RegexOptions.IgnoreCase).Trim();
+
+                    if (cleaned.Length >= 5)
+                    {
+                        found = cleaned;
+                        foundLineIdx = idx;
+                        break; // lấy dòng đầu tiên match
+                    }
+                }
+            }
 
             // Strip "TP HCM", "TP. HCM", "Hồ Chí Minh", "Hồ Chí Minh" khỏi cuối địa chỉ
             found = Regex

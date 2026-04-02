@@ -306,7 +306,8 @@ namespace TextInputter
                     bool isNguoiLay = tenNguoi.Equals(AppConstants.NGUOI_LAY_DEFAULT, StringComparison.OrdinalIgnoreCase);
                     if (isNguoiLay && nd.TienLay != 0)
                     {
-                        decimal donLayCount = r.SoDon - r.TotalDonGop;
+                        decimal donLayCount = r.SoDon - r.TotalDonGop - r.TotalDonTra;
+                        if (donLayCount < 0) donLayCount = 0;
                         ri = dgvNguoi.Rows.Add("tiền lấy", nd.TienLay.ToString("N0"), $"{donLayCount:N0}");
                         dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
                         if (nd.TienLay < 0)

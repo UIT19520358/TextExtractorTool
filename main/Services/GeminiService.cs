@@ -67,11 +67,13 @@ Có thể là một trong các loại sau:
   [LOẠI B] Nhãn ship có sticker địa chỉ in: có nhãn 'Địa chỉ mới:' hoặc địa chỉ nằm trong ô sticker riêng, tên khách thường viết tay bên ngoài sticker, HOTLINE là số của shop (không phải khách), không có số HĐ — để ma=''.
   [LOẠI C] Nhãn ship viết tay: tên khách + bí danh viết to ở trên (VD: 'Thương 1994'), địa chỉ giao nằm trong sticker hoặc viết bên dưới, số điện thoại kèm tên khách, không có số HĐ — để ma=''.
   [LOẠI D] Nhãn ship có 'Khách hàng:' nhưng không có số HĐ: địa chỉ gồm số nhà + đường + phường + quận viết liền, số điện thoại có label 'SỐ ĐIỆN THOẠI:', tiền thu có dạng 'THU X,XXX + SHIP' hoặc 'THU X,XXX+SHIP'.
+  [LOẠI E] Nhãn hàng sỉ: có 'NGƯỜI GỬI' và 'NGƯỜI NHẬN' — tên khách là NGƯỜI NHẬN (không phải NGƯỜI GỬI). Có thể bắt đầu bằng 'SỈ <tên>' ở dòng đầu. Địa chỉ giao hàng nằm dưới tên NGƯỜI NHẬN, gồm số nhà + đường + phường + quận. Thường có 'KHÔNG THU SHIP' hoặc 'THU SHIP' ở cuối. Không có số HĐ — để ma=''.
+  [LOẠI F] Nhãn sỉ viết tay đơn giản: tên khách viết ở dòng đầu (VD: 'Ivy Huyền'), địa chỉ ở dòng sau (VD: 'Số 5 Nhất Chi Mai phường 13 Tân bình'), SĐT, và 'THU SHIP' hoặc 'THU X+SHIP'. Không có số HĐ — để ma=''.
 
 Hãy đọc kỹ ẢNH GỐC và trả về JSON theo đúng format sau, không giải thích thêm:
 {
   ""ten_shop"": ""<tên shop/cửa hàng, thường là dòng IN HOA lớn ở đầu hóa đơn. Với nhãn ship (Loại B/C/D) thường không rõ — để trống>"",
-  ""ten_kh"": ""<tên khách hàng. Loại A: dòng 'Khách hàng:'. Loại B: tên viết tay trên/ngoài sticker hoặc tên trong sticker. Loại C: tên/biệt danh viết to ở trên (VD: 'Thương 1994'). Loại D: dòng 'Khách hàng:'. KHÔNG lấy số điện thoại làm tên>"",
+  ""ten_kh"": ""<tên khách hàng. Loại A: dòng 'Khách hàng:'. Loại B: tên viết tay trên/ngoài sticker hoặc tên trong sticker. Loại C: tên/biệt danh viết to ở trên (VD: 'Thương 1994'). Loại D: dòng 'Khách hàng:'. Loại E: tên sau 'NGƯỜI NHẬN:' (KHÔNG lấy NGƯỜI GỬI). Loại F: tên ở dòng đầu. KHÔNG lấy số điện thoại làm tên>"",
   ""ma"": ""<số hóa đơn, thường dạng HD + số, VD: HD0123. Nhãn ship (Loại B/C/D) không có → để trống>"",
   ""dia_chi"": ""<toàn bộ địa chỉ GIAO HÀNG (địa chỉ KHÁCH HÀNG) trước phần phường/quận — gồm số nhà + tên đường, hoặc block/căn hộ + tên chung cư + tên đường nếu có. KHÔNG bao gồm phường/quận. VD: '68 Nguyễn Trãi' hoặc 'Block D2, Chung cư Sài Gòn Riverside, 4 Đào Trí' hoặc 'Tòa S501, Vinhome Grand Park' hoặc '401 Quang Trung'>"",
   ""phuong"": ""<phường/xã của địa chỉ GIAO HÀNG, nếu có. VD: Phường 3, Phường 22, An Hội Tây, Long Thạnh Mỹ, Phú Lâm>"",
@@ -88,6 +90,8 @@ QUY TẮC QUAN TRỌNG:
    - Loại B: địa chỉ trong sticker trắng (VD: '275/14B1 Đặng Nguyễn Cẩn, Phường Phú Lâm, TP. Hồ Chí Minh').
    - Loại C: địa chỉ trong sticker (VD: 'Tòa S501, vinhome grand park, Long Thạnh Mỹ, Thủ Đức').
    - Loại D: toàn bộ dòng địa chỉ dưới 'Khách hàng:' (VD: '401 Quang trung f10 gò vấp').
+   - Loại E: dòng địa chỉ dưới tên NGƯỜI NHẬN (VD: '25/17/11 CỬU LONG PHƯỜNG 2 QUẬN TÂN BÌNH').
+   - Loại F: dòng địa chỉ dưới tên khách (VD: 'Số 5 Nhất Chi Mai phường 13 Tân bình').
 2. dia_chi = tất cả phần địa chỉ TRƯỚC phường/quận. Ví dụ:
    - '275/14B1 Đặng Nguyễn Cẩn, Phường Phú Lâm' → dia_chi='275/14B1 Đặng Nguyễn Cẩn', phuong='Phú Lâm', quan='6'
    - 'Tòa S501, vinhome grand park, Long Thạnh Mỹ, Thủ Đức' → dia_chi='Tòa S501, Vinhome Grand Park', phuong='Long Thạnh Mỹ', quan='Thủ Đức'

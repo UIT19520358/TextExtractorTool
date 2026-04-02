@@ -480,8 +480,9 @@ namespace TextInputter
                 }
 
                 // Tính tiền lấy global cho NGUOI_LAY_DEFAULT (c.cuong)
-                // = -(totalOrders - totalDonGop) × PHI_LAY_HANG_MOI_DON
-                decimal donLayGlobal = totalSoDon - totalDonGop;
+                // = -(totalOrders - totalDonGop - totalDonTra) × PHI_LAY_HANG_MOI_DON
+                // Đơn trả không tính tiền lấy vì shipper phải mang hàng về, không có "lấy" thực sự.
+                decimal donLayGlobal = totalSoDon - totalDonGop - totalDonTra;
                 if (donLayGlobal < 0) donLayGlobal = 0;
                 decimal tienLayTong = -(donLayGlobal * AppConstants.PHI_LAY_HANG_MOI_DON);
 

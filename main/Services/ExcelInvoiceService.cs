@@ -141,8 +141,20 @@ namespace TextInputter.Services
                         data.GetValueOrDefault("MISSING_FIELDS", "")
                     );
 
-                    // Upsert: tìm row có MÃ trùng → ghi đè; nếu MÃ rỗng hoặc không tìm thấy → thêm mới
-                    int targetRow = isMissing ? -1 : FindRowByMa(worksheet, ma);
+                    // Upsert: tìm row có MÃ trùng → ghi đè; nếu MÃ rỗng → thử match TÊN KH (hàng sỉ ghi đè theo tên)
+                    int targetRow;
+                    if (!isMissing)
+                    {
+                        targetRow = FindRowByMa(worksheet, ma);
+                    }
+                    else
+                    {
+                        // Hàng sỉ (không có MÃ HĐ) → ghi đè dựa trên TÊN KH
+                        string tenKH = data.GetValueOrDefault("TÊN KH", "");
+                        targetRow = string.IsNullOrWhiteSpace(tenKH)
+                            ? -1
+                            : FindRowByTenKH(worksheet, tenKH);
+                    }
                     bool isUpdate = targetRow > 0;
                     if (!isUpdate)
                     {
@@ -590,6 +602,27 @@ namespace TextInputter.Services
         }
 
         /// <summary>
+        /// Tìm row có TÊN KH trùng (case-insensitive) trong sheet.
+        /// Dùng để ghi đè đơn hàng sỉ (không có MÃ HĐ) — match dựa trên tên khách hàng.
+        /// Trả về -1 nếu không tìm thấy.
+        /// </summary>
+        private int FindRowByTenKH(IXLWorksheet worksheet, string tenKH)
+        {
+            if (string.IsNullOrWhiteSpace(tenKH))
+                return -1;
+            string target = tenKH.Trim();
+            foreach (var row in worksheet.RowsUsed())
+            {
+                if (row.RowNumber() <= 2)
+                    continue;
+                string existing = row.Cell(COL_TENKH).GetString().Trim();
+                if (existing.Equals(target, StringComparison.OrdinalIgnoreCase))
+                    return row.RowNumber();
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// Kiểm tra shopVal có trông như ghi chú thủ công không.
         /// Chỉ true nếu SHOP chứa từ khoá ghi chú (dùng AppConstants.SHOP_EXCLUSION_PATTERN).
         /// Tên shop hợp lệ như "ĐOÀN NGÂN CHÂU" sẽ không bị nhận nhầm.
@@ -937,11 +970,14 @@ namespace TextInputter.Services
                 worksheet.Cell(b3, COL_NGUOILAY).Value = "tiền lấy";
                 if (isNguoiLay)
                 {
-                    // M = totalOrders - COUNTIFS("*gộp*")/2
+                    // M = totalOrders - COUNTIFS("*gộp*")/2 - COUNTIFS(FAIL,"*xx*")
+                    // Đơn trả (FAIL=xx) không tính tiền lấy vì không "lấy" thực sự.
                     string rGhiChuFull =
                         $"{ColLetter(COL_GHICHU)}${DATA_START_ROW}:{ColLetter(COL_GHICHU)}${lastDataRow}";
+                    string rFailFull =
+                        $"{ColLetter(COL_FAIL)}${DATA_START_ROW}:{ColLetter(COL_FAIL)}${lastDataRow}";
                     worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
-                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)";
+                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rFailFull},\"*xx*\")";
                     worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
                         $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
                 }
