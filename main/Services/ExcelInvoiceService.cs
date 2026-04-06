@@ -480,20 +480,25 @@ namespace TextInputter.Services
                 // ── AT zone breakdown rows (cột H, giữa subtotal và summary) ──
                 // Tính số đơn AT theo zone phí ship, ghi =-count*fee vào cột H
                 string atNguoiDi = distinctNguoiDis.FirstOrDefault(n =>
-                    n.StartsWith(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase));
-                int atZoneStartRow = -1, atZoneEndRow = -1;
+                    n.StartsWith(AppConstants.NGUOI_DI_DEFAULT, StringComparison.OrdinalIgnoreCase)
+                );
+                int atZoneStartRow = -1,
+                    atZoneEndRow = -1;
                 if (!string.IsNullOrEmpty(atNguoiDi))
                 {
                     var atZoneCounts = new Dictionary<decimal, int>();
                     for (int r = DATA_START_ROW; r <= lastDataRow; r++)
                     {
                         string shopVal = worksheet.Cell(r, COL_SHOP).GetString().Trim();
-                        if (string.IsNullOrWhiteSpace(shopVal)) continue;
+                        if (string.IsNullOrWhiteSpace(shopVal))
+                            continue;
                         string nguoi = worksheet.Cell(r, COL_NGUOIDI).GetString().Trim();
-                        if (!nguoi.Equals(atNguoiDi, StringComparison.OrdinalIgnoreCase)) continue;
+                        if (!nguoi.Equals(atNguoiDi, StringComparison.OrdinalIgnoreCase))
+                            continue;
                         string quan = worksheet.Cell(r, COL_QUAN).GetString().Trim();
                         decimal atFee = LookupShipFeeByDict(quan, AppConstants.AT_SHIPPING_FEES);
-                        if (atFee == 0m) continue;
+                        if (atFee == 0m)
+                            continue;
                         if (!atZoneCounts.ContainsKey(atFee))
                             atZoneCounts[atFee] = 0;
                         atZoneCounts[atFee]++;
@@ -908,7 +913,14 @@ namespace TextInputter.Services
 
                     foreach (var r in rows.Where(r => r.IsTra))
                     {
-                        decimal shipFeeLookup = LookupShipFeeByQuan(r.Quan);
+                        // AT dùng AT_SHIPPING_FEES (zone riêng), shipper khác dùng SHIPPING_FEES_BY_QUAN
+                        bool isAT = nd.StartsWith(
+                            AppConstants.NGUOI_DI_DEFAULT,
+                            StringComparison.OrdinalIgnoreCase
+                        );
+                        decimal shipFeeLookup = isAT
+                            ? LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES)
+                            : LookupShipFeeByQuan(r.Quan);
                         totalTienDonTra += (double)(
                             -(decimal)r.TienThu + shipFeeLookup - AppConstants.PHI_CONG_DON_TRA
                         );
@@ -1299,10 +1311,7 @@ namespace TextInputter.Services
             if (feeDict.TryGetValue(norm, out decimal fee2))
                 return fee2;
             var numMatch = System.Text.RegularExpressions.Regex.Match(norm, @"\d+");
-            if (
-                numMatch.Success
-                && feeDict.TryGetValue(numMatch.Value, out decimal fee3)
-            )
+            if (numMatch.Success && feeDict.TryGetValue(numMatch.Value, out decimal fee3))
                 return fee3;
             return 0m;
         }

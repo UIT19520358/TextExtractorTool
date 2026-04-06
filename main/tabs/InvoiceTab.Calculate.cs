@@ -447,8 +447,12 @@ namespace TextInputter
                         var zoneBreakdown = new Dictionary<decimal, int>();
                         foreach (var r in rows)
                         {
-                            decimal atFee = LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES);
-                            if (atFee == 0m) continue; // quận không có trong bảng AT
+                            decimal atFee = LookupShipFeeByDict(
+                                r.Quan,
+                                AppConstants.AT_SHIPPING_FEES
+                            );
+                            if (atFee == 0m)
+                                continue; // quận không có trong bảng AT
                             if (!zoneBreakdown.ContainsKey(atFee))
                                 zoneBreakdown[atFee] = 0;
                             zoneBreakdown[atFee]++;
@@ -468,9 +472,12 @@ namespace TextInputter
                     d.TienLay = 0;
 
                     // Đơn trả: -(tienThu - shipFee + 5k) per return
+                    // AT dùng AT_SHIPPING_FEES (zone riêng), shipper khác dùng SHIPPING_FEES_BY_QUAN
                     foreach (var r in rows.Where(r => r.IsTra))
                     {
-                        decimal shipFeeLookup = LookupShipFeeByQuan(r.Quan);
+                        decimal shipFeeLookup = d.IsAnTam
+                            ? LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES)
+                            : LookupShipFeeByQuan(r.Quan);
                         decimal deduction = -(
                             r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA
                         );
@@ -483,13 +490,19 @@ namespace TextInputter
                 // = -(totalOrders - totalDonGop - totalDonTra) × PHI_LAY_HANG_MOI_DON
                 // Đơn trả không tính tiền lấy vì shipper phải mang hàng về, không có "lấy" thực sự.
                 decimal donLayGlobal = totalSoDon - totalDonGop - totalDonTra;
-                if (donLayGlobal < 0) donLayGlobal = 0;
+                if (donLayGlobal < 0)
+                    donLayGlobal = 0;
                 decimal tienLayTong = -(donLayGlobal * AppConstants.PHI_LAY_HANG_MOI_DON);
 
                 // Gán tiền lấy vào đúng người lấy (c.cuong) nếu có trong detailByNguoiDi
                 foreach (var kvp in detailByNguoiDi)
                 {
-                    if (kvp.Key.Equals(AppConstants.NGUOI_LAY_DEFAULT, StringComparison.OrdinalIgnoreCase))
+                    if (
+                        kvp.Key.Equals(
+                            AppConstants.NGUOI_LAY_DEFAULT,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
                     {
                         kvp.Value.TienLay = tienLayTong;
                         break;
@@ -750,9 +763,7 @@ namespace TextInputter
             var numMatch = System.Text.RegularExpressions.Regex.Match(norm, @"\d+");
             if (numMatch.Success)
             {
-                if (
-                    feeDict.TryGetValue(numMatch.Value, out decimal fee3)
-                )
+                if (feeDict.TryGetValue(numMatch.Value, out decimal fee3))
                     return fee3;
             }
 

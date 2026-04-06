@@ -505,6 +505,7 @@ namespace TextInputter
             { "binh trung tay", "2" }, // Phường Bình Trưng Tây — Q2 cũ
             { "an loi dong", "2" }, // Phường An Lợi Đông — Q2 cũ
             { "binh trung", "2" }, // Dự phòng nếu OCR không phân biệt Đông/Tây
+            { "thanh my loi", "2" }, // Phường Thạnh Mỹ Lợi — Q2 cũ
             { "long binh", "9" }, // Phường Long Bình — Q9 cũ → 30k
             { "long thanh my", "9" }, // Phường Long Thạnh Mỹ — Q9 cũ
             { "long phuoc", "9" }, // Phường Long Phước — Q9 cũ
@@ -540,7 +541,7 @@ namespace TextInputter
             { "binh tay", "6" }, // Phường Bình Tây (mới 2025, từ P.2+9)
             { "binh phu", "6" }, // Phường Bình Phú (mới 2025, từ P.10+11+phần P.16 Q8 cũ)
             { "phu lam", "6" }, // Phường Phú Lâm (mới 2025, từ P.12+13+14)
-            // ── Quận 7 (ship 25k) ─────────────────────────────────────────────
+            // ── Quận 7 (ship 30k) ─────────────────────────────────────────────
             // Sau NQ1685/2025 (30/06/2025): Q7 giải thể quận, còn 4 phường tên mới
             { "tan my", "7" }, // Phường Tân Mỹ (mới 2025, từ P.Tân Phú+phần P.Phú Mỹ)
             { "tan hung", "7" }, // Phường Tân Hưng (mới 2025, từ P.Tân Phong+Tân Hưng+Tân Kiểng+Tân Quy)
