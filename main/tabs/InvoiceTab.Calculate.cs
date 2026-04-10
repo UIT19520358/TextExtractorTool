@@ -349,6 +349,18 @@ namespace TextInputter
                             )
                         )
                             continue;
+
+                        // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) + FAIL="xx"
+                        // → đơn trả thuộc AT hôm nay, sửa NGƯỜI ĐI thành "lưu trả" để skip
+                        bool isAnTamRow = nguoiRow.StartsWith(
+                            AppConstants.NGUOI_DI_DEFAULT,
+                            StringComparison.OrdinalIgnoreCase
+                        );
+                        string atToday =
+                            AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM");
+                        bool isAnTamOldDate =
+                            isAnTamRow
+                            && !nguoiRow.StartsWith(atToday, StringComparison.OrdinalIgnoreCase);
                         decimal tienThuRow = 0;
                         if (colTienThu >= 0 && colTienThu < row.Cells.Count)
                             decimal.TryParse(
@@ -390,7 +402,34 @@ namespace TextInputter
                             isTra = failVal.Contains("xx");
                         }
 
-                        // Tích lũy per-person
+                        // AT ngày cũ → đơn trả: tính tiền trừ vào AT hôm nay, rồi sửa thành "lưu trả"
+                        if (isAnTamOldDate)
+                        {
+                            // Đảm bảo AT hôm nay tồn tại trong detailByNguoiDi
+                            if (!detailByNguoiDi.ContainsKey(atToday))
+                                detailByNguoiDi[atToday] = new NguoiDiDetail();
+                            var dAT = detailByNguoiDi[atToday];
+                            dAT.IsAnTam = true;
+
+                            // Tính đơn trả: -(tiền thu) dùng AT_SHIPPING_FEES
+                            decimal shipFeeLookup = LookupShipFeeByDict(
+                                quan,
+                                AppConstants.AT_SHIPPING_FEES
+                            );
+                            decimal deduction = -(tienThuRow);
+                            dAT.TienDonTra += deduction;
+                            dAT.SoDonTra++;
+                            dAT.DonTraDetails.Add((ma, tienThuRow, shipFeeLookup, deduction));
+
+                            // Sửa NGƯỜI ĐI thành "lưu trả" trong DataGridView
+                            if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
+                                row.Cells[colNguoiDi].Value = "lưu trả";
+
+                            // KHÔNG add vào rowsPerNguoi — deduction đã tính ở trên
+                            continue; // Skip tích lũy bình thường
+                        }
+
+                        // Tích lũy per-person (dùng nguoiRow nguyên bản)
                         if (!detailByNguoiDi.ContainsKey(nguoiRow))
                             detailByNguoiDi[nguoiRow] = new NguoiDiDetail();
                         var d = detailByNguoiDi[nguoiRow];
@@ -398,7 +437,7 @@ namespace TextInputter
                         d.TienShip += tienShipRow;
                         d.SoDon++;
                         d.IsAnTam = nguoiRow.StartsWith(
-                            AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM"),
+                            atToday,
                             StringComparison.OrdinalIgnoreCase
                         );
                         if (isTra)
@@ -471,16 +510,18 @@ namespace TextInputter
                     // Tiền lấy: không tính per-person, tính global cho NGUOI_LAY_DEFAULT
                     d.TienLay = 0;
 
-                    // Đơn trả: -(tienThu - shipFee + 5k) per return
+                    // Đơn trả:
+                    //   AT:     -(tienThu)  → trừ đúng tiền thu (hàng + ship AT), KHÔNG có phí công 5k
+                    //   Khác:   -(tienThu - shipFee + 5k) → trừ tiền hàng + phí công 5k
                     // AT dùng AT_SHIPPING_FEES (zone riêng), shipper khác dùng SHIPPING_FEES_BY_QUAN
                     foreach (var r in rows.Where(r => r.IsTra))
                     {
                         decimal shipFeeLookup = d.IsAnTam
                             ? LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES)
                             : LookupShipFeeByQuan(r.Quan);
-                        decimal deduction = -(
-                            r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA
-                        );
+                        decimal deduction = d.IsAnTam
+                            ? -(r.TienThu) // AT: trả lại toàn bộ tiền thu (hàng + ship AT)
+                            : -(r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA);
                         d.TienDonTra += deduction;
                         d.DonTraDetails.Add((r.Ma, r.TienThu, shipFeeLookup, deduction));
                     }

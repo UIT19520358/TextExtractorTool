@@ -400,6 +400,9 @@ namespace TextInputter.Services
                 // Thu thập distinct SHOPs, NGƯỜI ĐIs và ngày đầu tiên từ data rows
                 var distinctShops = new List<string>();
                 var distinctNguoiDis = new List<string>();
+                // AT hôm nay – dùng để phân biệt AT ngày cũ (đơn trả) vs AT hôm nay
+                string atTodayForDistinct =
+                    AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM");
                 // Collect distinct (shop, ngày) pairs for left summary
                 var distinctShopDates = new List<(string Shop, string Ngay)>();
                 for (int r = DATA_START_ROW; r <= lastDataRow; r++)
@@ -415,7 +418,17 @@ namespace TextInputter.Services
                         bool isNotShipper = AppConstants.NOT_SHIPPER_VALUES.Any(v =>
                             nguoiDi.Contains(v, StringComparison.OrdinalIgnoreCase)
                         );
-                        if (!isNotShipper)
+                        // AT ngày cũ (vd "AT 30-03" khi hôm nay là 08-04) → đơn trả, skip
+                        bool isATOldDate =
+                            nguoiDi.StartsWith(
+                                AppConstants.NGUOI_DI_DEFAULT,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                            && !nguoiDi.StartsWith(
+                                atTodayForDistinct,
+                                StringComparison.OrdinalIgnoreCase
+                            );
+                        if (!isNotShipper && !isATOldDate)
                             distinctNguoiDis.Add(nguoiDi);
                     }
                     if (!string.IsNullOrWhiteSpace(shop) && !string.IsNullOrWhiteSpace(ngay))
@@ -493,6 +506,7 @@ namespace TextInputter.Services
                         if (string.IsNullOrWhiteSpace(shopVal))
                             continue;
                         string nguoi = worksheet.Cell(r, COL_NGUOIDI).GetString().Trim();
+                        // Chỉ match AT hôm nay (exact), không match AT ngày cũ
                         if (!nguoi.Equals(atNguoiDi, StringComparison.OrdinalIgnoreCase))
                             continue;
                         string quan = worksheet.Cell(r, COL_QUAN).GetString().Trim();
@@ -728,18 +742,11 @@ namespace TextInputter.Services
             worksheet.Cell(targetRow, COL_TIENTHU).Value = thuVal;
             worksheet.Cell(targetRow, COL_TIENSHIP).Value = shipVal;
 
-            // TIỀN HÀNG: formula theo loại đơn
-            //   COD           : =TIENTHU - TIENSHIP  (tổng thu - ship = tiền hàng thuần)
-            //   SHIP_ONLY_FREE: =-TIENSHIP            (không thu ship → hàng âm)
-            //   SHIP_ONLY_PAID: =+TIENSHIP            (thu ship → hàng = ship)
+            // TIỀN HÀNG = TIỀN THU - TIỀN SHIP (luôn dùng 1 công thức duy nhất)
             string thuCol = ColLetter(COL_TIENTHU);
             string shipCol = ColLetter(COL_TIENSHIP);
-            worksheet.Cell(targetRow, COL_TIENHANG).FormulaA1 = invType switch
-            {
-                "SHIP_ONLY_FREE" => $"-{shipCol}{targetRow}",
-                "SHIP_ONLY_PAID" => $"{shipCol}{targetRow}",
-                _ => $"{thuCol}{targetRow}-{shipCol}{targetRow}", // COD: tổng thu - ship = hàng
-            };
+            worksheet.Cell(targetRow, COL_TIENHANG).FormulaA1 =
+                $"{thuCol}{targetRow}-{shipCol}{targetRow}";
 
             worksheet.Cell(targetRow, COL_NGUOIDI).Value = data.GetValueOrDefault("NGƯỜI ĐI", "");
             worksheet.Cell(targetRow, COL_NGUOILAY).Value = data.GetValueOrDefault("NGƯỜI LẤY", "");
@@ -867,6 +874,12 @@ namespace TextInputter.Services
                     bool IsTra
                 )>
             >(StringComparer.OrdinalIgnoreCase);
+
+            // Pre-collected đơn trả AT ngày cũ → tính vào AT hôm nay
+            string atToday = AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM");
+            double atOldDateDonTra = 0;
+            int atOldDateDonTraCount = 0;
+
             for (int r = DATA_START_ROW; r <= computedLastDataRow; r++)
             {
                 string shopVal = worksheet.Cell(r, COL_SHOP).GetString().Trim();
@@ -875,6 +888,7 @@ namespace TextInputter.Services
                 string nguoi = worksheet.Cell(r, COL_NGUOIDI).GetString().Trim();
                 if (string.IsNullOrEmpty(nguoi))
                     nguoi = "(không rõ)";
+
                 string tenKH = worksheet.Cell(r, COL_TENKH).GetString().Trim();
                 string diaChi = worksheet.Cell(r, COL_DIACHI).GetString().Trim();
                 string quan = worksheet.Cell(r, COL_QUAN).GetString().Trim();
@@ -882,6 +896,26 @@ namespace TextInputter.Services
                 double.TryParse(worksheet.Cell(r, COL_TIENSHIP).GetString(), out double shipFee);
                 string failVal = worksheet.Cell(r, COL_FAIL).GetString().Trim().ToLower();
                 bool isTra = failVal.Contains("xx");
+
+                // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) → đơn trả
+                // Tính tiền trừ vào AT hôm nay, sửa NGƯỜI ĐI thành "lưu trả"
+                bool isATRow = nguoi.StartsWith(
+                    AppConstants.NGUOI_DI_DEFAULT,
+                    StringComparison.OrdinalIgnoreCase
+                );
+                bool isATOldDate =
+                    isATRow && !nguoi.StartsWith(atToday, StringComparison.OrdinalIgnoreCase);
+
+                if (isATOldDate)
+                {
+                    // Tính đơn trả: -(tiền thu), KHÔNG có phí công 5k
+                    atOldDateDonTra += (double)(-(decimal)tienThu);
+                    atOldDateDonTraCount++;
+
+                    // Sửa NGƯỜI ĐI thành "lưu trả" trong Excel
+                    worksheet.Cell(r, COL_NGUOIDI).Value = "lưu trả";
+                    continue; // Skip — không tính vào report nhỏ
+                }
 
                 if (!rowsPerNguoi.ContainsKey(nguoi))
                     rowsPerNguoi[nguoi] =
@@ -921,17 +955,28 @@ namespace TextInputter.Services
                         decimal shipFeeLookup = isAT
                             ? LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES)
                             : LookupShipFeeByQuan(r.Quan);
-                        totalTienDonTra += (double)(
-                            -(decimal)r.TienThu + shipFeeLookup - AppConstants.PHI_CONG_DON_TRA
-                        );
+                        // AT: trừ đúng tiền thu (hàng + ship AT), KHÔNG có phí công 5k
+                        // Khác: trừ tiền hàng + phí công 5k
+                        totalTienDonTra += isAT
+                            ? (double)(-(decimal)r.TienThu)
+                            : (double)(
+                                -(decimal)r.TienThu + shipFeeLookup - AppConstants.PHI_CONG_DON_TRA
+                            );
                     }
                 }
-                int soDonGiao = soDon - soDonGop;
 
+                // Cộng thêm đơn trả AT ngày cũ (đã sửa thành "lưu trả" ở trên)
                 bool isAnTam = nd.StartsWith(
                     AppConstants.NGUOI_DI_DEFAULT,
                     StringComparison.OrdinalIgnoreCase
                 );
+                if (isAnTam && atOldDateDonTraCount > 0)
+                {
+                    totalTienDonTra += atOldDateDonTra;
+                    soDonTra += atOldDateDonTraCount;
+                }
+                int soDonGiao = soDon - soDonGop;
+
                 bool isNguoiLay = nd.Equals(
                     AppConstants.NGUOI_LAY_DEFAULT,
                     StringComparison.OrdinalIgnoreCase
@@ -989,7 +1034,7 @@ namespace TextInputter.Services
                     string rFailFull =
                         $"{ColLetter(COL_FAIL)}${DATA_START_ROW}:{ColLetter(COL_FAIL)}${lastDataRow}";
                     worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
-                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rFailFull},\"*xx*\")";
+                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rFailFull},\"*xx*\")*2";
                     worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
                         $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
                 }

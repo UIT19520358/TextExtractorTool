@@ -445,6 +445,7 @@ namespace TextInputter
             { "phuong 17 phu nhuan", "phu nhuan" }, // dự phòng nếu OCR ghi rõ
             { "phu nhuan", "phu nhuan" },
             { "nguyen trong tuyen", "phu nhuan" }, // đường đặc trưng Q.PN — không chính xác
+            { "cau kieu", "phu nhuan" }, // Phường Cầu kiệu - Phú Nhuận cũ
             // ── Quận Tân Bình (ship 25k) ──────────────────────────────────────
             // Sau NQ1685/2025 (30/06/2025): Tân Bình giải thể quận, còn 6 phường tên mới
             { "bay hien", "tan binh" }, // Phường Bảy Hiền (P.10+11+12 cũ)
