@@ -169,6 +169,27 @@ namespace TextInputter
                     if (IsDateLabelRow(row, colShop, colMa))
                         continue;
 
+                    // Skip row "lưu trả" / AT ngày cũ khỏi totalSoDon
+                    // (giống logic bảng trái Excel: E cod = SUMIFS filter theo SHOP+NGÀY, loại "lưu trả")
+                    if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
+                    {
+                        string nguoiVal = (row.Cells[colNguoiDi].Value?.ToString() ?? "").Trim();
+                        bool isLuuTra = AppConstants.NOT_SHIPPER_VALUES.Any(v =>
+                            nguoiVal.Contains(v, StringComparison.OrdinalIgnoreCase)
+                        );
+                        bool isATOldDate =
+                            nguoiVal.StartsWith(
+                                AppConstants.NGUOI_DI_DEFAULT,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                            && !nguoiVal.StartsWith(
+                                AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM"),
+                                StringComparison.OrdinalIgnoreCase
+                            );
+                        if (isLuuTra || isATOldDate)
+                            continue;
+                    }
+
                     // Detect hàng tồn (carry-over ngày trước)
                     bool isHangTon = false;
                     if (colHangTon >= 0 && colHangTon < row.Cells.Count)
@@ -392,14 +413,15 @@ namespace TextInputter
                                 ? (row.Cells[colMa].Value?.ToString() ?? "").Trim()
                                 : "";
 
-                        // Detect đơn trả: FAIL = "xx"
+                        // Detect đơn trả: GHI CHÚ contains "đơn trả"
+                        // (trước dùng FAIL="xx" nhưng "xx" dễ trùng với giá trị khác)
                         bool isTra = false;
-                        if (colFail >= 0 && colFail < row.Cells.Count)
+                        if (colGhiChu >= 0 && colGhiChu < row.Cells.Count)
                         {
-                            string failVal = (row.Cells[colFail].Value?.ToString() ?? "")
+                            string ghiChuVal = (row.Cells[colGhiChu].Value?.ToString() ?? "")
                                 .Trim()
                                 .ToLower();
-                            isTra = failVal.Contains("xx");
+                            isTra = ghiChuVal.Contains("đơn trả");
                         }
 
                         // AT ngày cũ → đơn trả: tính tiền trừ vào AT hôm nay, rồi sửa thành "lưu trả"

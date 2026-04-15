@@ -895,7 +895,8 @@ namespace TextInputter.Services
                 double.TryParse(worksheet.Cell(r, COL_TIENTHU).GetString(), out double tienThu);
                 double.TryParse(worksheet.Cell(r, COL_TIENSHIP).GetString(), out double shipFee);
                 string failVal = worksheet.Cell(r, COL_FAIL).GetString().Trim().ToLower();
-                bool isTra = failVal.Contains("xx");
+                string ghiChuVal = worksheet.Cell(r, COL_GHICHU).GetString().Trim().ToLower();
+                bool isTra = ghiChuVal.Contains("đơn trả");
 
                 // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) → đơn trả
                 // Tính tiền trừ vào AT hôm nay, sửa NGƯỜI ĐI thành "lưu trả"
@@ -1024,17 +1025,18 @@ namespace TextInputter.Services
                 }
 
                 // tiền lấy — chỉ có giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
+                // Tính trên tổng đơn TOÀN SHOP — lấy trực tiếp từ ô "Số đơn" bảng trái
+                // (dòng "Tiền Hàng Hcm" = startRow+4, cột E = COL_DIACHI).
                 worksheet.Cell(b3, COL_NGUOILAY).Value = "tiền lấy";
                 if (isNguoiLay)
                 {
-                    // M = totalOrders - COUNTIFS("*gộp*")/2 - COUNTIFS(FAIL,"*xx*")
-                    // Đơn trả (FAIL=xx) không tính tiền lấy vì không "lấy" thực sự.
+                    // Ô E bảng trái dòng "Tiền Hàng Hcm" = số đơn toàn shop (đã tính đúng)
+                    string leftSoDonRef = $"{ColLetter(COL_DIACHI)}{startRow + 4}";
                     string rGhiChuFull =
                         $"{ColLetter(COL_GHICHU)}${DATA_START_ROW}:{ColLetter(COL_GHICHU)}${lastDataRow}";
-                    string rFailFull =
-                        $"{ColLetter(COL_FAIL)}${DATA_START_ROW}:{ColLetter(COL_FAIL)}${lastDataRow}";
+                    // SốĐơnLấy = E(TiềnHàngHcm) - đơn gộp/2 - đơn trả/2
                     worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
-                        $"{col1ColL}{subtotalRow}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rFailFull},\"*xx*\")*2";
+                        $"{leftSoDonRef}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rGhiChuFull},\"*đơn trả*\")/2";
                     worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
                         $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
                 }
