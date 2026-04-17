@@ -281,10 +281,18 @@ namespace TextInputter
                                 ""
                             );
                             dgvNguoi.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
-                            dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
+                            dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(
+                                245,
+                                245,
+                                245
+                            );
                         }
                         // tiền ship tổng cho AT
-                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), $"{soDonNguoi:N0} đơn");
+                        ri = dgvNguoi.Rows.Add(
+                            "tiền ship",
+                            nd.TienShipTru.ToString("N0"),
+                            $"{soDonNguoi:N0} đơn"
+                        );
                         dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
                         if (nd.TienShipTru < 0)
                             dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
@@ -296,19 +304,31 @@ namespace TextInputter
                             nd.SoDonGop > 0
                                 ? $"giao {nd.SoDonGiao:N0} ({nd.SoDonGop} gộp)"
                                 : $"giao {nd.SoDonGiao:N0}";
-                        ri = dgvNguoi.Rows.Add("tiền ship", nd.TienShipTru.ToString("N0"), shipInfo);
+                        ri = dgvNguoi.Rows.Add(
+                            "tiền ship",
+                            nd.TienShipTru.ToString("N0"),
+                            shipInfo
+                        );
                         dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
                         if (nd.TienShipTru < 0)
                             dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
                     }
 
                     // tiền lấy — chỉ hiện giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
-                    bool isNguoiLay = tenNguoi.Equals(AppConstants.NGUOI_LAY_DEFAULT, StringComparison.OrdinalIgnoreCase);
+                    bool isNguoiLay = tenNguoi.Equals(
+                        AppConstants.NGUOI_LAY_DEFAULT,
+                        StringComparison.OrdinalIgnoreCase
+                    );
                     if (isNguoiLay && nd.TienLay != 0)
                     {
                         decimal donLayCount = r.SoDon - r.TotalDonGop - r.TotalDonTra;
-                        if (donLayCount < 0) donLayCount = 0;
-                        ri = dgvNguoi.Rows.Add("tiền lấy", nd.TienLay.ToString("N0"), $"{donLayCount:N0}");
+                        if (donLayCount < 0)
+                            donLayCount = 0;
+                        ri = dgvNguoi.Rows.Add(
+                            "tiền lấy",
+                            nd.TienLay.ToString("N0"),
+                            $"{donLayCount:N0}"
+                        );
                         dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
                         if (nd.TienLay < 0)
                             dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
