@@ -1034,9 +1034,9 @@ namespace TextInputter.Services
                     string leftSoDonRef = $"{ColLetter(COL_DIACHI)}{startRow + 4}";
                     string rGhiChuFull =
                         $"{ColLetter(COL_GHICHU)}${DATA_START_ROW}:{ColLetter(COL_GHICHU)}${lastDataRow}";
-                    // SốĐơnLấy = E(TiềnHàngHcm) - đơn gộp/2 - đơn trả/2
+                    // SốĐơnLấy = E(TiềnHàngHcm) - đơn gộp/2 - đơn trả - hàng tỉnh
                     worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
-                        $"{leftSoDonRef}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rGhiChuFull},\"*đơn trả*\")/2";
+                        $"{leftSoDonRef}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rGhiChuFull},\"*đơn trả*\")-COUNTIFS({rGhiChuFull},\"*hàng tỉnh*\")";
                     worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
                         $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
                 }
@@ -1365,6 +1365,8 @@ namespace TextInputter.Services
 
         private static string RemoveDiacriticsSimple(string s)
         {
+            // đ/Đ is a separate letter (not base+combining), must replace explicitly
+            s = s.Replace('đ', 'd').Replace('Đ', 'D');
             var norm = s.Normalize(System.Text.NormalizationForm.FormD);
             var sb = new System.Text.StringBuilder();
             foreach (char c in norm)

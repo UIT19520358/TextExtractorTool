@@ -185,6 +185,7 @@ namespace TextInputter.Services
 
         private static string RemoveDiacritics(string s)
         {
+            s = s.Replace('đ', 'd').Replace('Đ', 'D');
             var norm = s.Normalize(System.Text.NormalizationForm.FormD);
             var sb = new System.Text.StringBuilder();
             foreach (char c in norm)
