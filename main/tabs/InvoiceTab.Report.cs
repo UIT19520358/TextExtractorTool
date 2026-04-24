@@ -226,7 +226,8 @@ namespace TextInputter
                     var nd = kvp.Value;
                     decimal tienThuNguoi = nd.TienThu;
                     decimal tienShipNguoi = nd.TienShip;
-                    decimal soDonNguoi = nd.SoDon;
+                    // Show delivered orders = total receipts - grouped duplicates
+                    decimal soDonNguoi = nd.SoDon - nd.SoDonGop;
 
                     var pnlNguoi = new Panel
                     {

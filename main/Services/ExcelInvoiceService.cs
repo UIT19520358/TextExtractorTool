@@ -999,10 +999,11 @@ namespace TextInputter.Services
                 SetBoldYellow(worksheet.Cell(b0, COL_NGAYLAY), "Tiền Thu", XLColor.LightSteelBlue);
                 SetBoldYellow(worksheet.Cell(b0, COL_GHICHU), "Số đơn", XLColor.LightSteelBlue);
 
-                // TỔNG ĐƠN NHẬN — SUMIFS with cell reference (matching template)
+                // TỔNG ĐƠN NHẬN — Số đơn = SUMIFS per người - đơn gộp/2 (2 đơn gộp = 1 chuyến)
                 worksheet.Cell(b1, COL_NGUOILAY).Value = "TỔNG ĐƠN NHẬN";
                 worksheet.Cell(b1, COL_NGAYLAY).FormulaA1 = $"SUMIFS({rThu},{rNguoiDi},{nameRef})";
-                worksheet.Cell(b1, COL_GHICHU).FormulaA1 = $"SUMIFS({rCol1},{rNguoiDi},{nameRef})";
+                worksheet.Cell(b1, COL_GHICHU).FormulaA1 =
+                    $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-INT(COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")/2)";
 
                 // tiền ship
                 worksheet.Cell(b2, COL_NGUOILAY).Value = "tiền ship";
@@ -1019,7 +1020,7 @@ namespace TextInputter.Services
                 {
                     // Shipper khác: -(SUMIFS(Ship) - SoDonGiao × 5k)
                     worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
-                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")";
+                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-INT(COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")/2)";
                     worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
                         $"-SUMIFS({rShip},{rNguoiDi},{nameRef})+{cntColL}{b2}*{AppConstants.PHI_SHIP_MOI_DON}";
                 }

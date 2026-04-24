@@ -328,6 +328,12 @@ namespace TextInputter
                 );
                 int totalDonGop = 0,
                     totalDonTra = 0;
+                // Matches Excel COUNTIFS("*gộp*") — number of rows containing 'gộp'
+                int totalGopCellCount = 0;
+                // Number of rows that are both gộp AND đơn trả (COUNTIFS with both criteria)
+                int totalDonTraGop = 0;
+                // Number of rows marked 'hàng tỉnh' in ghi chú
+                int totalDonHangTinh = 0;
 
                 // Struct tạm collect row data per người đi (dùng cho gộp detection + đơn trả details)
                 var rowsPerNguoi = new Dictionary<
@@ -339,7 +345,8 @@ namespace TextInputter
                         string Ma,
                         decimal TienThu,
                         decimal ShipFee,
-                        bool IsTra
+                        bool IsTra,
+                        string GhiChu
                     )>
                 >(StringComparer.OrdinalIgnoreCase);
 
@@ -416,9 +423,10 @@ namespace TextInputter
                         // Detect đơn trả: GHI CHÚ contains "đơn trả"
                         // (trước dùng FAIL="xx" nhưng "xx" dễ trùng với giá trị khác)
                         bool isTra = false;
+                        string ghiChuVal = "";
                         if (colGhiChu >= 0 && colGhiChu < row.Cells.Count)
                         {
-                            string ghiChuVal = (row.Cells[colGhiChu].Value?.ToString() ?? "")
+                            ghiChuVal = (row.Cells[colGhiChu].Value?.ToString() ?? "")
                                 .Trim()
                                 .ToLower();
                             isTra = ghiChuVal.Contains("đơn trả");
@@ -475,10 +483,13 @@ namespace TextInputter
                                     string,
                                     decimal,
                                     decimal,
-                                    bool
+                                    bool,
+                                    string
                                 )>();
                         rowsPerNguoi[nguoiRow]
-                            .Add((tenKH, diaChi, quan, ma, tienThuRow, tienShipRow, isTra));
+                            .Add(
+                                (tenKH, diaChi, quan, ma, tienThuRow, tienShipRow, isTra, ghiChuVal)
+                            );
                     }
                 }
 
@@ -496,11 +507,32 @@ namespace TextInputter
                             !string.IsNullOrEmpty(r.TenKH) && !string.IsNullOrEmpty(r.DiaChi)
                         )
                         .GroupBy(r => (r.TenKH.ToLower(), r.DiaChi.ToLower()));
+                    // per-person counters for aggregated global totals
+                    int gopCellsForPerson = 0;
+                    int donTraGopForPerson = 0;
+                    int hangTinhForPerson = 0;
                     foreach (var g in groups)
+                    {
                         if (g.Count() > 1)
+                        {
                             d.SoDonGop += g.Count() - 1;
+                            gopCellsForPerson += g.Count();
+                            // count how many rows in this group are marked 'đơn trả'
+                            donTraGopForPerson += g.Count(r => r.IsTra);
+                        }
+                    }
+
+                    // total đơn trả (all) kept for reporting, but money deduction uses only those that are both gộp & đơn trả
                     totalDonGop += d.SoDonGop;
                     totalDonTra += d.SoDonTra;
+
+                    // count 'hàng tỉnh' flags in this person's rows
+                    hangTinhForPerson = rows.Count(r =>
+                        !string.IsNullOrEmpty(r.GhiChu) && r.GhiChu.Contains("hàng tỉnh")
+                    );
+                    totalGopCellCount += gopCellsForPerson;
+                    totalDonTraGop += donTraGopForPerson;
+                    totalDonHangTinh += hangTinhForPerson;
 
                     if (d.IsAnTam)
                     {
@@ -550,9 +582,13 @@ namespace TextInputter
                 }
 
                 // Tính tiền lấy global cho NGUOI_LAY_DEFAULT (c.cuong)
-                // = -(totalOrders - totalDonGop - totalDonTra) × PHI_LAY_HANG_MOI_DON
-                // Đơn trả không tính tiền lấy vì shipper phải mang hàng về, không có "lấy" thực sự.
-                decimal donLayGlobal = totalSoDon - totalDonGop - totalDonTra;
+                // Use same rules as Excel formula (dynamic):
+                // donLay = totalSoDon - (COUNTIFS("*gộp*")/2) - (COUNTIFS(gộp & đơn trả)/2) - COUNTIFS("*hàng tỉnh*")
+                decimal donLayGlobal =
+                    totalSoDon
+                    - ((decimal)totalGopCellCount / 2m)
+                    - ((decimal)totalDonTraGop / 2m)
+                    - totalDonHangTinh;
                 if (donLayGlobal < 0)
                     donLayGlobal = 0;
                 decimal tienLayTong = -(donLayGlobal * AppConstants.PHI_LAY_HANG_MOI_DON);
