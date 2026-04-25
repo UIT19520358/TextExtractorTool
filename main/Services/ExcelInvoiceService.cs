@@ -414,7 +414,7 @@ namespace TextInputter.Services
                         distinctShops.Add(shop);
                     if (!string.IsNullOrWhiteSpace(nguoiDi) && !distinctNguoiDis.Contains(nguoiDi))
                     {
-                        // Không phải shipper thật (vd: "lưu trả") → skip khỏi per-shipper summary
+                        // Không phải shipper thật (vd: "luu tra") → skip khỏi per-shipper summary
                         bool isNotShipper = AppConstants.NOT_SHIPPER_VALUES.Any(v =>
                             nguoiDi.Contains(v, StringComparison.OrdinalIgnoreCase)
                         );
@@ -899,7 +899,7 @@ namespace TextInputter.Services
                 bool isTra = ghiChuVal.Contains("đơn trả");
 
                 // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) → đơn trả
-                // Tính tiền trừ vào AT hôm nay, sửa NGƯỜI ĐI thành "lưu trả"
+                // Tính tiền trừ vào AT hôm nay, sửa NGƯỜI ĐI thành "luu tra"
                 bool isATRow = nguoi.StartsWith(
                     AppConstants.NGUOI_DI_DEFAULT,
                     StringComparison.OrdinalIgnoreCase
@@ -913,8 +913,8 @@ namespace TextInputter.Services
                     atOldDateDonTra += (double)(-(decimal)tienThu);
                     atOldDateDonTraCount++;
 
-                    // Sửa NGƯỜI ĐI thành "lưu trả" trong Excel
-                    worksheet.Cell(r, COL_NGUOIDI).Value = "lưu trả";
+                    // Sửa NGƯỜI ĐI thành "luu tra" trong Excel
+                    worksheet.Cell(r, COL_NGUOIDI).Value = "luu tra";
                     continue; // Skip — không tính vào report nhỏ
                 }
 
@@ -966,7 +966,7 @@ namespace TextInputter.Services
                     }
                 }
 
-                // Cộng thêm đơn trả AT ngày cũ (đã sửa thành "lưu trả" ở trên)
+                // Cộng thêm đơn trả AT ngày cũ (đã sửa thành "luu tra" ở trên)
                 bool isAnTam = nd.StartsWith(
                     AppConstants.NGUOI_DI_DEFAULT,
                     StringComparison.OrdinalIgnoreCase

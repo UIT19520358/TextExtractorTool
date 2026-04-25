@@ -243,35 +243,53 @@ namespace TextInputter
             decimal
         >(System.StringComparer.OrdinalIgnoreCase)
         {
-            // ── Quận 8 — nhóm 25k ─────────────────────────────────────────────
-            // Phường mới (sau NQ1278/2024 + NQ1685/2025):
-            { "rach ong", 25m }, // từ P.1+2+3 cũ
-            { "hung phu", 25m }, // từ P.8+9+10 cũ
-            { "chanh hung", 25m }, // từ P.4+phần P.5 cũ
-            // Phường số cũ (trước 01/01/2025) — địa chỉ cũ vẫn dùng:
-            { "phuong 1 quan 8", 25m },
-            { "phuong 2 quan 8", 25m },
-            { "phuong 3 quan 8", 25m },
-            { "phuong 4 quan 8", 25m },
-            { "phuong 8 quan 8", 25m },
-            { "phuong 9 quan 8", 25m },
-            { "phuong 10 quan 8", 25m },
-            // ── Quận 8 — nhóm 30k ─────────────────────────────────────────────
-            // Phường mới (sau NQ1685/2025):
-            { "binh dong", 30m }, // từ P.6+7+phần P.5 cũ
-            { "xom cui", 30m }, // từ P.11+12+13 cũ
-            { "phu dinh", 30m }, // từ P.14+15+phần P.16 cũ
+            // ── Quận 8 — phân tầng 25k / 30k ─────────────────────────────────
+            // Q8 base = 30k (SHIPPING_FEES_BY_QUAN). Các phường GẦN trung tâm override xuống 25k.
+            // Luật ship Q8:
+            //   25k: P.1,2,3 (Rạch Ông) | P.4,phần P.5 (Chánh Hưng) | P.8,9,10 (Hưng Phú)
+            //   30k: P.5,6,7 (Bình Đông) | P.11,12,13 (Xóm Củi) | P.14,15,16 (Phú Định) | Hưng Thạnh Mỹ
+            //
+            // ⚠️ Lưu ý quan trọng về matching:
+            //   - SHIPPING_FEES_BY_WARD tra theo tên phường (không có quận context)
+            //   - Key "phuong X quan 8" KHÔNG hoạt động vì GetShipFee chỉ match tên phường thuần tuý
+            //   - Phường số cũ Q8 (P.1–16) khi OCR trả về sẽ KHÔNG match → fallback Q8 base = 30k
+            //   - Phường mới (tên chữ) match chính xác qua key bên dưới ✅
+
+            // ── Phường số cũ Q8 (composite key "8:số") — dùng khi có cột Phường riêng ──
+            // 25k: P.1,2,3,4,8,9,10
+            { "8:1", 25m },
+            { "8:2", 25m },
+            { "8:3", 25m },
+            { "8:4", 25m },
+            { "8:8", 25m },
+            { "8:9", 25m },
+            { "8:10", 25m },
+            // 30k: P.5,6,7,12,13,14,15,16
+            { "8:5", 30m },
+            { "8:6", 30m },
+            { "8:7", 30m },
+            { "8:12", 30m },
+            { "8:13", 30m },
+            { "8:14", 30m },
+            { "8:15", 30m },
+            { "8:16", 30m },
+            // ── Phường mới Q8 (tên chữ) — match cả plain key lẫn composite "8:tên" ──
+            // 25k: Rạch Ông (P.1+2+3), Hưng Phú (P.8+9+10), Chánh Hưng (P.4+phần P.5)
+            { "rach ong", 25m },
+            { "8:rach ong", 25m },
+            { "hung phu", 25m },
+            { "8:hung phu", 25m },
+            { "chanh hung", 25m },
+            { "8:chanh hung", 25m },
+            // 30k: Bình Đông, Xóm Củi, Phú Định, Hưng Thạnh Mỹ
+            { "binh dong", 30m },
+            { "8:binh dong", 30m },
+            { "xom cui", 30m },
+            { "8:xom cui", 30m },
+            { "phu dinh", 30m },
+            { "8:phu dinh", 30m },
             { "hung thanh my", 30m },
-            // Phường số cũ (trước 01/01/2025):
-            { "phuong 5 quan 8", 30m },
-            { "phuong 6 quan 8", 30m },
-            { "phuong 7 quan 8", 30m },
-            { "phuong 11 quan 8", 30m },
-            { "phuong 12 quan 8", 30m },
-            { "phuong 13 quan 8", 30m },
-            { "phuong 14 quan 8", 30m },
-            { "phuong 15 quan 8", 30m },
-            { "phuong 16 quan 8", 30m },
+            { "8:hung thanh my", 30m },
         };
 
         /// <summary>
@@ -359,7 +377,7 @@ namespace TextInputter
             { "5", 25m }, // Q5
             { "6", 25m }, // Q6
             { "7", 30m }, // Q7
-            { "8", 25m }, // Q8 base 25k — các phường xa override lên 30k qua SHIPPING_FEES_BY_WARD
+            { "8", 30m }, // Q8 base 30k — phường gần (Rạch Ông/Hưng Phú/Chánh Hưng) override xuống 25k qua SHIPPING_FEES_BY_WARD
             { "9", 30m }, // Q9
             { "10", 25m }, // Q10
             { "11", 25m }, // Q11
@@ -464,6 +482,8 @@ namespace TextInputter
             { "trang an", "tan phu" }, // Phường Trang An (duy nhất ở Tân Phú)
             { "hiep tan", "tan phu" }, // Phường Hiệp Tân
             { "hoa thanh", "tan phu" }, // Phường Hòa Thạnh
+            { "phu trung", "tan phu" }, // Phường Phú Trung
+            { "phu thanh", "tan phu" }, // Phường Phú Thạnh
             // ── Quận Bình Thạnh (ship 20k) ────────────────────────────────────
             // Sau NQ1685/2025 (01/07/2025): Bình Thạnh giải thể quận, còn 5 phường tên mới
             { "binh thanh phuong", "binh thanh" }, // Phường Bình Thạnh (mới 2025, từ P.12+14+26) — hậu tố tránh trùng key quận
@@ -579,6 +599,8 @@ namespace TextInputter
             { "thoi an", "12" }, // Phường Thới An
             { "hiep thanh", "12" }, // Phường Hiệp Thành — Q12
             { "tan thoi hiep", "12" }, // Phường Tân Thới Hiệp — Q12
+            { "an phu dong", "12" }, // Phường An Phú Đông — Q12
+            { "tan hung thuan", "12" }, // Phường Tân Hưng Thuận — Q12 (cũ, nay gộp vào Đông Hưng Thuận)
             // ── Bình Chánh (ship 35k) ──────────────────────────────────────────
             { "binh chanh", "binh chanh" }, // Thị trấn Bình Chánh
             { "tan tuc", "binh chanh" }, // Phường Tân Túc — Bình Chánh
@@ -590,6 +612,12 @@ namespace TextInputter
             { "hung long", "binh chanh" }, // Phường Hưng Long — Bình Chánh
             { "quy duc", "binh chanh" }, // Phường Quy Đức — Bình Chánh
             { "le minh xuan", "binh chanh" }, // Phường Lê Minh Xuân — Bình Chánh
+            { "vinh loc a", "binh chanh" }, // Xã Vĩnh Lộc A — Bình Chánh
+            { "vinh loc b", "binh chanh" }, // Xã Vĩnh Lộc B — Bình Chánh
+            { "tan kien", "binh chanh" }, // Xã Tân Kiên — Bình Chánh
+            { "tan nhut", "binh chanh" }, // Xã Tân Nhựt — Bình Chánh
+            { "binh loi bc", "binh chanh" }, // Xã Bình Lợi — Bình Chánh (tránh trùng Bình Lợi Trung BT)
+            { "tan quy tay", "binh chanh" }, // Xã Tân Quý Tây — Bình Chánh
             // ── Hóc Môn (ship 35k) ────────────────────────────────────────────
             { "hoc mon", "hoc mon" }, // Thị trấn Hóc Môn
             { "xuan thoi dong", "hoc mon" }, // Phường Xuân Thới Đông
@@ -599,7 +627,9 @@ namespace TextInputter
             { "thoi tam thon", "hoc mon" }, // Phường Thới Tam Thôn — Hóc Môn
             { "nhi binh", "hoc mon" }, // Phường Nhị Bình — Hóc Môn
             { "dong thanh", "hoc mon" }, // Phường Đông Thạnh — Hóc Môn
-            { "bau dieu", "hoc mon" }, // Phường Bầu Điêu — Hóc Môn
+            { "bau don", "hoc mon" }, // Xã Bầu Đồn — Hóc Môn
+            { "trung chanh", "hoc mon" }, // Xã Trung Chánh — Hóc Môn
+            { "ba diem", "hoc mon" }, // Xã Bà Điểm — Hóc Môn
             // ── Nhà Bè (ship 35k) ─────────────────────────────────────────────
             { "nha be", "nha be" }, // Thị trấn Nhà Bè
             { "phuoc kien nha be", "nha be" }, // Phường Phước Kiển — Nhà Bè (tránh trùng Q7)
@@ -607,6 +637,36 @@ namespace TextInputter
             { "long thoi", "nha be" }, // Phường Long Thới — Nhà Bè
             { "hiep phuoc", "nha be" }, // Phường Hiệp Phước — Nhà Bè
             { "nhon duc", "nha be" }, // Phường Nhơn Đức — Nhà Bè
+            // ── Củ Chi (ship 40k) ──────────────────────────────────────────────
+            { "cu chi tt", "cu chi" }, // Thị trấn Củ Chi (dùng "tt" tránh trùng tên huyện)
+            { "tan an hoi", "cu chi" }, // Xã Tân An Hội
+            { "tan thong hoi", "cu chi" }, // Xã Tân Thông Hội
+            { "phu my hung cu chi", "cu chi" }, // Xã Phú Mỹ Hưng — Củ Chi (tránh trùng khu PMH Q7)
+            { "binh my", "cu chi" }, // Xã Bình Mỹ — Củ Chi
+            { "phuoc vinh an", "cu chi" }, // Xã Phước Vĩnh An
+            { "hoa phu", "cu chi" }, // Xã Hòa Phú — Củ Chi
+            { "phu hoa dong", "cu chi" }, // Xã Phú Hòa Đông — Củ Chi
+            { "tan phu trung", "cu chi" }, // Xã Tân Phú Trung — Củ Chi
+            { "phuoc hiep", "cu chi" }, // Xã Phước Hiệp — Củ Chi
+            { "trung an", "cu chi" }, // Xã Trung An — Củ Chi
+            { "trung lap ha", "cu chi" }, // Xã Trung Lập Hạ
+            { "trung lap thuong", "cu chi" }, // Xã Trung Lập Thượng
+            { "an nhon tay", "cu chi" }, // Xã An Nhơn Tây
+            { "nhuan duc", "cu chi" }, // Xã Nhuận Đức
+            { "pham van coi", "cu chi" }, // Xã Phạm Văn Cội
+            { "an phu cu chi", "cu chi" }, // Xã An Phú — Củ Chi (tránh trùng An Phú Q2)
+            { "thai my", "cu chi" }, // Xã Thái Mỹ
+            { "tan thanh tay", "cu chi" }, // Xã Tân Thạnh Tây
+            { "tan thanh dong", "cu chi" }, // Xã Tân Thạnh Đông
+            { "phuoc thanh", "cu chi" }, // Xã Phước Thạnh — Củ Chi
+            // ── Cần Giờ (ship 50k) ─────────────────────────────────────────────
+            { "can thanh", "can gio" }, // Thị trấn Cần Thạnh
+            { "binh khanh can gio", "can gio" }, // Xã Bình Khánh — Cần Giờ (tránh trùng Bình Khánh Q2)
+            { "thanh an can gio", "can gio" }, // Xã Thạnh An — Cần Giờ
+            { "long hoa can gio", "can gio" }, // Xã Long Hòa — Cần Giờ
+            { "tam thon hiep", "can gio" }, // Xã Tam Thôn Hiệp
+            { "an thoi dong", "can gio" }, // Xã An Thới Đông
+            { "ly nhon", "can gio" }, // Xã Lý Nhơn
         };
 
         // ── UI colors ──────────────────────────────────────────────────────────

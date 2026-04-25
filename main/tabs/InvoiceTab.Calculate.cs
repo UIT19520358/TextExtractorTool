@@ -51,6 +51,7 @@ namespace TextInputter
                     colTenKH = -1,
                     colDiaChi = -1,
                     colQuan = -1,
+                    colPhuong = -1,
                     colUngTien = -1,
                     colHangTon = -1,
                     colFail = -1;
@@ -79,6 +80,8 @@ namespace TextInputter
                         colDiaChi = col;
                     if (header.Contains("quận") || header.Contains("quan"))
                         colQuan = col;
+                    if (header.Contains("phường") || header.Contains("phuong"))
+                        colPhuong = col;
                     if (header.Contains("ứng tiền") || header.Contains("ung tien"))
                         colUngTien = col;
                     if (header.Contains("hàng tồn") || header.Contains("hang ton"))
@@ -169,8 +172,8 @@ namespace TextInputter
                     if (IsDateLabelRow(row, colShop, colMa))
                         continue;
 
-                    // Skip row "lưu trả" / AT ngày cũ khỏi totalSoDon
-                    // (giống logic bảng trái Excel: E cod = SUMIFS filter theo SHOP+NGÀY, loại "lưu trả")
+                    // Skip row "luu tra" / AT ngày cũ khỏi totalSoDon
+                    // (giống logic bảng trái Excel: E cod = SUMIFS filter theo SHOP+NGÀY, loại "luu tra")
                     if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
                     {
                         string nguoiVal = (row.Cells[colNguoiDi].Value?.ToString() ?? "").Trim();
@@ -342,6 +345,7 @@ namespace TextInputter
                         string TenKH,
                         string DiaChi,
                         string Quan,
+                        string Phuong,
                         string Ma,
                         decimal TienThu,
                         decimal ShipFee,
@@ -370,7 +374,7 @@ namespace TextInputter
                         if (string.IsNullOrEmpty(nguoiRow))
                             nguoiRow = "(không rõ)";
 
-                        // Không phải shipper thật (vd: "lưu trả") → skip khỏi per-shipper summary
+                        // Không phải shipper thật (vd: "luu tra") → skip khỏi per-shipper summary
                         if (
                             AppConstants.NOT_SHIPPER_VALUES.Any(v =>
                                 nguoiRow.Contains(v, StringComparison.OrdinalIgnoreCase)
@@ -379,7 +383,7 @@ namespace TextInputter
                             continue;
 
                         // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) + FAIL="xx"
-                        // → đơn trả thuộc AT hôm nay, sửa NGƯỜI ĐI thành "lưu trả" để skip
+                        // → đơn trả thuộc AT hôm nay, sửa NGƯỜI ĐI thành "luu tra" để skip
                         bool isAnTamRow = nguoiRow.StartsWith(
                             AppConstants.NGUOI_DI_DEFAULT,
                             StringComparison.OrdinalIgnoreCase
@@ -415,6 +419,10 @@ namespace TextInputter
                             colQuan >= 0 && colQuan < row.Cells.Count
                                 ? (row.Cells[colQuan].Value?.ToString() ?? "").Trim()
                                 : "";
+                        string phuong =
+                            colPhuong >= 0 && colPhuong < row.Cells.Count
+                                ? (row.Cells[colPhuong].Value?.ToString() ?? "").Trim()
+                                : "";
                         string ma =
                             colMa >= 0 && colMa < row.Cells.Count
                                 ? (row.Cells[colMa].Value?.ToString() ?? "").Trim()
@@ -432,7 +440,7 @@ namespace TextInputter
                             isTra = ghiChuVal.Contains("đơn trả");
                         }
 
-                        // AT ngày cũ → đơn trả: tính tiền trừ vào AT hôm nay, rồi sửa thành "lưu trả"
+                        // AT ngày cũ → đơn trả: tính tiền trừ vào AT hôm nay, rồi sửa thành "luu tra"
                         if (isAnTamOldDate)
                         {
                             // Đảm bảo AT hôm nay tồn tại trong detailByNguoiDi
@@ -451,9 +459,9 @@ namespace TextInputter
                             dAT.SoDonTra++;
                             dAT.DonTraDetails.Add((ma, tienThuRow, shipFeeLookup, deduction));
 
-                            // Sửa NGƯỜI ĐI thành "lưu trả" trong DataGridView
+                            // Sửa NGƯỜI ĐI thành "luu tra" trong DataGridView
                             if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
-                                row.Cells[colNguoiDi].Value = "lưu trả";
+                                row.Cells[colNguoiDi].Value = "luu tra";
 
                             // KHÔNG add vào rowsPerNguoi — deduction đã tính ở trên
                             continue; // Skip tích lũy bình thường
@@ -481,6 +489,7 @@ namespace TextInputter
                                     string,
                                     string,
                                     string,
+                                    string,
                                     decimal,
                                     decimal,
                                     bool,
@@ -488,7 +497,17 @@ namespace TextInputter
                                 )>();
                         rowsPerNguoi[nguoiRow]
                             .Add(
-                                (tenKH, diaChi, quan, ma, tienThuRow, tienShipRow, isTra, ghiChuVal)
+                                (
+                                    tenKH,
+                                    diaChi,
+                                    quan,
+                                    phuong,
+                                    ma,
+                                    tienThuRow,
+                                    tienShipRow,
+                                    isTra,
+                                    ghiChuVal
+                                )
                             );
                     }
                 }
@@ -572,7 +591,7 @@ namespace TextInputter
                     {
                         decimal shipFeeLookup = d.IsAnTam
                             ? LookupShipFeeByDict(r.Quan, AppConstants.AT_SHIPPING_FEES)
-                            : LookupShipFeeByQuan(r.Quan);
+                            : LookupShipFee(r.Phuong, r.Quan);
                         decimal deduction = d.IsAnTam
                             ? -(r.TienThu) // AT: trả lại toàn bộ tiền thu (hàng + ship AT)
                             : -(r.TienThu - shipFeeLookup + AppConstants.PHI_CONG_DON_TRA);
@@ -822,6 +841,54 @@ namespace TextInputter
         }
 
         // ─── Ship fee lookup helper ────────────────────────────────────────────
+
+        /// <summary>
+        /// Tra cứu phí ship theo PHƯỜNG + QUẬN.
+        /// Thứ tự ưu tiên:
+        ///   1. Composite key "quận:phường" trong SHIPPING_FEES_BY_WARD  (VD: "8:5" → 30k)
+        ///   2. Plain ward name trong SHIPPING_FEES_BY_WARD               (VD: "rach ong" → 25k)
+        ///   3. Fallback SHIPPING_FEES_BY_QUAN                           (VD: "8" → 30k)
+        /// </summary>
+        private static decimal LookupShipFee(string phuong, string quan)
+        {
+            if (!string.IsNullOrWhiteSpace(phuong))
+            {
+                // Normalize phường: bỏ dấu + lowercase + strip prefix "phường/phuong/p."
+                string normP = RemoveDiacriticsSimple(phuong).ToLowerInvariant().Trim();
+                normP = System
+                    .Text.RegularExpressions.Regex.Replace(normP, @"^(phuong|p\.?)\s*", "")
+                    .Trim();
+
+                // Normalize quận → số hoặc tên không dấu (giống LookupShipFeeByDict)
+                string normQ = RemoveDiacriticsSimple(quan ?? "").ToLowerInvariant().Trim();
+                normQ = System.Text.RegularExpressions.Regex.Replace(
+                    normQ,
+                    @"^(quan|huyen|tp|thanh pho)\s+",
+                    ""
+                );
+                var qNum = System.Text.RegularExpressions.Regex.Match(normQ, @"\d+");
+                if (qNum.Success)
+                    normQ = qNum.Value;
+
+                // 1. Composite "quan:phuong" — handles Q8 old numbers & named wards
+                if (!string.IsNullOrEmpty(normQ) && !string.IsNullOrEmpty(normP))
+                    if (
+                        AppConstants.SHIPPING_FEES_BY_WARD.TryGetValue(
+                            $"{normQ}:{normP}",
+                            out decimal feeC
+                        )
+                    )
+                        return feeC;
+
+                // 2. Plain ward name — handles new named wards (rach ong, hung phu, …)
+                if (!string.IsNullOrEmpty(normP))
+                    if (AppConstants.SHIPPING_FEES_BY_WARD.TryGetValue(normP, out decimal feeW))
+                        return feeW;
+            }
+
+            // 3. Fallback to district fee
+            return LookupShipFeeByQuan(quan);
+        }
 
         /// <summary>
         /// Tra cứu phí ship theo QUẬN từ AppConstants.SHIPPING_FEES_BY_QUAN.
