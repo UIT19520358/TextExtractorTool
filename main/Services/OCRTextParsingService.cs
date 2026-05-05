@@ -19,6 +19,9 @@ namespace TextInputter.Services
         // Gemini fallback — chỉ active khi GEMINI_API_KEY được điền trong AppConstants
         private readonly GeminiService _gemini = new GeminiService(AppConstants.GEMINI_API_KEY);
 
+        /// <summary>Cho phép OcrTab gọi trực tiếp Gemini khi Google Vision trả về text rỗng.</summary>
+        public GeminiService Gemini => _gemini;
+
         // Path ảnh gốc hiện tại — được set bởi caller trước khi gọi ExtractAllFields
         // Dùng để Gemini đọc ảnh khi cần fallback
         public string CurrentImagePath { get; set; } = "";
@@ -115,7 +118,9 @@ namespace TextInputter.Services
                 {
                     var candidate = nguoiNhanMatch.Groups[1].Value.Trim();
                     // Strip SĐT cuối nếu có: "Kim Liên (0868..." → "Kim Liên"
-                    candidate = Regex.Replace(candidate, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "").Trim();
+                    candidate = Regex
+                        .Replace(candidate, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "")
+                        .Trim();
                     if (candidate.Length >= 2)
                         khRaw = candidate;
                 }
@@ -152,15 +157,23 @@ namespace TextInputter.Services
             // không phải SĐT thuần, có ≥ 2 ký tự chữ, không phải SHOP
             if (string.IsNullOrEmpty(khRaw))
             {
-                var allLines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                var allLines = text.Split(
+                    new[] { "\r\n", "\r", "\n" },
+                    StringSplitOptions.RemoveEmptyEntries
+                );
                 foreach (var rawLine in allLines)
                 {
                     var lineTrimmed = rawLine.Trim();
                     if (lineTrimmed.Length < 2)
                         continue;
                     // Bỏ qua nếu là dòng header hệ thống / shop
-                    if (Regex.IsMatch(lineTrimmed, @"QUY\s*KH[AÁ]CH|QUAY\s*VIDEO|M[ỞƠ]\s*H[AÀ]NG|ĐO[AÀ]N|HOTLINE|CN\d|chi\s*nh[aá]nh|SHOP|CHUY[EÊ]N\s*S[IỈ]",
-                        RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            lineTrimmed,
+                            @"QUY\s*KH[AÁ]CH|QUAY\s*VIDEO|M[ỞƠ]\s*H[AÀ]NG|ĐO[AÀ]N|HOTLINE|CN\d|chi\s*nh[aá]nh|SHOP|CHUY[EÊ]N\s*S[IỈ]",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
                     // Bỏ qua nếu là SĐT thuần
                     if (Regex.IsMatch(lineTrimmed, @"^0\d{8,10}$"))
@@ -169,22 +182,48 @@ namespace TextInputter.Services
                     if (Regex.IsMatch(lineTrimmed, @"^[\d.,\s]+$"))
                         continue;
                     // Bỏ qua nếu là dòng "NGƯỜI GỬI" (đây là người gửi, ko phải khách)
-                    if (Regex.IsMatch(lineTrimmed, @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*G[ỬƯƯỪ]I", RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            lineTrimmed,
+                            @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*G[ỬƯƯỪ]I",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
                     // Bỏ qua nếu chứa keyword địa chỉ (đường/phường/quận)
-                    if (Regex.IsMatch(lineTrimmed, @"\b(?:đường|ph[ưướừửữ][oôờở]ng|qu[aâậ]n|p\d|q\d|Q\.|P\.)\b", RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            lineTrimmed,
+                            @"\b(?:đường|ph[ưướừửữ][oôờở]ng|qu[aâậ]n|p\d|q\d|Q\.|P\.)\b",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
                     // Bỏ qua nếu là dòng "KHÔNG THU" / "THU SHIP" / keyword ship
-                    if (Regex.IsMatch(lineTrimmed, @"\b(?:THU\s*SHIP|KH[OÔ]NG\s*THU|KO\s*THU)\b", RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            lineTrimmed,
+                            @"\b(?:THU\s*SHIP|KH[OÔ]NG\s*THU|KO\s*THU)\b",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
                     // Bỏ qua nếu là "NGƯỜI NHẬN" / "NGƯỜI GỬI" label chính
-                    if (Regex.IsMatch(lineTrimmed, @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*(NH[AẬ]N|G[ỬƯỪ]I)", RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            lineTrimmed,
+                            @"NG[ƯỪỬỮỨ][OỜỞỠỚ]I\s*(NH[AẬ]N|G[ỬƯỪ]I)",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
                     // Ứng viên hợp lệ: có ít nhất 2 ký tự chữ
                     if (Regex.IsMatch(lineTrimmed, @"[A-Za-zÀ-ỹĐđ].*[A-Za-zÀ-ỹĐđ]"))
                     {
                         // Strip SĐT ở cuối nếu có
-                        var cleaned = Regex.Replace(lineTrimmed, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "").Trim();
+                        var cleaned = Regex
+                            .Replace(lineTrimmed, @"\s*[\(\[]?\s*0\d{8,10}\s*[\)\]]?\s*$", "")
+                            .Trim();
                         // Strip ghi chú trong ngoặc: "(e nói đồ ...)"
                         cleaned = Regex.Replace(cleaned, @"\s*\([^)]*\)\s*", " ").Trim();
                         if (cleaned.Length >= 2)
@@ -762,11 +801,11 @@ namespace TextInputter.Services
                     bool hasNumber = Regex.IsMatch(line, @"\d");
                     bool hasAddrKeyword = Regex.IsMatch(
                         line,
-                        @"\b(?:ph[uướừửữ][oôờở]ng|qu[aâậ]n|p\.?\d|q\.?\d|Q\.|P\.|[Ff]\d{1,2})\b" +
-                        @"|(?:bthanh|btan|tbinh|tphu|gvap|pnhuan|tduc|t[aâ]n\s*b[iì]nh|" +
-                        @"b[iì]nh\s*th[aạ]nh|g[oò]\s*v[aấ]p|t[aâ]n\s*ph[uú]|ph[uú]\s*nhu[aậ]n|" +
-                        @"th[uủ]\s*[đd][uứ]c|nh[aà]\s*b[eè]|b[iì]nh\s*ch[aá]nh|h[oó]c\s*m[oô]n|" +
-                        @"b[iì]nh\s*t[aâ]n)\b",
+                        @"\b(?:ph[uướừửữ][oôờở]ng|qu[aâậ]n|p\.?\d|q\.?\d|Q\.|P\.|[Ff]\d{1,2})\b"
+                            + @"|(?:bthanh|btan|tbinh|tphu|gvap|pnhuan|tduc|t[aâ]n\s*b[iì]nh|"
+                            + @"b[iì]nh\s*th[aạ]nh|g[oò]\s*v[aấ]p|t[aâ]n\s*ph[uú]|ph[uú]\s*nhu[aậ]n|"
+                            + @"th[uủ]\s*[đd][uứ]c|nh[aà]\s*b[eè]|b[iì]nh\s*ch[aá]nh|h[oó]c\s*m[oô]n|"
+                            + @"b[iì]nh\s*t[aâ]n)\b",
                         RegexOptions.IgnoreCase
                     );
                     if (!hasNumber || !hasAddrKeyword)
@@ -776,13 +815,23 @@ namespace TextInputter.Services
                     if (Regex.IsMatch(line, @"^0\d{8,10}$"))
                         continue;
                     // Bỏ qua nếu chứa keyword hệ thống (THU/SHIP/HOTLINE)
-                    if (Regex.IsMatch(line, @"\b(?:THU|SHIP|HOTLINE|CN\d)\b", RegexOptions.IgnoreCase))
+                    if (
+                        Regex.IsMatch(
+                            line,
+                            @"\b(?:THU|SHIP|HOTLINE|CN\d)\b",
+                            RegexOptions.IgnoreCase
+                        )
+                    )
                         continue;
 
                     // Strip SĐT cuối nếu có: "phường 13 Tân bình 0937.773.299" → "phường 13 Tân bình"
-                    var cleaned = Regex.Replace(line, @"\s+0\d{2,3}[\s.-]?\d{3,4}[\s.-]?\d{3,4}\s*$", "").Trim();
+                    var cleaned = Regex
+                        .Replace(line, @"\s+0\d{2,3}[\s.-]?\d{3,4}[\s.-]?\d{3,4}\s*$", "")
+                        .Trim();
                     // Strip "HCM" cuối
-                    cleaned = Regex.Replace(cleaned, @",?\s*HCM\s*$", "", RegexOptions.IgnoreCase).Trim();
+                    cleaned = Regex
+                        .Replace(cleaned, @",?\s*HCM\s*$", "", RegexOptions.IgnoreCase)
+                        .Trim();
 
                     if (cleaned.Length >= 5)
                     {

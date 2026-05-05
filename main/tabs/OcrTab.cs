@@ -311,21 +311,171 @@ namespace TextInputter
                     }
                     else
                     {
-                        string noText = "📊 KẾT QUẢ MAP: ⚠️ Không nhận diện được text từ ảnh này";
-                        allText.AppendLine(noText);
-                        combinedLog.AppendLine("[MAPPING]");
-                        combinedLog.AppendLine(noText);
-                        combinedLog.AppendLine();
-                        // Đơn không OCR được vẫn lưu vào Excel (để trống, tô đỏ GHI CHÚ)
-                        var emptyFields = new Dictionary<string, string>
+                        // Google Vision không đọc được text → thử Gemini đọc ảnh trực tiếp
+                        combinedLog.AppendLine("[GEMINI]");
+                        combinedLog.AppendLine(
+                            $"TRIGGERED for: {fileName} | OCR rỗng (confidence 0%) → Gemini đọc ảnh trực tiếp"
+                        );
+
+                        Dictionary<string, string> fields = null;
+                        bool geminiOk = false;
+
+                        if (_ocrParsingService.Gemini.IsConfigured)
                         {
-                            ["fileName"] = fileName,
-                            ["IS_FAIL"] = "0",
-                            ["MISSING_FIELDS"] = "GHI CHÚ",
-                            ["GHI CHÚ"] = $"OCR thất bại: {fileName}",
-                        };
-                        mappedDataList.Add(emptyFields);
-                        warnCount++;
+                            _ocrParsingService.CurrentImagePath = imagePath;
+                            var (g, geminiError) = _ocrParsingService
+                                .Gemini.ParseInvoiceFromImageAsync(imagePath)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            if (g != null)
+                            {
+                                // Build fields từ Gemini result
+                                fields = new Dictionary<string, string>
+                                {
+                                    ["SHOP"] = g.TenShop ?? "",
+                                    ["TÊN KH"] = g.TenKH ?? "",
+                                    ["MÃ"] = g.Ma ?? "",
+                                    ["QUẬN"] = g.Quan ?? "",
+                                    ["PHƯỜNG"] = g.Phuong ?? "",
+                                    ["ĐỊA CHỈ"] = g.DiaChi ?? "",
+                                    ["TIỀN THU"] = g.TienThu ?? "",
+                                    ["TIỀN SHIP"] = g.TienShip ?? "",
+                                    ["INVOICE_TYPE"] = string.IsNullOrEmpty(g.InvoiceType)
+                                        ? "COD"
+                                        : g.InvoiceType,
+                                    ["NGÀY LẤY"] = g.NgayLay ?? "",
+                                    ["NGƯỜI ĐI"] = "",
+                                    ["NGƯỜI LẤY"] = "",
+                                    ["TIỀN HÀNG"] = "0",
+                                    ["fileName"] = fileName,
+                                };
+                                string resultLine =
+                                    $"OK | SHOP={g.TenShop} | QUẬN={g.Quan} | TÊN KH={g.TenKH} | MÃ={g.Ma}"
+                                    + $" | THU={g.TienThu} | SHIP={g.TienShip} | NGÀY={g.NgayLay} | TYPE={g.InvoiceType}";
+                                combinedLog.AppendLine(resultLine);
+                                geminiOk = true;
+                            }
+                            else
+                            {
+                                combinedLog.AppendLine($"FAILED — {geminiError}");
+                            }
+                        }
+                        else
+                        {
+                            combinedLog.AppendLine("SKIPPED — Gemini chưa cấu hình API key");
+                        }
+
+                        combinedLog.AppendLine();
+
+                        if (geminiOk && fields != null)
+                        {
+                            // Điền người đi / người lấy
+                            string phuongForMap = fields.GetValueOrDefault("PHƯỜNG", "");
+                            string quanForMap = fields.GetValueOrDefault("QUẬN", "");
+                            fields["NGƯỜI ĐI"] =
+                                _manualNguoiDi && !string.IsNullOrWhiteSpace(txtNguoiDiOCR?.Text)
+                                    ? txtNguoiDiOCR.Text.Trim()
+                                    : OCRInvoiceMapper.GetNguoiDi(phuongForMap, quanForMap);
+                            fields["NGƯỜI LẤY"] =
+                                _manualNguoiLay && !string.IsNullOrWhiteSpace(txtNguoiLayOCR?.Text)
+                                    ? txtNguoiLayOCR.Text.Trim()
+                                    : nguoiLay;
+
+                            // Auto-fill TIỀN SHIP nếu trống
+                            string currentShip = fields.GetValueOrDefault("TIỀN SHIP", "");
+                            bool shipIsUnknown =
+                                string.IsNullOrWhiteSpace(currentShip) || currentShip.Trim() == "0";
+                            if (shipIsUnknown)
+                            {
+                                decimal? feeFromTable = OCRInvoiceMapper.GetShipFee(
+                                    phuongForMap,
+                                    quanForMap
+                                );
+                                fields["TIỀN SHIP"] = feeFromTable.HasValue
+                                    ? feeFromTable.Value.ToString("F0")
+                                    : "";
+                            }
+
+                            // Tính TIỀN HÀNG
+                            string invoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
+                            long.TryParse(fields.GetValueOrDefault("TIỀN THU", "0"), out long thu);
+                            long.TryParse(
+                                fields.GetValueOrDefault("TIỀN SHIP", "0"),
+                                out long ship
+                            );
+                            long tienhang = invoiceType switch
+                            {
+                                "SHIP_ONLY_FREE" => -ship,
+                                "SHIP_ONLY_PAID" => ship,
+                                _ => thu + ship,
+                            };
+                            fields["TIỀN HÀNG"] = tienhang.ToString();
+
+                            // Check missing fields
+                            var requiredKeys = new[]
+                            {
+                                "SHOP",
+                                "TÊN KH",
+                                "QUẬN",
+                                "ĐỊA CHỈ",
+                                "TIỀN THU",
+                                "NGÀY LẤY",
+                            };
+                            var stillMissing = requiredKeys
+                                .Where(k =>
+                                    string.IsNullOrWhiteSpace(fields.GetValueOrDefault(k, ""))
+                                )
+                                .ToList();
+
+                            string mappingResult;
+                            if (stillMissing.Count == 0)
+                            {
+                                mappingResult = "📊 KẾT QUẢ MAP: ✅ THÀNH CÔNG (Gemini) — đủ fields";
+                                fields["IS_FAIL"] = "0";
+                                fields["MISSING_FIELDS"] = "";
+                                successCount++;
+                            }
+                            else
+                            {
+                                mappingResult =
+                                    $"📊 KẾT QUẢ MAP: ⚠️ THIẾU {stillMissing.Count} fields: {string.Join(", ", stillMissing)} — đã lưu, cần check thủ công";
+                                fields["IS_FAIL"] = "0";
+                                fields["MISSING_FIELDS"] = string.Join(",", stillMissing);
+                                warnCount++;
+                            }
+                            allText.AppendLine(mappingResult);
+                            combinedLog.AppendLine("[MAPPING]");
+                            combinedLog.AppendLine(mappingResult);
+                            foreach (var kv in fields.Where(k => k.Key != "fileName"))
+                            {
+                                bool isMissing = stillMissing?.Contains(kv.Key) == true;
+                                string line = isMissing
+                                    ? $"  ⚠️ {kv.Key}: (trống)"
+                                    : $"  ✓ {kv.Key}: {kv.Value}";
+                                allText.AppendLine(line);
+                                combinedLog.AppendLine(line);
+                            }
+                            mappedDataList.Add(fields);
+                        }
+                        else
+                        {
+                            string noText =
+                                "📊 KẾT QUẢ MAP: ⚠️ Không nhận diện được text từ ảnh này";
+                            allText.AppendLine(noText);
+                            combinedLog.AppendLine("[MAPPING]");
+                            combinedLog.AppendLine(noText);
+                            var emptyFields = new Dictionary<string, string>
+                            {
+                                ["fileName"] = fileName,
+                                ["IS_FAIL"] = "0",
+                                ["MISSING_FIELDS"] = "GHI CHÚ",
+                                ["GHI CHÚ"] = $"OCR thất bại: {fileName}",
+                            };
+                            mappedDataList.Add(emptyFields);
+                            warnCount++;
+                        }
+                        combinedLog.AppendLine();
                     }
                     // Không cần dòng kẻ cuối — header của file tiếp theo đã có kẻ ═══
                 }
@@ -770,17 +920,24 @@ namespace TextInputter
                 // ── Auto-detect hàng tồn: scan existing sheets for duplicate MÃ ──
                 // Nếu MÃ đã tồn tại ở sheet ngày trước → đây là hàng tồn (carry-over)
                 int hangTonDetected = 0;
-                var targetSheetNames = new HashSet<string>(grouped.Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
+                var targetSheetNames = new HashSet<string>(
+                    grouped.Select(g => g.Key),
+                    StringComparer.OrdinalIgnoreCase
+                );
                 try
                 {
                     using var wb = new ClosedXML.Excel.XLWorkbook(excelPath);
                     // Collect all MÃ from sheets NOT in current export target
-                    var existingMaBySheet = new Dictionary<string, (string SheetName, string Ngay)>(StringComparer.OrdinalIgnoreCase);
+                    var existingMaBySheet = new Dictionary<string, (string SheetName, string Ngay)>(
+                        StringComparer.OrdinalIgnoreCase
+                    );
                     foreach (var ws in wb.Worksheets)
                     {
-                        if (targetSheetNames.Contains(ws.Name)) continue;
+                        if (targetSheetNames.Contains(ws.Name))
+                            continue;
                         var lastRow = ws.LastRowUsed();
-                        if (lastRow == null) continue;
+                        if (lastRow == null)
+                            continue;
                         for (int r = 3; r <= lastRow.RowNumber(); r++)
                         {
                             string ma = ws.Cell(r, 4).GetString().Trim(); // COL_MA = 4
@@ -794,7 +951,10 @@ namespace TextInputter
                     foreach (var d in deduped)
                     {
                         string ma = d.GetValueOrDefault("MÃ", "");
-                        if (!string.IsNullOrEmpty(ma) && existingMaBySheet.TryGetValue(ma, out var found))
+                        if (
+                            !string.IsNullOrEmpty(ma)
+                            && existingMaBySheet.TryGetValue(ma, out var found)
+                        )
                         {
                             d["HÀNG TỒN"] = "x";
                             d["ỨNG TIỀN"] = "x";
@@ -805,7 +965,9 @@ namespace TextInputter
                         }
                     }
                 }
-                catch { /* ignore errors scanning existing file */ }
+                catch
+                { /* ignore errors scanning existing file */
+                }
 
                 foreach (var group in grouped)
                 {
