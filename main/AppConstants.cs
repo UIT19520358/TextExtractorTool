@@ -508,6 +508,8 @@ namespace TextInputter
             // ── Quận Bình Tân (ship 25k — TODO xác nhận) ──────────────────────
             // Sau NQ1685/2025: Bình Tân giải thể quận, còn 5 phường tên mới
             { "binh hung hoa", "binh tan" }, // Phường Bình Hưng Hòa (mới 2025)
+            { "binh hung hoa a", "binh tan" }, // Phường Bình Hưng Hòa A (mới 2025)
+            { "binh hung hoa b", "binh tan" }, // Phường Bình Hưng Hòa B (mới 2025)
             { "binh tri dong", "binh tan" }, // Phường Bình Trị Đông (mới 2025)
             { "tan tao", "binh tan" }, // Phường Tân Tạo (mới 2025, từ Tân Tạo A + phần Tân Tạo)
             { "an lac", "binh tan" }, // Phường An Lạc (mới 2025, từ An Lạc + An Lạc A + BT Đông B)
@@ -612,6 +614,7 @@ namespace TextInputter
             { "hung long", "binh chanh" }, // Phường Hưng Long — Bình Chánh
             { "quy duc", "binh chanh" }, // Phường Quy Đức — Bình Chánh
             { "le minh xuan", "binh chanh" }, // Phường Lê Minh Xuân — Bình Chánh
+            { "vinh loc", "binh chanh" }, // Xã Vĩnh Lộc — Bình Chánh
             { "vinh loc a", "binh chanh" }, // Xã Vĩnh Lộc A — Bình Chánh
             { "vinh loc b", "binh chanh" }, // Xã Vĩnh Lộc B — Bình Chánh
             { "tan kien", "binh chanh" }, // Xã Tân Kiên — Bình Chánh
