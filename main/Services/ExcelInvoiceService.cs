@@ -295,12 +295,11 @@ namespace TextInputter.Services
 
                     var hangCell = worksheet.Cell(r, COL_TIENHANG);
 
-                    // Nếu cell đã có formula SHIP_ONLY (từ source Excel) → giữ nguyên
+                    // Nếu cell đã có formula SHIP_ONLY_PAID (=Hx) từ source Excel → giữ nguyên
+                    // SHIP_ONLY_FREE (-Hx) KHÔNG giữ — sẽ được override thành Gx-Hx bên dưới
                     string existingFormula = hangCell.HasFormula ? hangCell.FormulaA1.Trim() : "";
-                    bool isShipOnlyFormula =
-                        existingFormula == $"-{shipColLetter}{r}"
-                        || existingFormula == $"{shipColLetter}{r}";
-                    if (isShipOnlyFormula)
+                    bool isShipOnlyPaidFormula = existingFormula == $"{shipColLetter}{r}";
+                    if (isShipOnlyPaidFormula)
                     {
                         // Chỉ fix TÌNH TRẠNG
                         string maCheck = worksheet.Cell(r, COL_MA).GetString().Trim();
@@ -331,15 +330,15 @@ namespace TextInputter.Services
                     if (thuValue == 0)
                     {
                         // SHIP_ONLY: dùng TIỀN HÀNG raw value để phân biệt FREE vs PAID
-                        // FREE: raw = -(ship) → formula =-H
-                        // PAID: raw = +(ship) → formula =+H
+                        // FREE: TIỀN THU=0, TIỀN HÀNG âm → Gx-Hx (= 0-Hx = -Hx, nhất quán với COD)
+                        // PAID: TIỀN THU=0, TIỀN HÀNG dương → =Hx (thu đúng bằng ship)
                         double hangRaw = 0;
                         if (!hangCell.HasFormula)
                             double.TryParse(hangCell.GetString(), out hangRaw);
                         if (hangRaw < 0)
-                            hangCell.FormulaA1 = $"-{shipColLetter}{r}"; // SHIP_ONLY_FREE
+                            hangCell.FormulaA1 = $"{thuColLetter}{r}-{shipColLetter}{r}"; // SHIP_ONLY_FREE → Gx-Hx
                         else
-                            hangCell.FormulaA1 = $"{shipColLetter}{r}"; // SHIP_ONLY_PAID
+                            hangCell.FormulaA1 = $"{shipColLetter}{r}"; // SHIP_ONLY_PAID → =Hx
                     }
                     else
                     {
