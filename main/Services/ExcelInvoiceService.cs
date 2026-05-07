@@ -293,58 +293,9 @@ namespace TextInputter.Services
                     if (!rowHasData)
                         continue;
 
-                    var hangCell = worksheet.Cell(r, COL_TIENHANG);
-
-                    // Nếu cell đã có formula SHIP_ONLY_PAID (=Hx) từ source Excel → giữ nguyên
-                    // SHIP_ONLY_FREE (-Hx) KHÔNG giữ — sẽ được override thành Gx-Hx bên dưới
-                    string existingFormula = hangCell.HasFormula ? hangCell.FormulaA1.Trim() : "";
-                    bool isShipOnlyPaidFormula = existingFormula == $"{shipColLetter}{r}";
-                    if (isShipOnlyPaidFormula)
-                    {
-                        // Chỉ fix TÌNH TRẠNG
-                        string maCheck = worksheet.Cell(r, COL_MA).GetString().Trim();
-                        worksheet.Cell(r, COL_TINHTRANG).Value = string.IsNullOrEmpty(maCheck)
-                            ? "hàng sỉ"
-                            : "";
-                        continue;
-                    }
-
-                    // Detect SHIP_ONLY khi cell KHÔNG có formula (sau WriteSheetToWorkbook ghi raw)
-                    // SHIP_ONLY: TIỀN THU = 0 trong Excel
-                    double thuValue = 0;
-                    var thuCell = worksheet.Cell(r, COL_TIENTHU);
-                    if (!thuCell.HasFormula)
-                        double.TryParse(thuCell.GetString(), out thuValue);
-                    else
-                    {
-                        try
-                        {
-                            thuValue = thuCell.GetDouble();
-                        }
-                        catch
-                        {
-                            thuValue = 0;
-                        }
-                    }
-
-                    if (thuValue == 0)
-                    {
-                        // SHIP_ONLY: dùng TIỀN HÀNG raw value để phân biệt FREE vs PAID
-                        // FREE: TIỀN THU=0, TIỀN HÀNG âm → Gx-Hx (= 0-Hx = -Hx, nhất quán với COD)
-                        // PAID: TIỀN THU=0, TIỀN HÀNG dương → =Hx (thu đúng bằng ship)
-                        double hangRaw = 0;
-                        if (!hangCell.HasFormula)
-                            double.TryParse(hangCell.GetString(), out hangRaw);
-                        if (hangRaw < 0)
-                            hangCell.FormulaA1 = $"{thuColLetter}{r}-{shipColLetter}{r}"; // SHIP_ONLY_FREE → Gx-Hx
-                        else
-                            hangCell.FormulaA1 = $"{shipColLetter}{r}"; // SHIP_ONLY_PAID → =Hx
-                    }
-                    else
-                    {
-                        // COD: TIỀN HÀNG = TIỀN THU - TIỀN SHIP
-                        hangCell.FormulaA1 = $"{thuColLetter}{r}-{shipColLetter}{r}";
-                    }
+                    // TIỀN HÀNG = TIỀN THU - TIỀN SHIP (Gx-Hx) cho mọi loại đơn
+                    worksheet.Cell(r, COL_TIENHANG).FormulaA1 =
+                        $"{thuColLetter}{r}-{shipColLetter}{r}";
 
                     // TÌNH TRẠNG: no MÃ = "hàng sỉ" (đảm bảo đúng dù dgvInvoice có data cũ)
                     string maVal = worksheet.Cell(r, COL_MA).GetString().Trim();
@@ -1006,12 +957,16 @@ namespace TextInputter.Services
 
                 // tiền ship
                 worksheet.Cell(b2, COL_NGUOILAY).Value = "tiền ship";
-                if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
+                    if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
                 {
-                    // AT: tiền ship = SUM of zone breakdown rows in column H
+                    // AT: tiền ship = SUM of zone breakdown rows in column H (these are -count*fee).
+                    // Adjust for 'gộp' (grouped orders) which were double-counted in zone counts:
+                    // add back half the summed ship for rows marked "gộp" so one of the duplicate
+                    // entries is removed per grouped pair.
                     worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
-                        $"SUM({shipHColL}{atZoneStartRow}:{shipHColL}{atZoneEndRow})";
-                    // Số đơn cho AT: tổng đơn (không trừ gộp, vì zone tính per-order)
+                        $"SUM({shipHColL}{atZoneStartRow}:{shipHColL}{atZoneEndRow})+SUMIFS({rShip},{rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")/2";
+                    // Số đơn cho AT: tổng đơn (keeps original behavior: raw total orders)
+                    // If desired, this can be changed to subtract grouped pairs similar to other shippers.
                     worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
                         $"SUMIFS({rCol1},{rNguoiDi},{nameRef})";
                 }
