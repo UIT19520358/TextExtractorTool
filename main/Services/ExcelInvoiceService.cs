@@ -957,7 +957,7 @@ namespace TextInputter.Services
 
                 // tiền ship
                 worksheet.Cell(b2, COL_NGUOILAY).Value = "tiền ship";
-                    if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
+                if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
                 {
                     // AT: tiền ship = SUM of zone breakdown rows in column H (these are -count*fee).
                     // Adjust for 'gộp' (grouped orders) which were double-counted in zone counts:
