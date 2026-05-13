@@ -959,16 +959,12 @@ namespace TextInputter.Services
                 worksheet.Cell(b2, COL_NGUOILAY).Value = "tiền ship";
                 if (isAnTam && atZoneStartRow > 0 && atZoneEndRow > 0)
                 {
-                    // AT: tiền ship = SUM of zone breakdown rows in column H (these are -count*fee).
-                    // Adjust for 'gộp' (grouped orders) which were double-counted in zone counts:
-                    // add back half the summed ship for rows marked "gộp" so one of the duplicate
-                    // entries is removed per grouped pair.
+                    // AT: tiền ship = SUM of zone breakdown rows in column H (=-count*fee per zone)
                     worksheet.Cell(b2, COL_NGAYLAY).FormulaA1 =
-                        $"SUM({shipHColL}{atZoneStartRow}:{shipHColL}{atZoneEndRow})+SUMIFS({rShip},{rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")/2";
-                    // Số đơn cho AT: tổng đơn (keeps original behavior: raw total orders)
-                    // If desired, this can be changed to subtract grouped pairs similar to other shippers.
+                        $"SUM({shipHColL}{atZoneStartRow}:{shipHColL}{atZoneEndRow})";
+                    // Số đơn AT: giống tổng đơn nhận (trừ đơn gộp/2)
                     worksheet.Cell(b2, COL_GHICHU).FormulaA1 =
-                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})";
+                        $"SUMIFS({rCol1},{rNguoiDi},{nameRef})-INT(COUNTIFS({rNguoiDi},{nameRef},{rGhiChu},\"*gộp*\")/2)";
                 }
                 else
                 {
