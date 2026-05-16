@@ -449,7 +449,12 @@ namespace TextInputter.Services
                     atZoneEndRow = -1;
                 if (!string.IsNullOrEmpty(atNguoiDi))
                 {
-                    var atZoneCounts = new Dictionary<decimal, int>();
+                    // Đếm số chuyến AT theo zone phí ship.
+                    // Áp dụng cùng logic với "tổng đơn nhận": total - INT(gộp_count / 2)
+                    // Vì AutoMarkDonGop đánh "gộp" vào TẤT CẢ đơn trong nhóm (kể cả đại diện),
+                    // nên không thể chỉ skip đơn gộp — phải đếm rồi trừ INT(gộp/2) per zone.
+                    var atZoneCounts = new Dictionary<decimal, int>();    // tổng đơn per zone
+                    var atZoneGopCounts = new Dictionary<decimal, int>(); // số đơn gộp per zone
                     for (int r = DATA_START_ROW; r <= lastDataRow; r++)
                     {
                         string shopVal = worksheet.Cell(r, COL_SHOP).GetString().Trim();
@@ -464,8 +469,14 @@ namespace TextInputter.Services
                         if (atFee == 0m)
                             continue;
                         if (!atZoneCounts.ContainsKey(atFee))
+                        {
                             atZoneCounts[atFee] = 0;
+                            atZoneGopCounts[atFee] = 0;
+                        }
                         atZoneCounts[atFee]++;
+                        string ghiChu = worksheet.Cell(r, COL_GHICHU).GetString().Trim();
+                        if (ghiChu.Contains("gộp", StringComparison.OrdinalIgnoreCase))
+                            atZoneGopCounts[atFee]++;
                     }
                     if (atZoneCounts.Count > 0)
                     {
@@ -473,8 +484,11 @@ namespace TextInputter.Services
                         atZoneStartRow = zoneRow;
                         foreach (var zone in atZoneCounts.OrderBy(z => z.Key))
                         {
+                            // Số chuyến = total - INT(gộp / 2), giống công thức "tổng đơn nhận"
+                            int gopCount = atZoneGopCounts.GetValueOrDefault(zone.Key, 0);
+                            int soKhuyen = zone.Value - (gopCount / 2);
                             worksheet.Cell(zoneRow, COL_TIENSHIP).FormulaA1 =
-                                $"-{zone.Value}*{zone.Key:0}";
+                                $"-{soKhuyen}*{zone.Key:0}";
                             zoneRow++;
                         }
                         atZoneEndRow = zoneRow - 1;
