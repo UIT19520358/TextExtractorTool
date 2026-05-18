@@ -497,7 +497,9 @@ namespace TextInputter.Services
                         (string.IsNullOrEmpty(fields["ĐỊA CHỈ"])) && !string.IsNullOrEmpty(g.DiaChi)
                     )
                         fields["ĐỊA CHỈ"] = g.DiaChi;
-                    if (string.IsNullOrEmpty(fields["TÊN KH"]) && !string.IsNullOrEmpty(g.TenKH))
+                    // TÊN KH: Gemini có visual context → luôn override kết quả OCR nếu Gemini trả về giá trị
+                    // (OCR hay parse nhầm dòng đầu của nhãn shop thành tên khách, ví dụ "QUÝ KHÁCH VUI LÒNG")
+                    if (!string.IsNullOrEmpty(g.TenKH))
                         fields["TÊN KH"] = g.TenKH;
                     if (string.IsNullOrEmpty(fields["MÃ"]) && !string.IsNullOrEmpty(g.Ma))
                         fields["MÃ"] = g.Ma;
@@ -565,10 +567,19 @@ namespace TextInputter.Services
 
             // ── MISSING FIELDS (sau cả OCR + Gemini) ────────────────────────────────
             // SHOP final fallback: nếu vẫn rỗng sau tất cả parsing + Gemini → dùng tên shop mặc định
-            if (string.IsNullOrWhiteSpace(fields.GetValueOrDefault("SHOP", "")))
+            // Ngoại lệ: đơn SHIP_ONLY (hàng sỉ) không có shop, không áp SHOP_DEFAULT
             {
-                fields["SHOP"] = AppConstants.SHOP_DEFAULT;
-                missingFields.Remove("SHOP"); // không còn missing nữa
+                string shopInvoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
+                bool isShipOnlyOrder =
+                    shopInvoiceType == "SHIP_ONLY_FREE" || shopInvoiceType == "SHIP_ONLY_PAID";
+                if (
+                    string.IsNullOrWhiteSpace(fields.GetValueOrDefault("SHOP", ""))
+                    && !isShipOnlyOrder
+                )
+                {
+                    fields["SHOP"] = AppConstants.SHOP_DEFAULT;
+                    missingFields.Remove("SHOP"); // không còn missing nữa
+                }
             }
 
             // NGÀY LẤY final fallback: nếu vẫn rỗng → dùng ngày hôm nay
