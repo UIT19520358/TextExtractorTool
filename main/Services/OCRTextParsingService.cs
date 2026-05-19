@@ -567,19 +567,10 @@ namespace TextInputter.Services
 
             // ── MISSING FIELDS (sau cả OCR + Gemini) ────────────────────────────────
             // SHOP final fallback: nếu vẫn rỗng sau tất cả parsing + Gemini → dùng tên shop mặc định
-            // Ngoại lệ: đơn SHIP_ONLY (hàng sỉ) không có shop, không áp SHOP_DEFAULT
+            if (string.IsNullOrWhiteSpace(fields.GetValueOrDefault("SHOP", "")))
             {
-                string shopInvoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
-                bool isShipOnlyOrder =
-                    shopInvoiceType == "SHIP_ONLY_FREE" || shopInvoiceType == "SHIP_ONLY_PAID";
-                if (
-                    string.IsNullOrWhiteSpace(fields.GetValueOrDefault("SHOP", ""))
-                    && !isShipOnlyOrder
-                )
-                {
-                    fields["SHOP"] = AppConstants.SHOP_DEFAULT;
-                    missingFields.Remove("SHOP"); // không còn missing nữa
-                }
+                fields["SHOP"] = AppConstants.SHOP_DEFAULT;
+                missingFields.Remove("SHOP"); // không còn missing nữa
             }
 
             // NGÀY LẤY final fallback: nếu vẫn rỗng → dùng ngày hôm nay

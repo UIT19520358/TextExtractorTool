@@ -149,11 +149,13 @@ namespace TextInputter.Services
                     }
                     else
                     {
-                        // Hàng sỉ (không có MÃ HĐ) → ghi đè dựa trên TÊN KH
+                        // Hàng sỉ (không có MÃ HĐ) → ghi đè dựa trên TÊN KH + NGÀY LẤY
+                        // Phải khớp cả NGÀY LẤY để tránh overwrite đơn sỉ cùng tên từ ngày khác
                         string tenKH = data.GetValueOrDefault("TÊN KH", "");
+                        string ngayLay = data.GetValueOrDefault("NGÀY LẤY", "");
                         targetRow = string.IsNullOrWhiteSpace(tenKH)
                             ? -1
-                            : FindRowByTenKH(worksheet, tenKH);
+                            : FindRowByTenKH(worksheet, tenKH, ngayLay);
                     }
                     bool isUpdate = targetRow > 0;
                     if (!isUpdate)
@@ -453,7 +455,7 @@ namespace TextInputter.Services
                     // Áp dụng cùng logic với "tổng đơn nhận": total - INT(gộp_count / 2)
                     // Vì AutoMarkDonGop đánh "gộp" vào TẤT CẢ đơn trong nhóm (kể cả đại diện),
                     // nên không thể chỉ skip đơn gộp — phải đếm rồi trừ INT(gộp/2) per zone.
-                    var atZoneCounts = new Dictionary<decimal, int>();    // tổng đơn per zone
+                    var atZoneCounts = new Dictionary<decimal, int>(); // tổng đơn per zone
                     var atZoneGopCounts = new Dictionary<decimal, int>(); // số đơn gộp per zone
                     for (int r = DATA_START_ROW; r <= lastDataRow; r++)
                     {
@@ -587,20 +589,32 @@ namespace TextInputter.Services
         /// <summary>
         /// Tìm row có TÊN KH trùng (case-insensitive) trong sheet.
         /// Dùng để ghi đè đơn hàng sỉ (không có MÃ HĐ) — match dựa trên tên khách hàng.
+        /// Nếu ngayLay không rỗng: chỉ match row có NGÀY LẤY trùng luôn,
+        /// tránh ghi đè đơn sỉ cùng tên khách từ ngày khác.
         /// Trả về -1 nếu không tìm thấy.
         /// </summary>
-        private int FindRowByTenKH(IXLWorksheet worksheet, string tenKH)
+        private int FindRowByTenKH(IXLWorksheet worksheet, string tenKH, string ngayLay = null)
         {
             if (string.IsNullOrWhiteSpace(tenKH))
                 return -1;
             string target = tenKH.Trim();
+            bool checkNgay = !string.IsNullOrWhiteSpace(ngayLay);
+            string targetNgay = (ngayLay ?? "").Trim().TrimEnd('.');
             foreach (var row in worksheet.RowsUsed())
             {
                 if (row.RowNumber() <= 2)
                     continue;
                 string existing = row.Cell(COL_TENKH).GetString().Trim();
-                if (existing.Equals(target, StringComparison.OrdinalIgnoreCase))
-                    return row.RowNumber();
+                if (!existing.Equals(target, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Nếu có ngày → bắt buộc NGÀY LẤY cũng phải khớp
+                if (checkNgay)
+                {
+                    string existingNgay = row.Cell(COL_NGAYLAY).GetString().Trim().TrimEnd('.');
+                    if (!existingNgay.Equals(targetNgay, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+                return row.RowNumber();
             }
             return -1;
         }
