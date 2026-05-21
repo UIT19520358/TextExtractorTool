@@ -665,10 +665,8 @@ namespace TextInputter.Services
                 { "GHI CHÚ", COL_GHICHU },
             };
             var missingSet = new HashSet<string>(
-                (data.GetValueOrDefault("MISSING_FIELDS", "")).Split(
-                    new[] { ',' },
-                    StringSplitOptions.RemoveEmptyEntries
-                ),
+                data.GetValueOrDefault("MISSING_FIELDS", "")
+                    .Split(separator, StringSplitOptions.RemoveEmptyEntries),
                 StringComparer.OrdinalIgnoreCase
             );
 
@@ -1430,6 +1428,7 @@ namespace TextInputter.Services
             "HÀNG TỒN",
             "FAIL",
         };
+        private static readonly char[] separator = new[] { ',' };
 
         /// <summary>
         /// Cập nhật các field cho nhiều đơn hàng theo danh sách MÃ HĐ.
