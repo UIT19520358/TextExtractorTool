@@ -714,6 +714,10 @@ namespace TextInputter.Services
             // COD: TIỀN THU (Excel) = tiền hàng (OCR) + tiền ship = tổng thu từ khách
             if (invType == "COD" && thuVal > 0)
                 thuVal += shipVal;
+            // SHIP_ONLY_PAID: thu đúng bằng tiền ship → TIỀN THU (Excel) = ship
+            // Kết quả: TIỀN THU = ship, TIỀN SHIP = ship, TIỀN HÀNG = 0
+            else if (invType == "SHIP_ONLY_PAID")
+                thuVal = shipVal;
 
             worksheet.Cell(targetRow, COL_TIENTHU).Value = thuVal;
             worksheet.Cell(targetRow, COL_TIENSHIP).Value = shipVal;

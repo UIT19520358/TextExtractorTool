@@ -434,6 +434,7 @@ namespace TextInputter
             { "nguyen thai binh", "1" }, // Phường Nguyễn Thái Bình
             { "pham ngu lao", "1" }, // Phường Phạm Ngũ Lão
             { "tan dinh", "1" }, // Phường Tân Định
+            { "sai gon", "1" }, // Phường Sài Gòn (mới 2025, từ P.1+2+3+Cầu Ông Lãnh+phần Cô Giang)
             // ── Quận 3 (ship 20k) ─────────────────────────────────────────────
             // Sau NQ1685/2025 (30/06/2025): Q3 còn 10 phường — phường số gộp thành tên mới
             { "vo thi sau", "3" }, // Phường Võ Thị Sáu — legacy (nay gộp vào Phường Xuân Hòa)
@@ -484,6 +485,7 @@ namespace TextInputter
             { "hoa thanh", "tan phu" }, // Phường Hòa Thạnh
             { "phu trung", "tan phu" }, // Phường Phú Trung
             { "phu thanh", "tan phu" }, // Phường Phú Thạnh
+            { "phu tho hoa", "tan phu" }, // Phường Phú Thọ Hoà — Tân Phú (khác Phú Thọ Q11)
             // ── Quận Bình Thạnh (ship 20k) ────────────────────────────────────
             // Sau NQ1685/2025 (01/07/2025): Bình Thạnh giải thể quận, còn 5 phường tên mới
             { "binh thanh phuong", "binh thanh" }, // Phường Bình Thạnh (mới 2025, từ P.12+14+26) — hậu tố tránh trùng key quận
@@ -513,7 +515,11 @@ namespace TextInputter
             { "binh tri dong", "binh tan" }, // Phường Bình Trị Đông (mới 2025)
             { "tan tao", "binh tan" }, // Phường Tân Tạo (mới 2025, từ Tân Tạo A + phần Tân Tạo)
             { "an lac", "binh tan" }, // Phường An Lạc (mới 2025, từ An Lạc + An Lạc A + BT Đông B)
-            // "tan tao a" → không còn tồn tại (gộp vào Phường Tân Tạo)
+            // Bình Tân legacy wards (cũ, trước 2025):
+            { "an lac a", "binh tan" }, // Phường An Lạc A cũ → nay gộp vào An Lạc
+            { "binh tri dong a", "binh tan" }, // Phường Bình Trị Đông A cũ
+            { "binh tri dong b", "binh tan" }, // Phường Bình Trị Đông B cũ
+            { "tan tao a", "binh tan" }, // Phường Tân Tạo A cũ → nay gộp vào Tân Tạo
             // ── TP. Thủ Đức cũ (= Q2 + Q9 + Q.Thủ Đức cũ) ───────────────────
             // Ship chưa xác nhận, dùng "thu duc" làm key trung gian
             // Q2 cũ → ship 25k TODO | Q9 cũ → ship 30k TODO | Thủ Đức cũ → 25k TODO
@@ -543,6 +549,7 @@ namespace TextInputter
             { "phuoc binh", "9" }, // Phường Phước Bình — Q9 cũ
             { "phu chanh", "9" }, // Phường Phú Chânh — Q9 cũ (nay thuộc TP.Thủ Đức mới)
             { "phu lac", "9" }, // Phường Phú Lạc — Q9 cũ
+            { "long truong", "9" }, // Phường Long Trường — Q9 cũ
             { "linh xuan", "thu duc" }, // Phường Linh Xuân — Thủ Đức cũ
             { "linh dong", "thu duc" }, // Phường Linh Đông — Thủ Đức cũ
             { "linh chieu", "thu duc" }, // Phường Linh Chiểu — Thủ Đức cũ
@@ -575,6 +582,12 @@ namespace TextInputter
             { "hung gia", "7" }, // khu Hưng Gia, Phú Mỹ Hưng — Q7
             { "hung phuoc", "7" }, // khu Hưng Phước — Q7
             { "tan phu q7", "7" }, // Phường Tân Phú cũ — Q7 (trùng Quận Tân Phú → bỏ qua)
+            // Q7 legacy wards (nay gộp vào wards mới 2025):
+            { "tan phong", "7" }, // Phường Tân Phong cũ → nay thuộc Tân Hưng 2025
+            { "tan kieng", "7" }, // Phường Tân Kiểng cũ → nay thuộc Tân Hưng 2025
+            { "tan kieu", "7" }, // OCR variant của Tân Kiểng
+            { "binh thuan q7", "7" }, // Phường Bình Thuận cũ → nay thuộc Tân Thuận 2025 (suffix tránh trùng tỉnh BT)
+            { "tan quy q7", "7" }, // Phường Tân Quy cũ Q7 (trùng Tân Phú → dùng key có suffix)
             // ── Quận 8 (ship 25k) ─────────────────────────────────────────────
             // Từ NQ1278/2024 (01/01/2025): phường số gộp thành Rạch Ông, Hưng Phú, Xóm Củi
             // Từ NQ1685/2025 (01/07/2025): Q8 giải thể quận, còn 10 phường tên mới

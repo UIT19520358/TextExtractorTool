@@ -172,6 +172,36 @@ namespace TextInputter
                     if (IsDateLabelRow(row, colShop, colMa))
                         continue;
 
+                    // Detect đơn trả cho LEFT summary: FAIL=xx AND ỨNG TIỀN=x → sum TIỀN HÀNG
+                    // Phải check TRƯỚC khi skip luu tra vì đơn trả có thể có NGƯỜI ĐI = "luu tra"
+                    bool isTraLeft = false;
+                    if (
+                        colFail >= 0
+                        && colFail < row.Cells.Count
+                        && colUngTien >= 0
+                        && colUngTien < row.Cells.Count
+                    )
+                    {
+                        string failVal = (row.Cells[colFail].Value?.ToString() ?? "")
+                            .Trim()
+                            .ToLower();
+                        string ungVal = (row.Cells[colUngTien].Value?.ToString() ?? "")
+                            .Trim()
+                            .ToLower();
+                        isTraLeft = failVal.Contains("xx") && ungVal == "x";
+                    }
+                    if (isTraLeft && colTienHang >= 0 && colTienHang < row.Cells.Count)
+                    {
+                        if (
+                            decimal.TryParse(
+                                row.Cells[colTienHang].Value?.ToString() ?? "",
+                                out decimal hangVal
+                            )
+                        )
+                            totalTienHangDonTra += hangVal;
+                        soDonTraLeft++;
+                    }
+
                     // Skip row "luu tra" / AT ngày cũ khỏi totalSoDon
                     // (giống logic bảng trái Excel: E cod = SUMIFS filter theo SHOP+NGÀY, loại "luu tra")
                     if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
@@ -201,35 +231,6 @@ namespace TextInputter
                             .Trim()
                             .ToLower();
                         isHangTon = tonVal == "x";
-                    }
-
-                    // Detect đơn trả cho LEFT summary: FAIL=xx AND ỨNG TIỀN=x → sum TIỀN HÀNG
-                    bool isTraLeft = false;
-                    if (
-                        colFail >= 0
-                        && colFail < row.Cells.Count
-                        && colUngTien >= 0
-                        && colUngTien < row.Cells.Count
-                    )
-                    {
-                        string failVal = (row.Cells[colFail].Value?.ToString() ?? "")
-                            .Trim()
-                            .ToLower();
-                        string ungVal = (row.Cells[colUngTien].Value?.ToString() ?? "")
-                            .Trim()
-                            .ToLower();
-                        isTraLeft = failVal.Contains("xx") && ungVal == "x";
-                    }
-                    if (isTraLeft && colTienHang >= 0 && colTienHang < row.Cells.Count)
-                    {
-                        if (
-                            decimal.TryParse(
-                                row.Cells[colTienHang].Value?.ToString() ?? "",
-                                out decimal hangVal
-                            )
-                        )
-                            totalTienHangDonTra += hangVal;
-                        soDonTraLeft++;
                     }
 
                     totalSoDon++;
