@@ -151,7 +151,7 @@ namespace TextInputter.Services
         {
             if (_knownDistrictEndPatterns != null)
                 return _knownDistrictEndPatterns;
-            _knownDistrictEndPatterns = new List<string>();
+            _knownDistrictEndPatterns = [];
 
             // Tên quận có dấu (để match địa chỉ gõ/OCR đầy đủ dấu) — ≥2 từ
             var withDiac = new[]

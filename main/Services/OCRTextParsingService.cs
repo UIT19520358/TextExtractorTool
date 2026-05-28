@@ -38,7 +38,7 @@ namespace TextInputter.Services
             List<string> geminiLog = null
         )
         {
-            fields = new Dictionary<string, string>();
+            fields = [];
             var missingFields = new List<string>();
 
             // 1. SHOP — lấy dòng bắt đầu "ĐOÀN" nhưng không phải dòng footer (đổi size, ngày kể...)

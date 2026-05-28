@@ -33,7 +33,7 @@ namespace TextInputter
             public System.Collections.Generic.Dictionary<
                 decimal,
                 int
-            > AtZoneBreakdown { get; set; } = new();
+            > AtZoneBreakdown { get; set; } = [];
 
             /// <summary>Chi tiết từng đơn trả: (MÃ HĐ, TiềnThu, ShipFee theo quận, Tiền trừ)</summary>
             public System.Collections.Generic.List<(
@@ -41,7 +41,7 @@ namespace TextInputter
                 decimal TienThu,
                 decimal ShipFee,
                 decimal Deduction
-            )> DonTraDetails { get; set; } = new();
+            )> DonTraDetails { get; set; } = [];
         }
 
         // ─── Shared data class ────────────────────────────────────────────────
@@ -70,7 +70,7 @@ namespace TextInputter
             public System.Collections.Generic.List<(
                 string Label,
                 decimal Amount
-            )> NegativeRows { get; set; } = new();
+            )> NegativeRows { get; set; } = [];
 
             /// <summary>Tiền lấy tổng (cho NGUỜI LẤY) = -(totalOrders - totalDonGop) × PHI_LAY_HANG_MOI_DON</summary>
             public decimal TienLayTong { get; set; }

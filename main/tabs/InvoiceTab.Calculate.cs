@@ -430,7 +430,7 @@ namespace TextInputter
                                 : "";
 
                         // Detect đơn trả: GHI CHÚ contains "đơn trả"
-                        // (trước dùng FAIL="xx" nhưng "xx" dễ trùng với giá trị khác)
+                        // HOẶC FAIL="xx" AND ỨNG TIỀN="x" (từ dialog đánh dấu đơn trả)
                         bool isTra = false;
                         string ghiChuVal = "";
                         if (colGhiChu >= 0 && colGhiChu < row.Cells.Count)
@@ -439,6 +439,23 @@ namespace TextInputter
                                 .Trim()
                                 .ToLower();
                             isTra = ghiChuVal.Contains("đơn trả");
+                        }
+                        // Fallback: FAIL=xx + ỨNG TIỀN=x (giống isTraLeft — dùng khi user mark qua dialog)
+                        if (
+                            !isTra
+                            && colFail >= 0
+                            && colFail < row.Cells.Count
+                            && colUngTien >= 0
+                            && colUngTien < row.Cells.Count
+                        )
+                        {
+                            string failV = (row.Cells[colFail].Value?.ToString() ?? "")
+                                .Trim()
+                                .ToLower();
+                            string ungV = (row.Cells[colUngTien].Value?.ToString() ?? "")
+                                .Trim()
+                                .ToLower();
+                            isTra = failV.Contains("xx") && ungV == "x";
                         }
 
                         // AT ngày cũ + đánh dấu "đơn trả" → tính trừ vào AT hôm nay, đổi thành "luu tra"
@@ -486,25 +503,14 @@ namespace TextInputter
                         if (isTra)
                         {
                             d.SoDonTra++;
-                            // Mark đơn trả với "luu tra" trong DataGridView (giống AT ngày cũ)
-                            if (colNguoiDi >= 0 && colNguoiDi < row.Cells.Count)
-                                row.Cells[colNguoiDi].Value = "luu tra";
+                            // KHÔNG đổi NGƯỜI ĐI thành "luu tra" cho regular returns —
+                            // giữ tên shipper gốc để Excel SUMIFS tính đúng TỔNG ĐƠN NHẬN
+                            // và BuildRightSummary biết đơn trả thuộc người nào.
                         }
 
                         // Collect row data cho gộp detection + đơn trả details
                         if (!rowsPerNguoi.ContainsKey(nguoiRow))
-                            rowsPerNguoi[nguoiRow] =
-                                new List<(
-                                    string,
-                                    string,
-                                    string,
-                                    string,
-                                    string,
-                                    decimal,
-                                    decimal,
-                                    bool,
-                                    string
-                                )>();
+                            rowsPerNguoi[nguoiRow] = [];
                         rowsPerNguoi[nguoiRow]
                             .Add(
                                 (

@@ -777,7 +777,7 @@ namespace TextInputter.Services
                     continue;
                 string key = $"{tenKH.ToLower()}|{diaChi.ToLower()}";
                 if (!groups.ContainsKey(key))
-                    groups[key] = new List<int>();
+                    groups[key] = [];
                 groups[key].Add(r);
             }
 
@@ -875,8 +875,11 @@ namespace TextInputter.Services
                 double.TryParse(worksheet.Cell(r, COL_TIENTHU).GetString(), out double tienThu);
                 double.TryParse(worksheet.Cell(r, COL_TIENSHIP).GetString(), out double shipFee);
                 string failVal = worksheet.Cell(r, COL_FAIL).GetString().Trim().ToLower();
+                string ungVal = worksheet.Cell(r, COL_UNGIEN).GetString().Trim().ToLower();
                 string ghiChuVal = worksheet.Cell(r, COL_GHICHU).GetString().Trim().ToLower();
-                bool isTra = ghiChuVal.Contains("đơn trả");
+                // Detect đơn trả: GHI CHÚ contains "đơn trả" HOẶC FAIL=xx + ỨNG TIỀN=x
+                bool isTra =
+                    ghiChuVal.Contains("đơn trả") || (failVal.Contains("xx") && ungVal == "x");
 
                 // AT ngày cũ (VD: "AT 30-03" khi hôm nay 08-04) → đơn trả
                 // Tính tiền trừ vào AT hôm nay, sửa NGƯỜI ĐI thành "luu tra"
@@ -898,9 +901,13 @@ namespace TextInputter.Services
                     continue; // Skip — không tính vào report nhỏ
                 }
 
+                // Đơn trả thường → đổi NGƯỜI ĐI = "luu tra" trong Excel
+                // (SUMIFS tự loại ra, giữ nguyên formula; tính trả vào block "đơn trả" bên dưới)
+                if (isTra)
+                    worksheet.Cell(r, COL_NGUOIDI).Value = "luu tra";
+
                 if (!rowsPerNguoi.ContainsKey(nguoi))
-                    rowsPerNguoi[nguoi] =
-                        new List<(string, string, double, double, string, bool)>();
+                    rowsPerNguoi[nguoi] = [];
                 rowsPerNguoi[nguoi].Add((tenKH, diaChi, tienThu, shipFee, quan, isTra));
             }
 
@@ -1025,11 +1032,18 @@ namespace TextInputter.Services
                 // đơn trả — auto-filled from FAIL=xx data
                 worksheet.Cell(b4, COL_NGUOILAY).Value = "đơn trả";
                 worksheet.Cell(b4, COL_NGUOILAY).Style.Font.FontColor = XLColor.Red;
+                worksheet.Cell(b4, COL_NGUOILAY).Style.Alignment.Horizontal =
+                    XLAlignmentHorizontalValues.Left;
                 if (soDonTra > 0)
                 {
                     worksheet.Cell(b4, COL_NGAYLAY).Value = totalTienDonTra;
                     worksheet.Cell(b4, COL_NGAYLAY).Style.Font.FontColor = XLColor.Red;
+                    worksheet.Cell(b4, COL_NGAYLAY).Style.Alignment.Horizontal =
+                        XLAlignmentHorizontalValues.Left;
                     worksheet.Cell(b4, COL_GHICHU).Value = $"{soDonTra} đơn";
+                    worksheet.Cell(b4, COL_GHICHU).Style.Font.FontColor = XLColor.Red;
+                    worksheet.Cell(b4, COL_GHICHU).Style.Alignment.Horizontal =
+                        XLAlignmentHorizontalValues.Left;
                 }
 
                 worksheet.Cell(b5, COL_NGUOILAY).Value = "đơn cũ ck";

@@ -23,19 +23,19 @@ namespace TextInputter
     {
         // ─── Shared fields ─────────────────────────────────────────────────────
         private string folderPath = "";
-        private List<string> imageFiles = new List<string>();
+        private List<string> imageFiles = [];
         private bool isProcessing = false;
         private ImageAnnotatorClient visionClient;
         private OCRTextParsingService _ocrParsingService;
         private List<Dictionary<string, string>> mappedDataList =
-            new List<Dictionary<string, string>>();
+            [];
 
         // ─── Constructor ───────────────────────────────────────────────────────
         public MainForm()
         {
             InitializeComponent();
 
-            mappedDataList = new List<Dictionary<string, string>>();
+            mappedDataList = [];
 
             InitializeServices();
             LoadApplicationIcon();
@@ -233,7 +233,7 @@ namespace TextInputter
         private List<string> GetImageFiles(string folder)
         {
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
-                return new List<string>();
+                return [];
             return Directory
                 .GetFiles(folder, "*.*")
                 .Where(f =>

@@ -297,7 +297,7 @@ namespace TextInputter
                         // Dùng headers từ sheet đầu tiên có data (tất cả sheets cùng format)
                         if (doiSoatHeaders == null)
                         {
-                            doiSoatHeaders = new List<string>();
+                            doiSoatHeaders = [];
                             for (int c = 1; c <= colCount; c++)
                                 doiSoatHeaders.Add(ws.Cell(headerRow, c).GetString().Trim());
                         }

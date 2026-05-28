@@ -178,8 +178,8 @@ namespace TextInputter
                     dgvTong.Rows[ri].DefaultCellStyle.ForeColor = Color.Gray;
                 }
 
-                // Tiền Hàng = Tiền thu + Trừ Ship + Đơn trả (matching manual "Tiền Hàng Hcm")
-                decimal tienHangFinal = thuLeft + tongShipRaw + tienHangDonTra;
+                // Tiền Hàng = Tiền hàng (đã trừ ship) + Đơn trả (matching manual "Tiền Hàng Hcm")
+                decimal tienHangFinal = hangLeft + tienHangDonTra;
                 ri = dgvTong.Rows.Add("Tiền Hàng", tienHangFinal.ToString("N0"), soDonStr);
                 dgvTong.Rows[ri].DefaultCellStyle.BackColor = Color.FromArgb(230, 245, 255);
                 dgvTong.Rows[ri].DefaultCellStyle.Font = new Font("Arial", 10, FontStyle.Bold);
@@ -503,7 +503,7 @@ namespace TextInputter
                     }
                     catch
                     {
-                        existingSheets = new List<string>();
+                        existingSheets = [];
                     }
 
                     string suggested =
