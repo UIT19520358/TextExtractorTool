@@ -261,6 +261,18 @@ namespace TextInputter.Services
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToList();
 
+            // Preserve a mapped ward before district extraction can trim a segment
+            // that begins with a house number (for example, Hiệp Bình Chánh).
+            foreach (var segment in segments.AsEnumerable().Reverse())
+            {
+                var mappedWard = FindMappedWardDistrictInSegment(segment);
+                if (!string.IsNullOrEmpty(mappedWard.ward))
+                {
+                    result.Phuong = mappedWard.ward;
+                    break;
+                }
+            }
+
             int districtSegIdx = -1;
             for (int i = segments.Count - 1; i >= 0; i--)
             {
@@ -298,15 +310,18 @@ namespace TextInputter.Services
                 segments.RemoveAt(districtSegIdx);
 
             int wardSegIdx = -1;
-            for (int i = segments.Count - 1; i >= 0; i--)
+            if (string.IsNullOrEmpty(result.Phuong))
             {
-                var (phuong, _) = FindWardInSegment(segments[i]);
-                if (!string.IsNullOrEmpty(phuong))
+                for (int i = segments.Count - 1; i >= 0; i--)
                 {
-                    result.Phuong = phuong;
-                    result.Confidence += 0.3f;
-                    wardSegIdx = i;
-                    break;
+                    var (phuong, _) = FindWardInSegment(segments[i]);
+                    if (!string.IsNullOrEmpty(phuong))
+                    {
+                        result.Phuong = phuong;
+                        result.Confidence += 0.3f;
+                        wardSegIdx = i;
+                        break;
+                    }
                 }
             }
             if (wardSegIdx >= 0)
@@ -377,6 +392,13 @@ namespace TextInputter.Services
             seg = seg.Trim();
             if (string.IsNullOrEmpty(seg))
                 return ("", "");
+
+            // Ưu tiên tên phường đầy đủ trước tên quận. Ví dụ "Hiệp Bình Chánh,
+            // Thủ Đức" chứa cụm con "Bình Chánh"; nếu quét quận trước sẽ gán sai
+            // sang huyện Bình Chánh thay vì dùng map phường → Thủ Đức.
+            var wardDistrict = FindMappedWardDistrictInSegment(seg);
+            if (!string.IsNullOrEmpty(wardDistrict.district))
+                return (wardDistrict.district, wardDistrict.ward);
 
             var mQ = Regex.Match(seg, @"\bqu[aâậ]n\.?\s*(\d{1,2})\b", RegexOptions.IgnoreCase);
             if (!mQ.Success)
@@ -470,6 +492,31 @@ namespace TextInputter.Services
                     var triple = words[i - 2] + " " + words[i - 1] + " " + words[i];
                     if (WardNormalizedDict.TryGetValue(NormalizeKey(triple), out var dw3))
                         return (dw3, triple);
+                }
+            }
+
+            return ("", "");
+        }
+
+        /// <summary>
+        /// Tìm tên phường có trong WARD_TO_DISTRICT_MAP ở bất kỳ vị trí nào của segment.
+        /// Dùng n-gram theo từ để vẫn nhận được OCR không dấu hoặc có dấu câu xen giữa.
+        /// </summary>
+        private static (string district, string ward) FindMappedWardDistrictInSegment(string seg)
+        {
+            var words = Regex
+                .Matches(seg, @"[\p{L}\p{N}]+")
+                .Cast<Match>()
+                .Select(m => m.Value)
+                .ToArray();
+
+            for (int length = Math.Min(4, words.Length); length >= 1; length--)
+            {
+                for (int start = 0; start <= words.Length - length; start++)
+                {
+                    var ward = string.Join(" ", words.Skip(start).Take(length));
+                    if (WardNormalizedDict.TryGetValue(NormalizeKey(ward), out var district))
+                        return (district, ward);
                 }
             }
 

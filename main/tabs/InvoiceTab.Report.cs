@@ -315,20 +315,13 @@ namespace TextInputter
                             dgvNguoi.Rows[ri].Cells[1].Style.ForeColor = Color.Red;
                     }
 
-                    // tiền lấy — chỉ hiện giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
-                    bool isNguoiLay = tenNguoi.Equals(
-                        AppConstants.NGUOI_LAY_DEFAULT,
-                        StringComparison.OrdinalIgnoreCase
-                    );
-                    if (isNguoiLay && nd.TienLay != 0)
+                    // Tiền lấy đã được tổng hợp theo từng Người Lấy + Ngày Lấy.
+                    if (nd.TienLay != 0)
                     {
-                        decimal donLayCount = r.SoDon - r.TotalDonGop - r.TotalDonTra;
-                        if (donLayCount < 0)
-                            donLayCount = 0;
                         ri = dgvNguoi.Rows.Add(
                             "tiền lấy",
                             nd.TienLay.ToString("N0"),
-                            $"{donLayCount:N0}"
+                            $"{nd.SoDonLay:N0}"
                         );
                         dgvNguoi.Rows[ri].DefaultCellStyle.BackColor = Color.White;
                         if (nd.TienLay < 0)

@@ -349,9 +349,10 @@ namespace TextInputter.Services
                 // ── Bảng tổng kết ─────────────────────────────────────────────
                 int summaryRow = subtotalRow + 2;
 
-                // Thu thập distinct SHOPs, NGƯỜI ĐIs và ngày đầu tiên từ data rows
+                // Thu thập distinct SHOPs, NGƯỜI ĐI, NGƯỜI LẤY và ngày từ data rows
                 var distinctShops = new List<string>();
                 var distinctNguoiDis = new List<string>();
+                var distinctNguoiLays = new List<string>();
                 // AT hôm nay – dùng để phân biệt AT ngày cũ (đơn trả) vs AT hôm nay
                 string atTodayForDistinct =
                     AppConstants.NGUOI_DI_DEFAULT + DateTime.Now.ToString("dd-MM");
@@ -361,6 +362,7 @@ namespace TextInputter.Services
                 {
                     string shop = worksheet.Cell(r, COL_SHOP).GetString().Trim();
                     string nguoiDi = worksheet.Cell(r, COL_NGUOIDI).GetString().Trim();
+                    string nguoiLay = worksheet.Cell(r, COL_NGUOILAY).GetString().Trim();
                     string ngay = worksheet.Cell(r, COL_NGAYLAY).GetString().Trim();
                     if (!string.IsNullOrWhiteSpace(shop) && !distinctShops.Contains(shop))
                         distinctShops.Add(shop);
@@ -383,6 +385,14 @@ namespace TextInputter.Services
                         if (!isNotShipper && !isATOldDate)
                             distinctNguoiDis.Add(nguoiDi);
                     }
+                    if (string.IsNullOrWhiteSpace(nguoiLay))
+                    {
+                        nguoiLay = AppConstants.NGUOI_LAY_DEFAULT;
+                        // Đồng bộ file cũ với cách tính trong app: ô trống dùng người lấy mặc định.
+                        worksheet.Cell(r, COL_NGUOILAY).Value = nguoiLay;
+                    }
+                    if (!distinctNguoiLays.Contains(nguoiLay, StringComparer.OrdinalIgnoreCase))
+                        distinctNguoiLays.Add(nguoiLay);
                     if (!string.IsNullOrWhiteSpace(shop) && !string.IsNullOrWhiteSpace(ngay))
                     {
                         // Skip hàng tồn (carry-over ngày trước) — không tạo LEFT block riêng
@@ -411,6 +421,12 @@ namespace TextInputter.Services
                         (distinctShops[0], sheetDate.ToString(AppConstants.DATE_FORMAT_EXCEL))
                     );
 
+                // Bảng phải hiển thị cả người chỉ lấy hàng (không trực tiếp đi giao).
+                var distinctNguoiSummary = distinctNguoiDis
+                    .Concat(distinctNguoiLays)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
                 // Shorthand cột letters (dùng nhiều trong SUMIFS/COUNTIFS)
                 string shopColL = ColLetter(COL_SHOP);
                 string ngayColL = ColLetter(COL_NGAYLAY);
@@ -427,6 +443,8 @@ namespace TextInputter.Services
                 string rShop = $"{shopColL}${DATA_START_ROW}:{shopColL}${lastDataRow}";
                 string rNgay = $"{ngayColL}${DATA_START_ROW}:{ngayColL}${lastDataRow}";
                 string rNguoiDi = $"{nguoiDiColL}${DATA_START_ROW}:{nguoiDiColL}${lastDataRow}";
+                string nguoiLayColL = ColLetter(COL_NGUOILAY);
+                string rNguoiLay = $"{nguoiLayColL}${DATA_START_ROW}:{nguoiLayColL}${lastDataRow}";
                 string rMa = $"{maColL}${DATA_START_ROW}:{maColL}${lastDataRow}";
                 string hangColL = ColLetter(COL_TIENHANG);
                 string rHang = $"{hangColL}${DATA_START_ROW}:{hangColL}${lastDataRow}";
@@ -500,7 +518,7 @@ namespace TextInputter.Services
                 // ── BẢNG PHẢI: per NGƯỜI ĐI ───────────────────────────────────
                 int rightEndRow = BuildRightSummary(
                     worksheet,
-                    distinctNguoiDis,
+                    distinctNguoiSummary,
                     summaryRow,
                     subtotalRow,
                     lastDataRow,
@@ -509,8 +527,9 @@ namespace TextInputter.Services
                     rThu,
                     rShip,
                     rNguoiDi,
+                    rNguoiLay,
+                    rNgay,
                     rMa,
-                    rShop,
                     rCol1,
                     rGhiChu
                 );
@@ -764,7 +783,8 @@ namespace TextInputter.Services
         /// </summary>
         private void AutoMarkDonGop(IXLWorksheet worksheet, int lastDataRow)
         {
-            // Collect (tenKH, diaChi) → list of rows
+            // Collect theo ngày + người lấy + khách + địa chỉ. Đơn gộp thuộc người
+            // lấy khác/ngày khác không được trừ lẫn khi tính phí lấy hàng.
             var groups = new Dictionary<string, List<int>>();
             for (int r = DATA_START_ROW; r <= lastDataRow; r++)
             {
@@ -773,9 +793,13 @@ namespace TextInputter.Services
                     continue;
                 string tenKH = worksheet.Cell(r, COL_TENKH).GetString().Trim();
                 string diaChi = worksheet.Cell(r, COL_DIACHI).GetString().Trim();
+                string ngayLay = worksheet.Cell(r, COL_NGAYLAY).GetString().Trim();
+                string nguoiLay = worksheet.Cell(r, COL_NGUOILAY).GetString().Trim();
+                if (string.IsNullOrWhiteSpace(nguoiLay))
+                    nguoiLay = AppConstants.NGUOI_LAY_DEFAULT;
                 if (string.IsNullOrEmpty(tenKH) || string.IsNullOrEmpty(diaChi))
                     continue;
-                string key = $"{tenKH.ToLower()}|{diaChi.ToLower()}";
+                string key = $"{ngayLay.ToLower()}|{nguoiLay.ToLower()}|{tenKH.ToLower()}|{diaChi.ToLower()}";
                 if (!groups.ContainsKey(key))
                     groups[key] = [];
                 groups[key].Add(r);
@@ -817,8 +841,9 @@ namespace TextInputter.Services
             string rThu,
             string rShip,
             string rNguoiDi,
+            string rNguoiLay,
+            string rNgay,
             string rMa,
-            string rShop,
             string rCol1,
             string rGhiChu
         )
@@ -965,11 +990,6 @@ namespace TextInputter.Services
                 }
                 int soDonGiao = soDon - soDonGop;
 
-                bool isNguoiLay = nd.Equals(
-                    AppConstants.NGUOI_LAY_DEFAULT,
-                    StringComparison.OrdinalIgnoreCase
-                );
-
                 int b0 = curRow;
                 int b1 = curRow + 1;
                 int b2 = curRow + 2;
@@ -1012,22 +1032,16 @@ namespace TextInputter.Services
                         $"-SUMIFS({rShip},{rNguoiDi},{nameRef})+{cntColL}{b2}*{AppConstants.PHI_SHIP_MOI_DON}";
                 }
 
-                // tiền lấy — chỉ có giá trị cho NGUOI_LAY_DEFAULT (c.cuong)
-                // Tính trên tổng đơn TOÀN SHOP — lấy trực tiếp từ ô "Số đơn" bảng trái
-                // (dòng "Tiền Hàng Hcm" = startRow+4, cột E = COL_DIACHI).
+                // Tiền lấy theo Người Lấy. Các dòng gộp đã được đánh dấu theo
+                // từng Ngày Lấy + Người Lấy trong AutoMarkDonGop().
                 worksheet.Cell(b3, COL_NGUOILAY).Value = "tiền lấy";
-                if (isNguoiLay)
-                {
-                    // Ô E bảng trái dòng "Tiền Hàng Hcm" = số đơn toàn shop (đã tính đúng)
-                    string leftSoDonRef = $"{ColLetter(COL_DIACHI)}{startRow + 4}";
-                    string rGhiChuFull =
-                        $"{ColLetter(COL_GHICHU)}${DATA_START_ROW}:{ColLetter(COL_GHICHU)}${lastDataRow}";
-                    // SốĐơnLấy = E(TiềnHàngHcm) - đơn gộp/2 - đơn trả - hàng tỉnh
-                    worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
-                        $"{leftSoDonRef}-(COUNTIFS({rGhiChuFull},\"*gộp*\")/2)-COUNTIFS({rGhiChuFull},\"*đơn trả*\")-COUNTIFS({rGhiChuFull},\"*hàng tỉnh*\")";
-                    worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
-                        $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
-                }
+                // Chỉ tổng số đơn lấy lọc theo ngày đang đối soát ở Axx+1.
+                // Các khoản trừ giữ đúng công thức mẫu: theo người lấy + ghi chú.
+                string ngayRef = $"{ColLetter(COL_TINHTRANG)}${startRow + 1}";
+                worksheet.Cell(b3, COL_GHICHU).FormulaA1 =
+                    $"COUNTIFS({rNguoiLay},{nameRef},{rNgay},{ngayRef})-(COUNTIFS({rNguoiLay},{nameRef},{rGhiChu},\"*gộp*\")/2)-COUNTIFS({rNguoiLay},{nameRef},{rGhiChu},\"*đơn trả*\")-COUNTIFS({rNguoiLay},{nameRef},{rGhiChu},\"*hàng tỉnh*\")";
+                worksheet.Cell(b3, COL_NGAYLAY).FormulaA1 =
+                    $"-{cntColL}{b3}*{AppConstants.PHI_LAY_HANG_MOI_DON}";
 
                 // đơn trả — auto-filled from FAIL=xx data
                 worksheet.Cell(b4, COL_NGUOILAY).Value = "đơn trả";

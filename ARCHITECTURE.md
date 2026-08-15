@@ -13,7 +13,7 @@
 | Excel I/O | [ClosedXML 0.102.3](https://github.com/ClosedXML/ClosedXML) |
 | OCR | [Google Cloud Vision V1 3.8.0](https://cloud.google.com/vision) |
 | AI Fallback | [Gemini API](https://aistudio.google.com/apikey) (free tier, Vision) — `Mscc.GenerativeAI` |
-| Credentials | `text-extractor-489011-ee19271357bd.json` (Google Service Account) |
+| Credentials | `textinputter-4a7bda4ef67a.json` (Google Service Account) |
 
 ---
 
@@ -356,7 +356,7 @@ Tier 2   (quận):         SHIPPING_FEES_BY_QUAN[NormalizeKey(quan)]
 | 6 | `AppConstants.DATE_FORMAT_SHEET` | `"dd-MM-yyyy"` | Sheet naming convention cứng |
 | 7 | `OCRTextParsingService` | Tất cả regex keyword | Phụ thuộc format hóa đơn hiện tại |
 | 8 | `AddressParser` | `DistrictDict`, `WardDict` | Chỉ cover TP.HCM |
-| 9 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | `"text-extractor-489011-ee19271357bd.json"` | Credential file cứng cạnh .exe |
+| 9 | `AppConstants.GOOGLE_CREDENTIAL_FILE` | `"textinputter-4a7bda4ef67a.json"` | Credential file cứng cạnh .exe |
 | 10 | `AppConstants.SHIPPING_FEES_BY_QUAN` | Bảng phí ship theo quận | Phụ thuộc hợp đồng vận chuyển hiện tại, chỉ cover TP.HCM |
 | 11 | `AppConstants.GEMINI_API_KEY` | API key Gemini nhúng thẳng | Không nên commit lên git public |
 

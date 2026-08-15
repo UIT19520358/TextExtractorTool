@@ -265,6 +265,8 @@ namespace TextInputter.Services
             // Parse QUẬN từ raw addressLine (còn đủ quận) TRƯỚC khi strip
             var parsed = AddressParser.Parse(addressLine);
             fields["QUẬN"] = parsed.Quan;
+            // Keep the ward parsed from the raw address even when Gemini is unavailable.
+            fields["PHƯỜNG"] = parsed.Phuong;
 
             // Fallback QUẬN: nếu AddressParser không ra → scan toàn bộ raw OCR text tìm "Quận X"
             // Xử lý trường hợp OCR wrap dòng giữa tên quận (VD: "Quận B\nh Thạnh" → "Bình Thạnh")

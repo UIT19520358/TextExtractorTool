@@ -23,6 +23,7 @@ namespace TextInputter
             public int SoDonTra { get; set; } // Số đơn trả (đã đánh dấu FAIL=xx)
             public decimal TienShipTru { get; set; } // -(TongShip - SoDonGiao × 5k), số âm
             public decimal TienLay { get; set; } // -((SoDon - SoDonTra - SoDonGop) × 2k), số âm
+            public decimal SoDonLay { get; set; } // Số đơn được tính phí lấy cho người này
             public decimal TienDonTra { get; set; } // Tổng tiền trừ đơn trả, số âm
             public bool IsAnTam { get; set; } // true = An Tâm → dùng bảng phí AT_SHIPPING_FEES
 

@@ -30,7 +30,7 @@ Chương trình cần **Google Cloud service account credentials** để hoạt 
    - Service Account → Keys tab
    - Add Key → Create new key
    - Format: **JSON**
-   - Download file JSON (ví dụ: `text-extractor-489011-ee19271357bd.json`)
+   - Download file JSON (ví dụ: `textinputter-4a7bda4ef67a.json`)
 
 ### 3️⃣ Copy vào project
 
@@ -41,7 +41,7 @@ Chương trình cần **Google Cloud service account credentials** để hoạt 
 
 - **HOẶC** rename thành tên mặc định:
   ```
-  text-extractor-489011-ee19271357bd.json
+  textinputter-4a7bda4ef67a.json
   ```
 
 ### 4️⃣ ⚠️ Thêm vào .gitignore (ĐẬU BẮT BUỘC!)
@@ -50,7 +50,7 @@ File credentials chứa **private key** → **KHÔNG được public lên GitHub
 
 Kiểm tra `.gitignore` có dòng này không:
 ```gitignore
-text-extractor-489011-ee19271357bd.json
+textinputter-4a7bda4ef67a.json
 ```
 
 Nếu chưa có, thêm vào `.gitignore`
@@ -196,7 +196,7 @@ d:\Work\Freelance\TextInputter\
 ├── data/sample/                 # File mẫu để test
 ├── ARCHITECTURE.md              # Chi tiết kiến trúc, flow, edge cases
 ├── TextInputter.csproj          # Project file
-├── text-extractor-489011-ee19271357bd.json              # ⚠️ Credentials Google (KHÔNG push)
+├── textinputter-4a7bda4ef67a.json              # ⚠️ Credentials Google (KHÔNG push)
 └── textinputter-google-credential-sample.json  # Template sample
 ```
 

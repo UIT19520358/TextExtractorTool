@@ -48,6 +48,7 @@ namespace TextInputter
                     colGhiChu = -1,
                     colNgayLay = -1,
                     colNguoiDi = -1,
+                    colNguoiLay = -1,
                     colTenKH = -1,
                     colDiaChi = -1,
                     colQuan = -1,
@@ -74,6 +75,8 @@ namespace TextInputter
                         colNgayLay = col;
                     if (header.Contains("người đi") || header.Contains("nguoi di"))
                         colNguoiDi = col;
+                    if (header.Contains("người lấy") || header.Contains("nguoi lay"))
+                        colNguoiLay = col;
                     if (header.Contains("tên kh"))
                         colTenKH = col;
                     if (header.Contains("địa chỉ") || header.Contains("dia chi"))
@@ -355,6 +358,18 @@ namespace TextInputter
                     )>
                 >(StringComparer.OrdinalIgnoreCase);
 
+                // Tiền lấy được chia theo từng (ngày lấy, người lấy), độc lập với người đi.
+                var rowsPerNguoiLayNgay = new Dictionary<
+                    string,
+                    List<(string TenKH, string DiaChi, bool IsTra, string GhiChu)>
+                >(StringComparer.OrdinalIgnoreCase);
+
+                // Các COUNTIFS phần trừ trong Excel không lọc ngày. Giữ danh sách
+                // ghi chú theo Người Lấy cho toàn bộ data rows, kể cả dòng "lưu trả".
+                var ghiChuPerNguoiLay = new Dictionary<string, List<string>>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+
                 {
                     int endIdx = sumRowIndex >= 0 ? sumRowIndex : sourceGridView.Rows.Count;
                     for (int i = 0; i < endIdx; i++)
@@ -367,6 +382,23 @@ namespace TextInputter
                             continue;
                         if (IsDateLabelRow(row, colShop, colMa))
                             continue;
+
+                        string nguoiLayForGhiChu =
+                            colNguoiLay >= 0 && colNguoiLay < row.Cells.Count
+                                ? (row.Cells[colNguoiLay].Value?.ToString() ?? "").Trim()
+                                : "";
+                        if (string.IsNullOrEmpty(nguoiLayForGhiChu))
+                            nguoiLayForGhiChu = AppConstants.NGUOI_LAY_DEFAULT;
+                        string ghiChuForNguoiLay =
+                            colGhiChu >= 0 && colGhiChu < row.Cells.Count
+                                ? (row.Cells[colGhiChu].Value?.ToString() ?? "").Trim().ToLower()
+                                : "";
+                        if (!ghiChuPerNguoiLay.TryGetValue(nguoiLayForGhiChu, out var ghiChus))
+                        {
+                            ghiChus = [];
+                            ghiChuPerNguoiLay[nguoiLayForGhiChu] = ghiChus;
+                        }
+                        ghiChus.Add(ghiChuForNguoiLay);
 
                         string nguoiRow =
                             colNguoiDi >= 0 && colNguoiDi < row.Cells.Count
@@ -489,6 +521,22 @@ namespace TextInputter
                             continue;
                         }
 
+                        string nguoiLayRow =
+                            colNguoiLay >= 0 && colNguoiLay < row.Cells.Count
+                                ? (row.Cells[colNguoiLay].Value?.ToString() ?? "").Trim()
+                                : "";
+                        // File cũ không có/chưa điền Người Lấy vẫn giữ hành vi cũ: tính cho mặc định.
+                        if (string.IsNullOrEmpty(nguoiLayRow))
+                            nguoiLayRow = AppConstants.NGUOI_LAY_DEFAULT;
+                        string ngayLayRow =
+                            colNgayLay >= 0 && colNgayLay < row.Cells.Count
+                                ? (row.Cells[colNgayLay].Value?.ToString() ?? "").Trim()
+                                : "";
+                        string nguoiLayNgayKey = nguoiLayRow + "\u001f" + ngayLayRow;
+                        if (!rowsPerNguoiLayNgay.ContainsKey(nguoiLayNgayKey))
+                            rowsPerNguoiLayNgay[nguoiLayNgayKey] = [];
+                        rowsPerNguoiLayNgay[nguoiLayNgayKey].Add((tenKH, diaChi, isTra, ghiChuVal));
+
                         // Tích lũy per-person (dùng nguoiRow nguyên bản)
                         if (!detailByNguoiDi.ContainsKey(nguoiRow))
                             detailByNguoiDi[nguoiRow] = new NguoiDiDetail();
@@ -596,7 +644,7 @@ namespace TextInputter
                         d.TienShipTru = -(d.TienShip - d.SoDonGiao * AppConstants.PHI_SHIP_MOI_DON);
                     }
 
-                    // Tiền lấy: không tính per-person, tính global cho NGUOI_LAY_DEFAULT
+                    // Tiền lấy được phân bổ sau theo từng Người Lấy + Ngày Lấy.
                     d.TienLay = 0;
 
                     // Đơn trả:
@@ -616,31 +664,29 @@ namespace TextInputter
                     }
                 }
 
-                // Tính tiền lấy global cho NGUOI_LAY_DEFAULT (c.cuong)
-                // Use same rules as Excel formula (dynamic):
-                // donLay = totalSoDon - (COUNTIFS("*gộp*")/2) - (COUNTIFS(gộp & đơn trả)/2) - COUNTIFS("*hàng tỉnh*")
-                decimal donLayGlobal =
-                    totalSoDon
-                    - ((decimal)totalGopCellCount / 2m)
-                    - ((decimal)totalDonTraGop / 2m)
-                    - totalDonHangTinh;
-                if (donLayGlobal < 0)
-                    donLayGlobal = 0;
-                decimal tienLayTong = -(donLayGlobal * AppConstants.PHI_LAY_HANG_MOI_DON);
-
-                // Gán tiền lấy vào đúng người lấy (c.cuong) nếu có trong detailByNguoiDi
-                foreach (var kvp in detailByNguoiDi)
+                // Tính tiền lấy theo ngày + người lấy. Đơn gộp chỉ được ghép trong
+                // cùng nhóm này, nên đơn của hai người/ngày khác nhau không bị trừ lẫn nhau.
+                decimal tienLayTong = 0;
+                foreach (var kvp in rowsPerNguoiLayNgay)
                 {
-                    if (
-                        kvp.Key.Equals(
-                            AppConstants.NGUOI_LAY_DEFAULT,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    {
-                        kvp.Value.TienLay = tienLayTong;
-                        break;
-                    }
+                    var rows = kvp.Value;
+                    string nguoiLay = kvp.Key.Split('\u001f')[0];
+                    var ghiChus = ghiChuPerNguoiLay.GetValueOrDefault(nguoiLay) ?? [];
+                    int hangTinh = ghiChus.Count(ghiChu => ghiChu.Contains("hàng tỉnh"));
+                    // Khớp COUNTIFS trong Excel: dùng cờ ghi chú đã được đánh dấu,
+                    // thay vì tự suy luận lại từ tên khách và địa chỉ.
+                    int gopCells = ghiChus.Count(ghiChu => ghiChu.Contains("gộp"));
+                    int donTra = ghiChus.Count(ghiChu => ghiChu.Contains("đơn trả"));
+                    decimal soDonLay = rows.Count - ((decimal)gopCells / 2m) - donTra - hangTinh;
+                    if (soDonLay < 0)
+                        soDonLay = 0;
+
+                    if (!detailByNguoiDi.ContainsKey(nguoiLay))
+                        detailByNguoiDi[nguoiLay] = new NguoiDiDetail();
+                    detailByNguoiDi[nguoiLay].SoDonLay += soDonLay;
+                    decimal tienLay = -(soDonLay * AppConstants.PHI_LAY_HANG_MOI_DON);
+                    detailByNguoiDi[nguoiLay].TienLay += tienLay;
+                    tienLayTong += tienLay;
                 }
 
                 Debug.WriteLine(
