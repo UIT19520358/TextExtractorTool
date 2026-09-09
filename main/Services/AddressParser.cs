@@ -199,6 +199,40 @@ namespace TextInputter.Services
             public float Confidence { get; set; } = 0f;
         }
 
+        public static string ResolveDistrictForWard(string phuong, string quan)
+        {
+            var ward = NormalizeOutput(phuong);
+            var current = NormalizeOutput(quan);
+
+            if (string.IsNullOrWhiteSpace(ward))
+                return current;
+
+            var wardKey = NormalizeKey(ward);
+            if (!WardNormalizedDict.TryGetValue(wardKey, out var mappedDistrict))
+                return current;
+
+            var mapped = NormalizeOutput(mappedDistrict);
+            if (string.IsNullOrWhiteSpace(current))
+                return mapped;
+            if (string.Equals(mapped, current, StringComparison.OrdinalIgnoreCase))
+                return current;
+            if (IsGenericDistrictAlias(current) && !IsGenericDistrictAlias(mapped))
+                return mapped;
+            if (IsGenericDistrictAlias(current) && IsGenericDistrictAlias(mapped))
+                return current;
+
+            return current;
+        }
+
+        private static bool IsGenericDistrictAlias(string district)
+        {
+            if (string.IsNullOrWhiteSpace(district))
+                return false;
+
+            var normalized = NormalizeOutput(district);
+            return normalized == "thu duc" || normalized == "2" || normalized == "9";
+        }
+
         public static ParsedAddress Parse(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
@@ -341,6 +375,10 @@ namespace TextInputter.Services
             result.TenDuong = NormalizeOutput(result.TenDuong);
             result.SoNha = NormalizeOutput(result.SoNha);
             result.Phuong = NormalizeOutput(result.Phuong);
+
+            // Ưu tiên map phường cụ thể hơn tên quận chung (VD: Long Thạnh Mỹ + Thủ Đức → 9)
+            if (!string.IsNullOrEmpty(result.Phuong))
+                result.Quan = ResolveDistrictForWard(result.Phuong, result.Quan);
 
             // Nếu chưa tìm được quận nhưng có phường → thử tra bảng phường→quận
             if (string.IsNullOrEmpty(result.Quan) && !string.IsNullOrEmpty(result.Phuong))

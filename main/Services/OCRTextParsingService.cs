@@ -26,6 +26,17 @@ namespace TextInputter.Services
         // Dùng để Gemini đọc ảnh khi cần fallback
         public string CurrentImagePath { get; set; } = "";
 
+        public static long ComputeTienHang(string invoiceType, long tienThu, long tienShip)
+        {
+            if (string.Equals(invoiceType, "SHIP_ONLY_FREE", StringComparison.OrdinalIgnoreCase))
+                return -tienShip;
+
+            if (string.Equals(invoiceType, "SHIP_ONLY_PAID", StringComparison.OrdinalIgnoreCase))
+                return tienShip;
+
+            return tienThu - tienShip;
+        }
+
         /// <summary>
         /// Extract tất cả 12 fields bắt buộc từ OCR text.
         /// Trả về danh sách các field bị thiếu (empty list = đủ hết).
@@ -273,7 +284,7 @@ namespace TextInputter.Services
             if (string.IsNullOrEmpty(fields["QUẬN"]))
                 fields["QUẬN"] = ExtractDistrictFromRawText(text);
 
-            // ĐỊA CHỈ = strip quận (và phường) ra khỏi addressLine — quận đã có cột riêng
+            // ĐỊA CHỈ = strip quận ra khỏi addressLine — phường được giữ lại trong cột địa chỉ
             fields["ĐỊA CHỈ"] = StripDistrictAndWard(addressLine);
 
             // 8. TIỀN THU — Ưu tiên lấy số tiền CUỐI CÙNG trong text (sau chiết khấu)
@@ -399,7 +410,7 @@ namespace TextInputter.Services
             }
             else
             {
-                fields["INVOICE_TYPE"] = "COD"; // format cũ: hàng = thu + ship
+                fields["INVOICE_TYPE"] = "COD"; // COD: tiền hàng = thu - ship
             }
 
             // Nếu đang COD mà TIỀN THU được lấy từ nhãn "THU X" (bước 0b) thì ok, giữ nguyên.
@@ -467,32 +478,21 @@ namespace TextInputter.Services
                     if (string.IsNullOrEmpty(fields["SHOP"]) && !string.IsNullOrEmpty(g.TenShop))
                         fields["SHOP"] = AppConstants.SHOP_DEFAULT;
                     // Địa chỉ
-                    if (string.IsNullOrEmpty(fields["QUẬN"]) && !string.IsNullOrEmpty(g.Quan))
+                    if (!string.IsNullOrEmpty(g.Quan) || !string.IsNullOrEmpty(g.Phuong))
                     {
-                        // Phòng Gemini trả tên phường thay vì tên quận → tra WARD_TO_DISTRICT_MAP
-                        string quanValue = g.Quan;
-                        var quanNorm = System
-                            .Text.RegularExpressions.Regex.Replace(
-                                g.Quan.Normalize(System.Text.NormalizationForm.FormD),
-                                @"[^a-z0-9 ]",
-                                "",
-                                System.Text.RegularExpressions.RegexOptions.IgnoreCase
-                            )
-                            .ToLowerInvariant()
-                            .Trim();
-                        quanNorm = System.Text.RegularExpressions.Regex.Replace(
-                            quanNorm,
-                            @"\s+",
-                            " "
+                        string wardValue = !string.IsNullOrEmpty(g.Phuong)
+                            ? g.Phuong
+                            : fields.GetValueOrDefault("PHƯỜNG", "");
+                        string districtValue = !string.IsNullOrEmpty(g.Quan)
+                            ? g.Quan
+                            : fields.GetValueOrDefault("QUẬN", "");
+                        string resolvedQuan = AddressParser.ResolveDistrictForWard(
+                            wardValue,
+                            districtValue
                         );
-                        if (
-                            AppConstants.WARD_TO_DISTRICT_MAP.TryGetValue(
-                                quanNorm,
-                                out var mappedQuan
-                            )
-                        )
-                            quanValue = mappedQuan;
-                        fields["QUẬN"] = quanValue;
+
+                        if (!string.IsNullOrEmpty(resolvedQuan))
+                            fields["QUẬN"] = resolvedQuan;
                     }
                     // SỐ NHÀ: override nếu đang là raw fallback (Gemini tách chính xác hơn)
                     if (
@@ -917,7 +917,7 @@ namespace TextInputter.Services
         }
 
         /// <summary>
-        /// Strip quận và phường khỏi địa chỉ để lưu vào cột ĐỊA CHỈ (quận đã có cột riêng).
+        /// Strip quận khỏi địa chỉ để lưu vào cột ĐỊA CHỈ (quận đã có cột riêng).
         /// Gọi SAU khi đã parse Quan từ raw addressLine bằng AddressParser.Parse().
         /// </summary>
         private static string StripDistrictAndWard(string address)
@@ -925,21 +925,6 @@ namespace TextInputter.Services
             if (string.IsNullOrWhiteSpace(address))
                 return address;
             var s = address;
-
-            // Strip phường dài: "Phường An Đông", "Phường 14"
-            s = Regex
-                .Replace(
-                    s,
-                    @",?\s*Ph[uướừửữ][oôờ]ng\s+(?:[A-ZĐÀÁẢÃẠĂẮẶẰẲẴÂẤẦẨẪẬ][^\n,]*|An Đông|Tân Sơn Nhì|[^\d,]+|\d{1,2})\s*$",
-                    "",
-                    RegexOptions.IgnoreCase
-                )
-                .Trim();
-
-            // Strip phường viết tắt cuối: "p1", "p.1", "p 1", "p.14"
-            s = Regex
-                .Replace(s, @",?\s*\bp\.?\s*\d{1,2}\b\s*$", "", RegexOptions.IgnoreCase)
-                .Trim();
 
             // Strip "Quận X" / "Q.X" bất kỳ nơi nào trong chuỗi (kể cả giữa — VD: "(22 Quận Bình Thạnh (...")
             // Bao gồm: số quận và tên quận chữ

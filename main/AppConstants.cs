@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace TextInputter
@@ -27,7 +28,7 @@ namespace TextInputter
         /// Gemini API key — dùng để fallback parse địa chỉ khi AddressParser confidence thấp.
         /// Lấy miễn phí tại: https://aistudio.google.com/apikey
         /// Model fallback (quota nhiều → ít, tự động chuyển khi quota hết):
-        ///   gemini-2.5-flash-lite → gemini-2.0-flash-lite → gemini-2.0-flash → gemini-2.5-flash → gemini-2.5-pro
+        ///   gemini-2.5-flash-lite → gemini-3.6-flash → gemini-2.5-flash → gemini-3.1-pro-preview
         /// Để trống ("") = tắt Gemini fallback, chỉ dùng rule-based parser.
         /// ⚠️ Không commit key này lên git nếu repo public.
         /// </summary>
@@ -173,7 +174,7 @@ namespace TextInputter
             { "go vap", "c.cuong" },
             { "2", "c.cuong" },
             // ── a.quyền: Q9 ───────────────────────────────────────────────────
-            { "9", "a.quyen" },
+            // { "9", "a.quyen" },
 
             // ── An Tâm: phần còn lại (Q6, Q7, Q8, Q11, Q12, Tân Phú, Bình Tân,
             //            Nhà Bè, Hóc Môn, Bình Chánh, Củ Chi, Cần Giờ...) ─────
@@ -211,6 +212,7 @@ namespace TextInputter
             { "phu nhuan", 17m },
             { "tan phu", 17m },
             { "go vap", 17m },
+            { "binh thanh", 17m },
             // Zone 2: 25k — Giao trong ngày hoặc qua ngày
             { "12", 25m },
             { "binh tan", 25m },
@@ -668,7 +670,10 @@ namespace TextInputter
             { "trung lap ha", "cu chi" }, // Xã Trung Lập Hạ
             { "trung lap thuong", "cu chi" }, // Xã Trung Lập Thượng
             { "an nhon tay", "cu chi" }, // Xã An Nhơn Tây
-            { "nhuan duc", "cu chi" }, // Xã Nhuận Đức
+            { "xa nhuận đức", "cu chi" }, // Xã Nhuận Đức — Củ Chi
+            { "xa duc nhuận", "cu chi" }, // Xã Đức Nhuận — Củ Chi
+            { "phuong duc nhuận", "phu nhuan" }, // Phường Đức Nhuận — Phú Nhuận
+            { "phuong nhuận đức", "phu nhuan" }, // Phường Nhuận Đức — Phú Nhuận
             { "pham van coi", "cu chi" }, // Xã Phạm Văn Cội
             { "an phu cu chi", "cu chi" }, // Xã An Phú — Củ Chi (tránh trùng An Phú Q2)
             { "thai my", "cu chi" }, // Xã Thái Mỹ

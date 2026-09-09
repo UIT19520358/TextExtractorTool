@@ -241,10 +241,9 @@ Bảng phải (per NGƯỜI ĐI):
 | Thứ tự | Model | Ghi chú |
 |--------|-------|---------|
 | 1 | `gemini-2.5-flash-lite` | Quota nhiều nhất, nhanh nhất |
-| 2 | `gemini-2.0-flash-lite` | Deprecated, còn đến Jun 2026 |
-| 3 | `gemini-2.0-flash` | Deprecated, còn đến Jun 2026 |
-| 4 | `gemini-2.5-flash` | Cân bằng |
-| 5 | `gemini-2.5-pro` | Xịn nhất, quota ít nhất — last resort |
+| 2 | `gemini-3.6-flash` | Model fallback ổn định |
+| 3 | `gemini-2.5-flash` | Cân bằng |
+| 4 | `gemini-3.1-pro-preview` | Last resort mới nhất theo runtime |
 
 Gặp lỗi **429 / RESOURCE_EXHAUSTED** → tự động thử model tiếp theo.
 

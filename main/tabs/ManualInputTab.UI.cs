@@ -75,7 +75,7 @@ namespace TextInputter
                 var txtTienShip = CreateMandatoryField(pnlManualInput, "Tiền Ship ⭐:", ref y);
                 var txtTienHang = CreateOptionalField(
                     pnlManualInput,
-                    "Tiền Hàng (tự tính = Thu + Ship nếu trống):",
+                    "Tiền Hàng (tự tính = Thu - Ship nếu trống):",
                     ref y
                 );
 

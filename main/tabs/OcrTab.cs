@@ -130,6 +130,7 @@ namespace TextInputter
             {
                 string imagePath = imageFiles[i];
                 string fileName = Path.GetFileName(imagePath);
+                bool stopBatch = false;
 
                 this.Invoke(
                     (MethodInvoker)
@@ -143,6 +144,34 @@ namespace TextInputter
                 try
                 {
                     var (text, confidence) = CallGoogleVisionOCR(imagePath);
+
+                    // If OCR threw an exception (quota/auth/etc.), surface it immediately and stop batch
+                    if (!string.IsNullOrWhiteSpace(lastOcrError))
+                    {
+                        string ocrErrLine = $"[OCR ERROR] {fileName}: {lastOcrError}";
+                        allText.AppendLine(ocrErrLine);
+                        combinedLog.AppendLine(ocrErrLine);
+                        // Append detailed exception (stack + inner) to combined log for debugging
+                        if (!string.IsNullOrWhiteSpace(lastOcrErrorDetails))
+                        {
+                            combinedLog.AppendLine("[OCR ERROR DETAILS]");
+                            combinedLog.AppendLine(lastOcrErrorDetails);
+                            combinedLog.AppendLine();
+                            allText.AppendLine("[OCR ERROR DETAILS] (see log file for full stack)");
+                        }
+
+                        // Update UI and break batch to avoid spamming API
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            txtResult.Text = allText.ToString();
+                            txtResult.SelectionStart = txtResult.Text.Length;
+                            txtResult.ScrollToCaret();
+                            txtProcessLog.Text = allText.ToString();
+                            txtProcessLog.SelectionStart = txtProcessLog.Text.Length;
+                            txtProcessLog.ScrollToCaret();
+                        });
+                        break;
+                    }
 
                     // Header mỗi file — hiển thị ở CẢ HAI text area (có số thứ tự)
                     string fileHeader =
@@ -228,18 +257,13 @@ namespace TextInputter
                         }
 
                         // Compute TIỀN HÀNG theo loại đơn:
-                        //   COD          : thu + ship  (format cũ)
+                        //   COD          : thu - ship  (khách trả tổng = thu, tiền hàng = thu - ship)
                         //   SHIP_ONLY_FREE: -ship       (không thu ship, tiền hàng âm)
                         //   SHIP_ONLY_PAID: +ship       (thu ship, tiền hàng = ship)
                         string invoiceType = fields.GetValueOrDefault("INVOICE_TYPE", "COD");
                         long.TryParse(fields.GetValueOrDefault("TIỀN THU", "0"), out long thu);
                         long.TryParse(fields.GetValueOrDefault("TIỀN SHIP", "0"), out long ship);
-                        long tienhang = invoiceType switch
-                        {
-                            "SHIP_ONLY_FREE" => -ship,
-                            "SHIP_ONLY_PAID" => ship,
-                            _ => thu + ship, // COD
-                        };
+                        long tienhang = OCRTextParsingService.ComputeTienHang(invoiceType, thu, ship);
                         fields["TIỀN HÀNG"] = tienhang.ToString();
                         // Log loại đơn ra UI nếu không phải COD
                         if (invoiceType != "COD")
@@ -358,12 +382,20 @@ namespace TextInputter
                             }
                             else
                             {
-                                combinedLog.AppendLine($"FAILED — {geminiError}");
+                                string failLine = $"FAILED — {geminiError}";
+                                allText.AppendLine(failLine);
+                                combinedLog.AppendLine(failLine);
+
+                                // Lỗi Gemini thường là quota / model / network; dừng batch để khỏi spam cả loạt.
+                                // Nếu muốn quét tiếp các ảnh còn lại, hãy chạy lại sau khi xử lý quota.
+                                stopBatch = true;
                             }
                         }
                         else
                         {
-                            combinedLog.AppendLine("SKIPPED — Gemini chưa cấu hình API key");
+                            string skipLine = "SKIPPED — Gemini chưa cấu hình API key";
+                            allText.AppendLine(skipLine);
+                            combinedLog.AppendLine(skipLine);
                         }
 
                         combinedLog.AppendLine();
@@ -404,12 +436,7 @@ namespace TextInputter
                                 fields.GetValueOrDefault("TIỀN SHIP", "0"),
                                 out long ship
                             );
-                            long tienhang = invoiceType switch
-                            {
-                                "SHIP_ONLY_FREE" => -ship,
-                                "SHIP_ONLY_PAID" => ship,
-                                _ => thu + ship,
-                            };
+                            long tienhang = OCRTextParsingService.ComputeTienHang(invoiceType, thu, ship);
                             fields["TIỀN HÀNG"] = tienhang.ToString();
 
                             // Check missing fields
@@ -477,11 +504,30 @@ namespace TextInputter
                         }
                         combinedLog.AppendLine();
                     }
+
+                    if (stopBatch)
+                    {
+                        this.Invoke(
+                            (MethodInvoker)
+                                delegate
+                                {
+                                    txtResult.Text = allText.ToString();
+                                    txtResult.SelectionStart = txtResult.Text.Length;
+                                    txtResult.ScrollToCaret();
+                                    txtProcessLog.Text = allText.ToString();
+                                    txtProcessLog.SelectionStart = txtProcessLog.Text.Length;
+                                    txtProcessLog.ScrollToCaret();
+                                }
+                        );
+                        break;
+                    }
+
                     // Không cần dòng kẻ cuối — header của file tiếp theo đã có kẻ ═══
                 }
                 catch (Exception ex)
                 {
-                    allText.AppendLine($"\n❌ TỆP #{i + 1}: {fileName} — Lỗi: {ex.Message}");
+                    string errorLine = $"\n❌ TỆP #{i + 1}: {fileName} — Lỗi: {ex.Message}";
+                    allText.AppendLine(errorLine);
                     allText.AppendLine(new string('─', 60));
                     combinedLog.AppendLine($"[ERROR] {fileName}: {ex.Message}");
                     combinedLog.AppendLine();
@@ -494,6 +540,19 @@ namespace TextInputter
                     };
                     mappedDataList.Add(errFields);
                     warnCount++;
+
+                    this.Invoke(
+                        (MethodInvoker)
+                            delegate
+                            {
+                                txtResult.Text = allText.ToString();
+                                txtResult.SelectionStart = txtResult.Text.Length;
+                                txtResult.ScrollToCaret();
+                                txtProcessLog.Text = allText.ToString();
+                                txtProcessLog.SelectionStart = txtProcessLog.Text.Length;
+                                txtProcessLog.ScrollToCaret();
+                            }
+                    );
                 }
 
                 this.Invoke(

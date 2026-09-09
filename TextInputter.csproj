@@ -17,10 +17,12 @@
   <ItemGroup>
     <Compile Remove="_tmp_reader\**" />
     <Compile Remove="tools\**" />
+    <Compile Remove="TextInputter.Tests\**\*.cs" />
     <EmbeddedResource Remove="_tmp_reader\**" />
     <EmbeddedResource Remove="tools\**" />
     <None Remove="_tmp_reader\**" />
     <None Remove="tools\**" />
+    <None Remove="TextInputter.Tests\**\*" />
   </ItemGroup>
 
   <ItemGroup>

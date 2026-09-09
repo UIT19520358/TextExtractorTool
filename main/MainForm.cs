@@ -29,6 +29,10 @@ namespace TextInputter
         private OCRTextParsingService _ocrParsingService;
         private List<Dictionary<string, string>> mappedDataList =
             [];
+        // Lưu thông tin lỗi OCR gần nhất để ProcessImages có thể hiển thị vào log
+        private string lastOcrError = "";
+        // Chi tiết lỗi (stack/inner) để ghi vào log
+        private string lastOcrErrorDetails = "";
 
         // ─── Constructor ───────────────────────────────────────────────────────
         public MainForm()
@@ -251,8 +255,14 @@ namespace TextInputter
         {
             try
             {
+                // Reset last error at start of each call
+                lastOcrError = "";
+                lastOcrErrorDetails = "";
                 if (visionClient == null)
+                {
+                    lastOcrError = "Google Vision client chưa khởi tạo";
                     return ("", 0f);
+                }
 
                 var image = Google.Cloud.Vision.V1.Image.FromFile(imagePath);
                 var response = visionClient.Annotate(
@@ -279,6 +289,15 @@ namespace TextInputter
             }
             catch (Exception ex)
             {
+                lastOcrError = ex.Message;
+                try
+                {
+                    lastOcrErrorDetails = ex.ToString();
+                }
+                catch
+                {
+                    lastOcrErrorDetails = ex.Message;
+                }
                 Debug.WriteLine($"OCR error for {imagePath}: {ex.Message}");
                 return ("", 0f);
             }

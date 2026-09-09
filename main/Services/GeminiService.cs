@@ -21,18 +21,16 @@ namespace TextInputter.Services
         // Tất cả đều hỗ trợ Vision (đọc ảnh), có free tier, shutdown sớm nhất Jun 2026.
         // ─────────────────────────────────────────────────────────────────────────────
         // gemini-2.5-flash-lite : quota nhiều nhất, nhanh nhất  → dùng trước
-        // gemini-2.0-flash-lite : deprecated nhưng còn đến Jun 2026
-        // gemini-2.0-flash      : deprecated nhưng còn đến Jun 2026
+        // gemini-3.6-flash      : model fallback ổn định
         // gemini-2.5-flash      : cân bằng tốt
-        // gemini-2.5-pro        : xịn nhất, quota ít nhất       → dùng sau cùng
+        // gemini-3.1-pro-preview: last resort khi các model thường fail / bị ngắt
         // ─────────────────────────────────────────────────────────────────────────────
         private static readonly string[] MODEL_FALLBACK_LIST = new[]
         {
             "gemini-2.5-flash-lite", // ~nhiều nhất — fast, high-volume
-            "gemini-2.0-flash-lite", // deprecated fallback
-            "gemini-2.0-flash", // deprecated fallback
+            "gemini-3.6-flash", // deprecated fallback
             "gemini-2.5-flash", // cân bằng
-            "gemini-2.5-pro", // xịn nhất, quota ít nhất — last resort
+            "gemini-3.1-pro-preview", // last resort mới nhất theo lỗi runtime
         };
 
         /// <summary>
@@ -112,7 +110,9 @@ QUY TẮC QUAN TRỌNG:
 4. TP.HCM năm 2025 đổi tên phường — nếu địa chỉ có tên phường/khu vực mới hãy suy ra đúng TÊN QUẬN:
    - An Hội Tây, Thông Tây Hội, An Nhơn → Gò Vấp
    - Phường 22, Phường 25, Phường 26, Phường 27, Phường 28 → Bình Thạnh
-   - Long Thạnh Mỹ → Thủ Đức
+   - Long Thạnh Mỹ → 9
+   - Thủ Thiêm / An Phú / Cát Lái → 2
+   - Linh Xuân / Linh Đông / Bình Chiểu → Thủ Đức
    - Phú Lâm → Quận 6
 5. Đọc loại đơn từ text trên nhãn:
    - 'KHÔNG THU SHIP' / 'KO THU SHIP' / 'KHÔNG THU' → invoice_type='SHIP_ONLY_FREE', tien_thu='0', tien_ship=''
@@ -185,17 +185,8 @@ Chỉ trả về JSON, không có text khác.";
                             ? $"{ex.GetType().Name}: {ex.Message} | Inner: {ex.InnerException.Message}"
                             : $"{ex.GetType().Name}: {ex.Message}";
 
-                    // Nếu là quota/rate limit/server overload → thử model tiếp theo
-                    bool isRetryable =
-                        errDetail.Contains("429")
-                        || errDetail.Contains("TooManyRequests")
-                        || errDetail.Contains("RESOURCE_EXHAUSTED")
-                        || errDetail.Contains("quota")
-                        || errDetail.Contains("503")
-                        || errDetail.Contains("ServiceUnavailable")
-                        || errDetail.Contains("UNAVAILABLE")
-                        || errDetail.Contains("high demand")
-                        || errDetail.Contains("try again");
+                    // Nếu là quota/rate limit/server overload/network timeout/model not found → thử model tiếp theo
+                    bool isRetryable = IsRetryableGeminiError(errDetail);
                     lastError = $"[{modelName}] {errDetail}";
                     System.Diagnostics.Debug.WriteLine($"[Gemini/{modelName}] Error: {errDetail}");
 
@@ -207,6 +198,26 @@ Chỉ trả về JSON, không có text khác.";
             }
 
             return (null, lastError);
+        }
+
+        private static bool IsRetryableGeminiError(string errDetail)
+        {
+            return errDetail.Contains("429")
+                || errDetail.Contains("TooManyRequests")
+                || errDetail.Contains("RESOURCE_EXHAUSTED")
+                || errDetail.Contains("quota")
+                || errDetail.Contains("503")
+                || errDetail.Contains("ServiceUnavailable")
+                || errDetail.Contains("UNAVAILABLE")
+                || errDetail.Contains("high demand")
+                || errDetail.Contains("try again")
+                || errDetail.Contains("timed out")
+                || errDetail.Contains("timeout")
+                || errDetail.Contains("inactivity")
+                || errDetail.Contains("connection was closed")
+                || errDetail.Contains("connection reset")
+                || errDetail.Contains("NOT_FOUND")
+                || errDetail.Contains("no longer available");
         }
 
         /// <summary>
