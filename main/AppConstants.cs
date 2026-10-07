@@ -32,7 +32,7 @@ namespace TextInputter
         /// Để trống ("") = tắt Gemini fallback, chỉ dùng rule-based parser.
         /// ⚠️ Không commit key này lên git nếu repo public.
         /// </summary>
-        public const string GEMINI_API_KEY = ""; // TODO: điền API key vào đây
+        public const string GEMINI_API_KEY = "AQ.Ab8RN6IiC8yXAk_eg0L77sBxTtB6sCgg4sOscJC0ywMbPV878Q"; // TODO: điền API key vào đây
 
         /// <summary>Folder chứa ảnh OCR mặc định (dùng khi user chưa chọn)</summary>
         public const string DEFAULT_IMAGE_FOLDER = "";
