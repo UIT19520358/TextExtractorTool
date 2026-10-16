@@ -20,7 +20,13 @@ namespace TextInputter.Services
         private readonly GeminiService _gemini = new GeminiService(AppConstants.GEMINI_API_KEY);
 
         /// <summary>Cho phép OcrTab gọi trực tiếp Gemini khi Google Vision trả về text rỗng.</summary>
-        public GeminiService Gemini => _gemini;
+        public GeminiService Gemini
+        {
+            get
+            {
+                return _gemini;
+            }
+        }
 
         // Path ảnh gốc hiện tại — được set bởi caller trước khi gọi ExtractAllFields
         // Dùng để Gemini đọc ảnh khi cần fallback

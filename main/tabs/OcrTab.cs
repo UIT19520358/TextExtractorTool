@@ -81,6 +81,20 @@ namespace TextInputter
             int successCount = 0,
                 warnCount = 0;
 
+            // Snapshot UI inputs once on the UI thread before the worker loop starts.
+            // ProcessImages runs on Task.Run, so reading WinForms controls directly here
+            // would trigger cross-thread access exceptions.
+            string nguoiDi = "";
+            string nguoiLay = "";
+            this.Invoke(
+                (MethodInvoker)
+                    delegate
+                    {
+                        nguoiDi = txtNguoiDiOCR?.Text ?? "";
+                        nguoiLay = txtNguoiLayOCR?.Text ?? "";
+                    }
+            );
+
             // Nếu đã có data từ batch trước, hỏi user muốn append hay replace
             if (mappedDataList.Count > 0)
             {
@@ -96,10 +110,6 @@ namespace TextInputter
                     mappedDataList.Clear();
                 // Nếu YES → giữ nguyên, append tiếp bên dưới
             }
-
-            string nguoiDi = txtNguoiDiOCR?.Text ?? "";
-            string nguoiLay = txtNguoiLayOCR?.Text ?? "";
-
             // nguoiDi/nguoiLay có thể để trống vì sẽ auto-map theo khu vực từng đơn
 
             allText.AppendLine("╔════════════════════════════════════════════════════════╗");
@@ -220,12 +230,12 @@ namespace TextInputter
                         string phuongForMap = fields.GetValueOrDefault("PHƯỜNG", "");
                         string quanForMap = fields.GetValueOrDefault("QUẬN", "");
                         fields["NGƯỜI ĐI"] =
-                            _manualNguoiDi && !string.IsNullOrWhiteSpace(txtNguoiDiOCR?.Text)
-                                ? txtNguoiDiOCR.Text.Trim()
+                            _manualNguoiDi && !string.IsNullOrWhiteSpace(nguoiDi)
+                                ? nguoiDi.Trim()
                                 : OCRInvoiceMapper.GetNguoiDi(phuongForMap, quanForMap);
                         fields["NGƯỜI LẤY"] =
-                            _manualNguoiLay && !string.IsNullOrWhiteSpace(txtNguoiLayOCR?.Text)
-                                ? txtNguoiLayOCR.Text.Trim()
+                            _manualNguoiLay && !string.IsNullOrWhiteSpace(nguoiLay)
+                                ? nguoiLay.Trim()
                                 : nguoiLay;
 
                         // Auto-fill TIỀN SHIP từ bảng phí ship theo phường/quận (tier-3 → tier-2)
@@ -406,12 +416,12 @@ namespace TextInputter
                             string phuongForMap = fields.GetValueOrDefault("PHƯỜNG", "");
                             string quanForMap = fields.GetValueOrDefault("QUẬN", "");
                             fields["NGƯỜI ĐI"] =
-                                _manualNguoiDi && !string.IsNullOrWhiteSpace(txtNguoiDiOCR?.Text)
-                                    ? txtNguoiDiOCR.Text.Trim()
+                                _manualNguoiDi && !string.IsNullOrWhiteSpace(nguoiDi)
+                                    ? nguoiDi.Trim()
                                     : OCRInvoiceMapper.GetNguoiDi(phuongForMap, quanForMap);
                             fields["NGƯỜI LẤY"] =
-                                _manualNguoiLay && !string.IsNullOrWhiteSpace(txtNguoiLayOCR?.Text)
-                                    ? txtNguoiLayOCR.Text.Trim()
+                                _manualNguoiLay && !string.IsNullOrWhiteSpace(nguoiLay)
+                                    ? nguoiLay.Trim()
                                     : nguoiLay;
 
                             // Auto-fill TIỀN SHIP nếu trống

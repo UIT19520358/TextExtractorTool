@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Mscc.GenerativeAI;
 
 namespace TextInputter.Services
 {
@@ -15,6 +17,7 @@ namespace TextInputter.Services
     /// </summary>
     public class GeminiService
     {
+        private static readonly HttpClient _httpClient = new HttpClient();
         private readonly string _apiKey;
 
         // Thứ tự ưu tiên: quota nhiều nhất → ít nhất, tự fallback khi quota hết.
@@ -148,14 +151,7 @@ Chỉ trả về JSON, không có text khác.";
             {
                 try
                 {
-                    var googleAI = new GoogleAI(apiKey: _apiKey);
-                    var model = googleAI.GenerativeModel(model: modelName);
-
-                    var request = new GenerateContentRequest(PROMPT);
-                    await request.AddMedia(imagePath);
-
-                    var response = await model.GenerateContent(request);
-                    var raw = response.Text?.Trim() ?? "";
+                    var raw = await CallGeminiAsync(modelName, imagePath);
 
                     System.Diagnostics.Debug.WriteLine(
                         $"[Gemini/{modelName}] Response for {Path.GetFileName(imagePath)}: {raw}"
@@ -198,6 +194,106 @@ Chỉ trả về JSON, không có text khác.";
             }
 
             return (null, lastError);
+        }
+
+        private async Task<string> CallGeminiAsync(string modelName, string imagePath)
+        {
+            string endpoint =
+                $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={Uri.EscapeDataString(_apiKey)}";
+
+            var payload = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new { text = PROMPT },
+                            new
+                            {
+                                inlineData = new
+                                {
+                                    mimeType = GetMimeType(imagePath),
+                                    data = Convert.ToBase64String(File.ReadAllBytes(imagePath)),
+                                },
+                            },
+                        },
+                    },
+                },
+                generationConfig = new
+                {
+                    temperature = 0,
+                    topP = 1,
+                    topK = 1,
+                    maxOutputTokens = 1024,
+                },
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json"
+                ),
+            };
+
+            using var response = await _httpClient.SendAsync(request);
+            var responseText = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"Gemini HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {responseText}"
+                );
+            }
+
+            using var document = JsonDocument.Parse(responseText);
+            if (
+                document.RootElement.TryGetProperty("candidates", out var candidates)
+                && candidates.ValueKind == JsonValueKind.Array
+                && candidates.GetArrayLength() > 0
+            )
+            {
+                var firstCandidate = candidates[0];
+                if (
+                    firstCandidate.TryGetProperty("content", out var content)
+                    && content.TryGetProperty("parts", out var parts)
+                    && parts.ValueKind == JsonValueKind.Array
+                )
+                {
+                    foreach (var part in parts.EnumerateArray())
+                    {
+                        if (
+                            part.TryGetProperty("text", out var textElement)
+                            && textElement.ValueKind == JsonValueKind.String
+                        )
+                            return textElement.GetString()?.Trim() ?? "";
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static string GetMimeType(string imagePath)
+        {
+            switch (Path.GetExtension(imagePath).ToLowerInvariant())
+            {
+                case ".png":
+                    return "image/png";
+                case ".webp":
+                    return "image/webp";
+                case ".bmp":
+                    return "image/bmp";
+                case ".gif":
+                    return "image/gif";
+                case ".jpg":
+                case ".jpeg":
+                default:
+                    return "image/jpeg";
+            }
         }
 
         private static bool IsRetryableGeminiError(string errDetail)
